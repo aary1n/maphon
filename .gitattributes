@@ -1,0 +1,9 @@
+# Route large binaries through Git LFS to keep working-tree clones lean.
+#
+# `.mph` files are ignored everywhere except refs/ (see .gitignore); only
+# the supervisor reference and the golden post-§5-gate model are tracked.
+# Reference PDFs (papers, thesis drafts) live in the working tree and
+# would otherwise bloat history significantly.
+
+*.mph filter=lfs diff=lfs merge=lfs -text
+*.pdf filter=lfs diff=lfs merge=lfs -text

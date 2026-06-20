@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m venv .venv)",
+      "Bash(.venv/Scripts/python.exe --version)",
+      "Bash(mkdir -p refs)",
+      "Bash(mv pentacene_maser_parameter_provenance.md refs/pentacene_maser_parameter_provenance.md)",
+      "Bash(.venv/Scripts/python.exe -m pip install --upgrade pip)",
+      "Bash(.venv/Scripts/python.exe -m pip install numpy scipy pytest)",
+      "Bash(.venv/Scripts/python.exe *)"
+    ]
+  }
+}
