@@ -1,11 +1,12 @@
 """SPEC §6 parameter provenance — single source of truth.
 
-Every load-bearing number used by the forward model, extraction, and
-sweep imports from here. Do not hard-code these values anywhere else.
+Every load-bearing number used by the forward model, extraction, sweep,
+and validation gate imports from here. Do not hard-code these values
+anywhere else.
 
 The graded provenance lives in
 refs/pentacene_maser_parameter_provenance.md; this module encodes only
-the §6 summary findings.
+the §6 summary findings and the §5/§5b published anchors.
 """
 
 from cavity.provenance.constants import (
@@ -15,12 +16,16 @@ from cavity.provenance.constants import (
     GEOM,
     STO,
     TARGET,
-    TolRanges,
+    TARGETS,
+    TOL,
     Copper,
     Crystal,
     NominalGeometry,
+    PublishedTarget,
     STOSingleCrystal,
     TargetMode,
+    TolRanges,
+    ValidationTargets,
 )
 
 __all__ = [
@@ -30,10 +35,14 @@ __all__ = [
     "GEOM",
     "STO",
     "TARGET",
-    "TolRanges",
+    "TARGETS",
+    "TOL",
     "Copper",
     "Crystal",
     "NominalGeometry",
+    "PublishedTarget",
     "STOSingleCrystal",
     "TargetMode",
+    "TolRanges",
+    "ValidationTargets",
 ]

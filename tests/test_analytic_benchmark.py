@@ -12,7 +12,7 @@ import math
 
 import pytest
 
-from cavity.provenance import GEOM, STO, TARGET
+from cavity.provenance import GEOM, STO, TARGET, TARGETS
 from cavity.validation.analytic import (
     C_LIGHT,
     bessel_zero_j,
@@ -140,13 +140,13 @@ class TestQFromTanDelta:
             )
 
     def test_partial_fill_at_breeze_ceiling(self):
-        """Breeze STO row: Q ~ 10,000 at tan delta = 1.1e-4 implies p_e ~ 0.909.
+        """Breeze STO row Q at tan delta = 1.1e-4 implies p_e ~ 0.909.
 
         Direct check of the SPEC §6 arithmetic
         (ceiling 1/tan delta = 9091 vs Breeze 10,000 -> wall-loss-free).
         """
         assert q_dielectric_partial_fill(0.909, 1.1e-4) == pytest.approx(
-            10000.0, rel=2e-3
+            TARGETS.breeze.q_factor, rel=2e-3
         )
 
     def test_partial_fill_inverse_in_tan_delta(self):
@@ -170,17 +170,21 @@ class TestQFromTanDelta:
 class TestMagneticPurcellFormula:
     """SPEC §3 fixes F_m = (3/4pi^2) * lambda^3 * (Q / V_mode).
 
-    Validation: Breeze STO row Q = 1e4, V_mode = 0.2 cm^3, f = 1.45 GHz
-    must reproduce ~3.6e7 (SPEC computes 3.4e7 by the same formula --
-    both within tolerance of the tabulated value).
+    Validation: Breeze STO row (Q, V_mode, f) -> ~3.4-3.6e7, single-sourced
+    through `provenance.TARGETS.breeze`. If this formula or units are wrong,
+    nothing downstream that asserts F_m can be trusted.
     """
 
-    def test_breeze_sto_row_order_1e7(self):
-        v_mode_m3 = 0.2e-6  # 0.2 cm^3 in m^3
-        f_m = magnetic_purcell_factor(q=1.0e4, v_mode_m3=v_mode_m3, f_hz=1.45e9)
+    def test_breeze_sto_row_reproduces_tabulated_f_m(self):
+        anchor = TARGETS.breeze
+        f_m = magnetic_purcell_factor(
+            q=anchor.q_factor, v_mode_m3=anchor.v_mode_m3, f_hz=anchor.f_hz
+        )
         # SPEC arithmetic: (3/4pi^2) * (20.69 cm)^3 * (1e4 / 0.2 cm^3) ~ 3.37e7.
+        # Breeze tabulates 3.6e7; the ~7% gap is the (3/4pi^2) prefactor vs
+        # Breeze's printed prefactor (provenance trap, SPEC §3).
         assert f_m == pytest.approx(3.37e7, rel=5e-3)
-        assert 3.0e7 < f_m < 4.0e7  # encompasses Breeze's tabulated 3.6e7.
+        assert f_m == pytest.approx(anchor.f_m, rel=8e-2)
 
     def test_uses_target_frequency_consistently(self):
         """Sanity: design f = 1.45 GHz and measured f_xz = 1.4493 GHz differ
