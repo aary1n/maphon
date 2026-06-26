@@ -14,11 +14,20 @@ Published anchors live in `ValidationTargets`. Each `PublishedTarget`
 carries the eps_r the paper actually used: reproducing Breeze Q=10,000
 needs 318; reproducing Booth Q=6,980 needs 316.3. Pairing a target
 with the wrong eps_r chases a phantom ~14 MHz frequency shift.
+
+§3 extraction quality thresholds live in `ExtractionTolerances`; the
+F_m self-consistency anchor lives in `FMBenchmarkRange`. C_LIGHT is the
+SI speed of light, kept here so the F_m formula and the §8 analytic
+benchmark resolve to a single physical constant.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+
+C_LIGHT: float = 299_792_458.0
+"""Speed of light in vacuum, m/s. CODATA exact value."""
 
 
 @dataclass(frozen=True)
@@ -177,12 +186,56 @@ class ValidationTargets:
 DELOAD_K: float = 0.2
 
 
+@dataclass(frozen=True)
+class ExtractionTolerances:
+    """SPEC §3 + §8 extraction-quality thresholds.
+
+    `q_emw_cross_check_rel_tol`: when COMSOL exposes its emw.Qfactor, it
+    is derived from the same complex eigenpair as f'/(2 f''); the two
+    must agree to numerical-precision level. Used as a cross-check
+    assertion only — never as a replacement for the primary f'/(2 f'')
+    value (SPEC §3).
+
+    `q_pec_lossy_rel_tol`: the §8 partial-fill anchor — in the PEC walls
+    + lossy-dielectric limit Q must equal 1/(p_e * tan delta). Mesh-
+    limited; loose enough that converged solves pass but inverted sign
+    conventions or wrong Jacobians fail. This is the assertion that
+    pins the COMSOL eigenfrequency convention (SPEC §11 gap #4).
+    """
+
+    q_emw_cross_check_rel_tol: float = 1.0e-3
+    q_pec_lossy_rel_tol: float = 5.0e-3
+
+
+@dataclass(frozen=True)
+class FMBenchmarkRange:
+    """SPEC §3 F_m self-consistency anchor on Breeze inputs.
+
+    Q = 1e4, V = 0.2e-6 m^3, f = 1.45 GHz must give F_m in
+    [f_m_lo, f_m_hi]:
+      - lower bound 3.3e7 accommodates the exact (3/(2π)^2) prefactor
+        result 3.36e7 (which SPEC §3 rounds to 3.4e7 at 2 s.f.);
+      - upper bound 3.6e7 is Breeze's tabulated value.
+
+    The ~7% gap is the provenance trap SPEC §3 calls out: Breeze's
+    printed prefactor is dimensionally inconsistent, so the formula
+    floor and the tabulated ceiling do not coincide. Falling inside
+    this range is the gate: anything outside means the formula or the
+    units are wrong, and no F_m downstream is to be trusted.
+    """
+
+    f_m_lo: float = 3.3e7
+    f_m_hi: float = 3.6e7
+
+
 STO = STOSingleCrystal()
 COPPER = Copper()
 CRYSTAL = Crystal()
 GEOM = NominalGeometry()
 TARGET = TargetMode()
 TOL = TolRanges()
+EXTRACTION_TOL = ExtractionTolerances()
+F_M_BENCHMARK = FMBenchmarkRange()
 
 TARGETS = ValidationTargets(
     breeze=PublishedTarget(
