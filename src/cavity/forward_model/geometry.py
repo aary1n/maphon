@@ -20,6 +20,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 
+import numpy as np
+from numpy.typing import NDArray
+
 from cavity.provenance import GEOM, NominalGeometry
 
 
@@ -104,6 +107,39 @@ class CavityGeometry:
                 raise ValueError(
                     "TORUS does not use `dielectric_height_m`"
                 )
+
+    @property
+    def dielectric_centre_z_m(self) -> float:
+        """Axial centre of the dielectric — the box mid-plane."""
+        return 0.5 * self.box_height_m
+
+    def dielectric_mask(
+        self,
+        r_m: NDArray[np.floating],
+        z_m: NDArray[np.floating],
+    ) -> NDArray[np.bool_]:
+        """True at (r, z) nodes inside (or on the boundary of) the
+        dielectric cross-section.
+
+        This is the analytic mask the §3 export uses for `FieldSample`
+        — computed from the geometry definition itself, never inferred
+        from COMSOL domain numbering. Nodes exactly on the interface
+        count as dielectric (the linear resampling smears the E-field
+        discontinuity over one grid cell anyway).
+        """
+        r = np.asarray(r_m, dtype=np.float64)
+        z = np.asarray(z_m, dtype=np.float64)
+        z0 = self.dielectric_centre_z_m
+        if self.dielectric_shape is DielectricShape.PUCK:
+            assert self.dielectric_height_m is not None
+            half_h = 0.5 * self.dielectric_height_m
+            return (r <= self.dielectric_radius_m) & (
+                np.abs(z - z0) <= half_h
+            )
+        assert self.dielectric_minor_radius_m is not None
+        return (r - self.dielectric_radius_m) ** 2 + (
+            z - z0
+        ) ** 2 <= self.dielectric_minor_radius_m**2
 
     @classmethod
     def from_nominal(

@@ -36,6 +36,35 @@ class MeshConfig:
         if self.dielectric_max_h_m <= 0 or self.air_max_h_m <= 0:
             raise ValueError("mesh element sizes must be positive")
 
+    def refined(self, factor: float) -> "MeshConfig":
+        """Copy with both maximum element sizes shrunk by `factor` > 1."""
+        if factor <= 1.0:
+            raise ValueError("refinement factor must be > 1")
+        return MeshConfig(
+            dielectric_max_h_m=self.dielectric_max_h_m / factor,
+            air_max_h_m=self.air_max_h_m / factor,
+            curved_dielectric_boundary=self.curved_dielectric_boundary,
+        )
+
+
+def refinement_ladder(
+    base: MeshConfig,
+    n_levels: int,
+    factor: float = 2.0**0.5,
+) -> tuple[MeshConfig, ...]:
+    """Coarse->fine mesh sequence for the SPEC §2 convergence study.
+
+    Level 0 is `base`; level k shrinks both maximum element sizes by
+    `factor**k`. The default factor sqrt(2) roughly doubles the 2D
+    element count per level. The convergence assessment
+    (`convergence.assess_convergence`) requires >= 3 levels.
+    """
+    if n_levels < 1:
+        raise ValueError("n_levels must be >= 1")
+    if factor <= 1.0:
+        raise ValueError("refinement factor must be > 1")
+    return tuple(base.refined(factor**k) if k else base for k in range(n_levels))
+
 
 @dataclass(frozen=True)
 class ConvergenceCriterion:
