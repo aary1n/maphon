@@ -61,6 +61,10 @@ def lossy_model(comsol_client):
     if not _LOSSY_MPH.is_file():
         pytest.skip(f"reference model not present: {_LOSSY_MPH}")
     model = comsol_client.load(str(_LOSSY_MPH))
+    # The pristine handover file carries no stored solution and must
+    # stay that way (refs/comsol/README.md: never solve & save into
+    # it). Solve in memory only; the model is never saved back to disk.
+    model.solve()
     yield model
     try:
         comsol_client.remove(model)
@@ -153,7 +157,7 @@ class TestLossyReferenceConvention:
         near = np.sort(f_re[(f_re > 1.3e9) & (f_re < 1.6e9)])
         if near.size < 2:
             pytest.skip(
-                "stored solution keeps < 2 modes near 1.45 GHz; "
+                "solved spectrum keeps < 2 modes near 1.45 GHz; "
                 "density premise not checkable on this file"
             )
         assert float(np.min(np.diff(near))) < 1.5e8
