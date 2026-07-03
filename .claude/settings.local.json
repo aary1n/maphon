@@ -7,7 +7,16 @@
       "Bash(mv pentacene_maser_parameter_provenance.md refs/pentacene_maser_parameter_provenance.md)",
       "Bash(.venv/Scripts/python.exe -m pip install --upgrade pip)",
       "Bash(.venv/Scripts/python.exe -m pip install numpy scipy pytest)",
-      "Bash(.venv/Scripts/python.exe *)"
+      "Bash(.venv/Scripts/python.exe *)",
+      "PowerShell(.\\\\.venv\\\\Scripts\\\\python -m pytest -q)",
+      "Bash(python -m pytest -q)",
+      "Bash(git lfs *)",
+      "Bash(python -m pytest tests/test_extraction_end_to_end.py tests/test_wall_loss_decomposition.py tests/test_wall_loss_gate.py -v)",
+      "Bash(python -m pytest)",
+      "Bash(python -m pytest --comsol tests/test_comsol_mph_server.py -q)",
+      "Bash(python \"C:\\\\Users\\\\AARYAN~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Aaryan-Sharif-Documents----Academia----Projects-Microwave-Cavity-Resonator-Design\\\\d15bcc51-51be-4d6c-8b97-78718959c4ef\\\\scratchpad\\\\report_nominal.py\")",
+      "Bash(python -m pytest --comsol tests/test_forward_model_comsol.py -q)",
+      "Bash(python -m pytest --comsol -q)"
     ]
   }
 }
