@@ -21,6 +21,7 @@ from cavity.provenance.constants import (
     TARGET,
     TARGETS,
     TOL,
+    WALL_LOSS_THRESHOLDS,
     Copper,
     Crystal,
     ExtractionTolerances,
@@ -31,6 +32,7 @@ from cavity.provenance.constants import (
     TargetMode,
     TolRanges,
     ValidationTargets,
+    WallLossThresholds,
 )
 
 __all__ = [
@@ -45,6 +47,7 @@ __all__ = [
     "TARGET",
     "TARGETS",
     "TOL",
+    "WALL_LOSS_THRESHOLDS",
     "Copper",
     "Crystal",
     "ExtractionTolerances",
@@ -55,4 +58,5 @@ __all__ = [
     "TargetMode",
     "TolRanges",
     "ValidationTargets",
+    "WallLossThresholds",
 ]

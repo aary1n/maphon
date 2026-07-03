@@ -208,6 +208,43 @@ class ExtractionTolerances:
 
 
 @dataclass(frozen=True)
+class WallLossThresholds:
+    """SPEC §4 wall-loss decomposition resolution gate.
+
+    1/Q_wall = 1/Q_total - 1/Q_diel is a cancellation-prone subtraction
+    when Q_total approaches Q_diel (the Breeze regime, walls
+    negligible). The linearised relative uncertainty in Q_wall blows
+    up as the difference vanishes; we refuse to report a trustworthy
+    interval on Q_wall when sigma(Q_wall) / Q_wall exceeds this
+    threshold, and the decomposition returns `below_resolution = True`.
+
+    Above threshold: linear sigma_Q_wall is reported as a real
+    interval. Below threshold flagged: the magnitude carries the
+    `below_resolution` caveat and its only valid use is "Q_wall is
+    large enough that walls don't load this mode", consistent with
+    SPEC §6's claim that Breeze's modelled Q sits at the dielectric
+    ceiling.
+
+    `below_resolution_rel_uncertainty = 0.5` is a starting knob: at
+    that level the linearised interval spans 0.5 * Q_wall to
+    1.5 * Q_wall, which is wide enough that the magnitude is no
+    longer informative. Tightening this will reclassify more
+    boundary cases as resolved; loosening it tolerates wider noise.
+    Justify in the writeup, not in the code.
+    """
+
+    below_resolution_rel_uncertainty: float = 0.5
+    reason: str = (
+        "1/Q_wall = 1/Q_total - 1/Q_diel is cancellation-prone when "
+        "Q_total ~ Q_diel; in that regime the linearised relative "
+        "uncertainty on Q_wall exceeds this threshold and the "
+        "magnitude is reported as below_resolution, consistent with "
+        "walls being negligible (the Breeze end of the §6 confinement "
+        "trend) rather than carrying a confident finite value."
+    )
+
+
+@dataclass(frozen=True)
 class FMBenchmarkRange:
     """SPEC §3 F_m self-consistency anchor on Breeze inputs.
 
@@ -236,6 +273,7 @@ TARGET = TargetMode()
 TOL = TolRanges()
 EXTRACTION_TOL = ExtractionTolerances()
 F_M_BENCHMARK = FMBenchmarkRange()
+WALL_LOSS_THRESHOLDS = WallLossThresholds()
 
 TARGETS = ValidationTargets(
     breeze=PublishedTarget(

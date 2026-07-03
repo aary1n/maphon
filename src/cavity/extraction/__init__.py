@@ -38,6 +38,14 @@ from cavity.extraction.validate import assert_pec_lossy_q_consistency
 class ExtractionResult:
     """SPEC §3 extracted quantities for a single eigenmode.
 
+    `complex_eigenfrequency_hz` is propagated from the input
+    `FieldSample` so downstream layers (e.g. §4 wall-loss
+    decomposition) can independently re-derive Q via f'/(2 f'')
+    without reaching back into the source `FieldSample`. The
+    cancellation-prone reciprocal subtraction 1/Q_total - 1/Q_diel
+    must be auditable at every layer, which means the upstream Q
+    cannot be reduced to a single rounded float on the way through.
+
     `v_mode_global_m3` and `v_mode_local_m3` are both reported per
     SPEC §3 (the 0.2-0.41 cm^3 literature spread sits in this choice);
     correspondingly `f_m_global` and `f_m_local` are both returned.
@@ -48,6 +56,7 @@ class ExtractionResult:
     """
 
     f_hz: float
+    complex_eigenfrequency_hz: complex
     q: float
     q_emw_cross_check: float | None
     v_mode_global_m3: float
@@ -59,9 +68,10 @@ class ExtractionResult:
 
 def extract(field: FieldSample) -> ExtractionResult:
     """Compute every SPEC §3 mode quantity from a cached `FieldSample`."""
-    f_hz = field.complex_eigenfrequency_hz.real
+    f_complex = field.complex_eigenfrequency_hz
+    f_hz = f_complex.real
     q = q_from_eigenfrequency(
-        field.complex_eigenfrequency_hz,
+        f_complex,
         q_emw_cross_check=field.q_emw_cross_check,
     )
     volumes = mode_volumes(field)
@@ -70,6 +80,7 @@ def extract(field: FieldSample) -> ExtractionResult:
     f_m_local = magnetic_purcell_factor(q, volumes.local_m3, f_hz)
     return ExtractionResult(
         f_hz=f_hz,
+        complex_eigenfrequency_hz=f_complex,
         q=q,
         q_emw_cross_check=field.q_emw_cross_check,
         v_mode_global_m3=volumes.global_m3,

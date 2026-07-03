@@ -78,6 +78,21 @@ class TestExtractEndToEnd:
         assert 0.0 < result.p_e <= 1.0
         assert result.f_m_global > 0
         assert result.f_m_local > 0
+        # The complex eigenfrequency must be propagated verbatim so
+        # the §4 wall-loss decomposition can audit Q against its
+        # source without reaching back into the FieldSample.
+        assert (
+            result.complex_eigenfrequency_hz
+            == field.complex_eigenfrequency_hz
+        )
+        assert result.complex_eigenfrequency_hz.real == result.f_hz
+        assert result.complex_eigenfrequency_hz.imag > 0
+        # Q must be independently re-derivable from the carried
+        # complex eigenfrequency. That is the auditability contract.
+        f = result.complex_eigenfrequency_hz
+        assert result.q == pytest.approx(
+            f.real / (2.0 * f.imag), rel=1e-12
+        )
 
     def test_v_mode_local_larger_when_local_max_smaller(self):
         """V_mode = integral / max(|H|^2). The synthetic fixture has
