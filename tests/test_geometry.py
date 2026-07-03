@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from cavity.forward_model import CavityGeometry, DielectricShape
@@ -122,3 +123,42 @@ class TestBoxValidation:
                 dielectric_shape=DielectricShape.PUCK,
                 dielectric_height_m=1.0e-3,
             )
+
+
+class TestDielectricMask:
+    """The analytic mask the §3 export uses — never COMSOL domain
+    numbers. Probed at hand-picked points on both sides of each
+    boundary."""
+
+    def test_puck_mask(self):
+        geom = CavityGeometry.from_nominal(
+            DielectricShape.PUCK, dielectric_height_m=4.0e-3
+        )
+        z0 = geom.dielectric_centre_z_m
+        r = np.array([0.0, 2.0e-3, 2.46e-3, 2.5e-3, 0.0, 0.0])
+        z = np.array([z0, z0, z0, z0, z0 + 2.0e-3, z0 + 2.1e-3])
+        mask = geom.dielectric_mask(r, z)
+        # on axis, interior, boundary-inclusive in r; outside in r;
+        # boundary-inclusive in z; outside in z.
+        assert mask.tolist() == [True, True, True, False, True, False]
+
+    def test_torus_mask(self):
+        geom = CavityGeometry.from_nominal(
+            DielectricShape.TORUS, dielectric_minor_radius_m=1.0e-3
+        )
+        z0 = geom.dielectric_centre_z_m
+        r_maj = geom.dielectric_radius_m
+        r = np.array([r_maj, r_maj + 1.0e-3, r_maj + 1.1e-3, 0.0])
+        z = np.array([z0, z0, z0, z0])
+        mask = geom.dielectric_mask(r, z)
+        # tube centre, boundary-inclusive, outside the tube, on axis
+        # (the torus never touches the axis).
+        assert mask.tolist() == [True, True, False, False]
+
+    def test_centre_is_box_midplane(self):
+        geom = CavityGeometry.from_nominal(
+            DielectricShape.PUCK, dielectric_height_m=4.0e-3
+        )
+        assert geom.dielectric_centre_z_m == pytest.approx(
+            0.5 * GEOM.box_height_m
+        )

@@ -23,3 +23,7 @@ where = ["src"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-ra"
+markers = [
+    "requires_comsol: needs MPh + a local COMSOL licence; skipped unless --comsol is passed (SPEC §1: CI never assumes a licence)",
+    "smoke_test: exercises a full pipeline path without gating on published numbers (the Booth Table 8 gate stays xfail separately)",
+]
