@@ -28,6 +28,22 @@ published-paper dimensions are still outstanding — see "deviations" below.
 | Dielectric material | SrTiO₃, εr = 316.3 − j·0.0333378 ⇒ tan δ ≈ 1.054×10⁻⁴ |
 | Study | Eigenfrequency, 6 modes around 1.45 GHz, ARPACK |
 
+**Q convention (supervisor-confirmed, in person, 2026-07-02).** This model's Q
+is **f′/(2 f″)** from the complex eigenfrequency — the supervisor pointed to
+the solved frequencies and had Q computed from them directly. An earlier probe
+reading of `imag(emw.freq) = 0` on this file was a **script bug**
+(indexing/eval-path), not a genuine energy-method convention — retracted; do
+not re-introduce. SPEC §11 gap #4 is resolved on this basis.
+
+**Eval-path mechanism (pinned 2026-07-03, on this file).** In results
+evaluation COMSOL realifies the interface-scoped `emw.freq` per solution
+number — `imag(emw.freq)` reads 0 for every mode of this lossy solve. The
+complex eigenfrequency lives in the **bare solver variable `freq`**
+(= iλ/(2π), λ = δ − iω): `imag(freq)` is positive mode-by-mode and
+f′/(2 f″) from it reproduces `emw.Qfactor` exactly (e.g. 1.451348 GHz →
+Q = 9581.37). This is what the retracted probe got wrong — one prefix.
+Guarded in `tests/test_comsol_mph_server.py` (requires_comsol tier).
+
 **Deviations from SPEC §11 Booth nominals (App. A):** box height is 1.82×
 Booth's 18.42 mm, dielectric cross-section radius is 1.82× Booth's 2.46 mm,
 but cavity radial extent is **3.64×** Booth's 6.14 mm — i.e. *not* a uniform
@@ -62,6 +78,12 @@ much larger than the STO equivalent (linear scale ~√(316/10) ≈ 5.6× a same-
 mode STO cavity). Anchors the m = 0 axisymmetric ring-mode extraction
 protocol at the maser target frequency. **Not** an STO physics analog —
 loss mechanisms and field profiles differ.
+
+**Method-reference only (supervisor, 2026-07-02):** weak-form implementation,
+lossless, no Q — never a convention source. The STO model is built in the
+packaged RF interface (`Electromagnetic Waves, Frequency Domain`, tag `emw`),
+per supervisor confirmation; do not derive interface or Q conventions from
+this file.
 
 ---
 

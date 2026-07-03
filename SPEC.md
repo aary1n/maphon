@@ -1,153 +1,266 @@
-# SPEC - STO TE01δ Maser Cavity: Forward Model + Yield/Tolerance Pipeline
+# SPEC — STO TE01δ Maser Cavity: Forward Model + Thermal-Robustness Pipeline
 
-**Status:** authoritative source of truth for this repo. Derive CLAUDE.md / READMEs / module docs from this; do not contradict it. Where this spec and a paper's face value disagree, **this spec wins** (the disagreements are deliberate - see §6).
+**Status:** authoritative source of truth for this repo. Derive CLAUDE.md / READMEs / module docs from this; do not contradict it. Where this spec and a paper's face value disagree, **this spec wins** (the disagreements are deliberate — see §6).
 
-**Register:** physics terminology only - *surrogate*, *parameter-free forward model*, *Bayesian re-inference*. Do **not** use "machine learning" in code comments, docs, or commit messages. (Supervisor convention.)
+**Register:** standard physics / UQ terminology — *surrogate*, *Gaussian process*, *polynomial chaos*, *Sobol*, *parameter-free forward model*, *Bayesian re-inference*. The earlier "no machine-learning language in comments" convention is **retired**: it rested on a misread of the supervisor's stance (corrected directly — surrogate/ML framing is fine with him). Use the field's own terms; don't manufacture euphemisms for them.
+
+---
+
+## Revision note — this pass (thermal-droop pivot)
+
+Prompted by the 2026-07-01 Oxborrow meeting. **The deliverable has moved** from static fabrication-tolerance yield [P(C > 1) across the build population] to **thermal-robustness of the maser's figures of merit** — the distribution, across as-built cavities, of how much operating heating each can absorb before cooperativity falls through the masing threshold.
+
+Reason the old deliverable collapsed: Breeze's build runs C ~ 190, so "does an as-built cavity mase" is trivially yes regardless of fabrication spread. The interesting, unmodelled question is *operating margin*: pump-induced differential heating detunes the cavity from the spin line (STO εr is strongly T-dependent) faster than it detunes the two together, eroding C during operation. Wu's own single-pulse estimate for the STO ring is ΔT ~ 0.3 K; a back-of-envelope from Wu's coefficients puts the masing-killing differential heating at order ~0.5 K — i.e. the margin is *thin enough to be a real result*, not a foregone conclusion.
+
+**What is unchanged:** §2 forward model, §3 extraction, §4 wall-loss decomposition, §5 validation gate, §8 analytic benchmark. The C₀ / κc engine is **repurposed, not invalidated** — it still produces C₀(geometry, εr, tanδ) and the loaded linewidth at the tuned operating point; only the post-processing on top changes, plus one new closed-form module.
+
+**What is new:** an analytical thermal submodel (§7T, new `thermal/` module) and a retargeted output layer (§7, §10). Scope discipline: the shape-optimisation / cooling-channel / materials-survey / loop-gap thread that came out of the meeting is **out of scope** and lives only as a future-work pointer (§9).
+
+**Provenance honesty (load-bearing — do not overclaim):** Oxborrow endorsed *thermal modelling of the resonator* as the direction and the *analytical heat-conduction method* (Bessel functions, cylindrical PDE + radiative/convective BCs, back-of-envelope). He has **not** explicitly ratified (a) the thermal-*budget-distribution* framing or (b) the Δf_max ∝ 1/√Q "higher-Q ⇒ less margin" hypothesis — both are ours, pending his written confirmation and a rigorous derivation (§7.T4, §11). Treat the plan below as current-best-pending-reply, not locked.
+
+**2026-07-02 update — Bayliss/Cowley-Semple resolution.** Oxborrow forwarded the Glasgow "linewidths" thread (2026-06-26, Glasgow/MIT/Imperial). The calibration-dataset identity/existence question (§11, item 5) is **resolved**; remaining asks are metadata, not existence. See §11 and §7.T5 for status and the resulting calibration-observable split.
+
+**Attribution convention.** "Bayliss" = Prof. Sam Bayliss, University of Glasgow (PI, QOS group) — the *group* the phenomenon lives in, not the measurer. The measurements are **Angus Cowley-Semple's** (PGR, Bayliss group). Refer to the calibration data as the **Cowley-Semple ODMR dataset**; "Bayliss-calibrated" as shorthand is acceptable but the byline is Cowley-Semple's. Context: shared in the "linewidths" thread (2026-06-26) for the host–guest paper with Max Attwood (MIT) and Ziqiu Huang (Imperial); Sarah Mann and Oxborrow cc'd.
+
+**Endorsement ladder — new rung (2026-07-02):** Oxborrow, independently on record (in-thread, 2026-06-26), applied Lang 2007's ~−0.05 MHz/K to Cowley-Semple's shifts and inferred pump heating of "several tens of Celsius." The *mechanism inference* (shift = heating) is therefore his, publicly, in the collaboration. The *calibration-target plan* (Phase 2 reproduces this dataset quantitatively, §7.T5) remains **ours-communicated, unratified** — do not conflate the two.
 
 ---
 
 ## 0. Purpose & scope
 
-Build a validated COMSOL forward model of the strontium-titanate (STO) TE01δ dielectric-ring maser resonator (**Phase 1**), then a surrogate-accelerated Monte Carlo tolerance/yield layer on top (**Phase 2**, the owned deliverable). 8-week UROP; **results are the priority, manuscript is post-placement.** Phase 1 reproduces published numbers; Phase 2 produces the thing the literature lineage left undone - error bars on the maser's figures of merit under fabrication and material-parameter scatter.
+Build a validated COMSOL forward model of the strontium-titanate (STO) TE01δ dielectric-ring maser resonator (**Phase 1**), then a surrogate-accelerated Monte Carlo layer that propagates fabrication + material scatter into the **thermal robustness of the maser's figures of merit** (**Phase 2**, the owned deliverable). 8-week UROP; **results are the priority, manuscript is post-placement.**
+
+Phase 1 reproduces published numbers. Phase 2 produces the thing the literature lineage left undone: not point values of Q / V_mode / F_m / C, and not a trivial static yield number, but the **distribution of thermal operating margin** — per as-built cavity, how much pump-induced heating (ΔT, equivalently cavity detuning Δf) it can absorb before C drops through 1 — together with the tolerance/design levers that set that margin, each with quantified error.
 
 ---
 
 ## 1. Architecture / stack
 
-- **COMSOL Multiphysics, RF module**, driven via **LiveLink for Java / MPh (Python wrapper over COMSOL's Java API)** - validated available. Python owns sweeps, surrogate, Monte Carlo, analysis; COMSOL owns the FEM eigensolve only.
-- **Transplant the SiPhON Monte Carlo yield infrastructure** (Latin-hypercube/Sobol sampling, surrogate fit, yield aggregation, sensitivity indices). Port, do not rewrite.
-- COMSOL is **not** assumed available in CI. Solves run locally / on cluster. CI tests the Python layer (extraction maths, surrogate, MC, analytic benchmark) against cached/synthetic field data.
-- **Reproducibility:** pin RNG seeds; log COMSOL version, mesh settings, and element count with every solve; persist raw complex eigen-solutions (not just scalars) so extraction can be re-run without re-solving.
+- **COMSOL Multiphysics, RF module**, driven via **LiveLink for Java / MPh (Python wrapper over COMSOL's Java API)** — validated available. Python owns sweeps, surrogate, Monte Carlo, thermal submodel, analysis; COMSOL owns the electromagnetic FEM eigensolve only.
+- **The thermal layer is analytical, not FEM.** No Heat Transfer Module, no COMSOL solve for thermal. It is a closed-form / semi-analytical heat-conduction submodel (§7T) evaluated in Python. This keeps it licence-free and CI-testable, and is exactly the "back-of-envelope" scope the supervisor framed.
+- **Transplant the SiPhON Monte Carlo yield infrastructure** (Latin-hypercube/Sobol sampling, surrogate fit, aggregation, sensitivity indices) as the I/O + aggregation skeleton. Port, do not rewrite. See SPEC §7 (expanded) for the precise transfer boundary.
+- COMSOL is **not** assumed available in CI. Solves run locally / on cluster. CI tests the Python layer (extraction maths, surrogate, MC, analytic benchmark, thermal submodel) against cached/synthetic field data.
+- **Reproducibility:** pin RNG seeds; log COMSOL version, mesh settings, and element count with every solve; persist raw complex eigen-solutions (not just scalars) so extraction and thermal re-derivation can be re-run without re-solving.
 
 ---
 
-## 2. Physics model (Phase 1)
+## 2. Physics model (Phase 1) — UNCHANGED
 
 - **2D axisymmetric (r, z), azimuthal index m = 0.** `Electromagnetic Waves, Frequency Domain` interface, **Eigenfrequency** study, search near 1.45 GHz.
 - **Domains:** rectangular copper box in the r–z half-plane → **Impedance Boundary Condition** on walls (and a **PEC variant**, see §4). Air fill (εr = μr = 1, σ = 0). One dielectric region (STO).
 - **STO material:** real permittivity εr′ = **316.3**; loss entered as **complex permittivity** εr = εr′(1 − i·tanδ), with **tanδ = 1.1×10⁻⁴** at 1.45 GHz. μr = 1, σ = 0. (Provenance: §6.)
 - **Copper:** σ = **6.0×10⁷ S/m**, μr = 1, via Impedance BC (surface resistance R_s = √(ωμ₀ / 2σ)).
-- **`dielectric_shape` ∈ {puck, torus} - switchable geometry parameter.** Booth's appendix under-specifies the cross-section (gap #1, §11): her prose says "toroidal" / "circular area" / "ring" but tabulates only one radius. Implement both and let §4 decide which reproduces the targets.
-- **Nominal geometry** (Booth App. A, STO TE01δ): box width **12.28 mm** (→ box radius 6.14 mm), box height **18.42 mm**, dielectric radius **2.46 mm**. The **dielectric height (puck) / minor radius (torus) is UNPINNED** - expose as a parameter, sweep it, and/or await Booth's `.mph`.
-- **Mesh:** extremely fine, **fully curved dielectric boundary** (edge-element FEA mishandles sharp corners - Booth flags this explicitly). Run a convergence study: refine until f and Q are stable to the target significant figures; record the converged element count.
-- **Mode identification:** identify TE01δ by **field pattern**, not eigenvalue order - azimuthal E (toroidal), axial H antinode on the symmetry axis, H circulating in r–z. Implement an automatic field-symmetry check; reject and re-pick if the symmetry test fails.
+- **`dielectric_shape` ∈ {puck, torus} — switchable geometry parameter.** Booth's appendix under-specifies the cross-section (gap #1, §11); implement both and let §4 decide which reproduces the targets.
+- **Nominal geometry** (Booth App. A, STO TE01δ): box width **12.28 mm** (→ box radius 6.14 mm), box height **18.42 mm**, dielectric radius **2.46 mm**. The **dielectric height (puck) / minor radius (torus) is UNPINNED** — expose as a parameter, sweep it, and/or await Booth's `.mph`.
+- **Mesh:** extremely fine, **fully curved dielectric boundary**. Run a convergence study: refine until f and Q are stable to the target significant figures; record the converged element count.
+- **Mode identification:** identify TE01δ by **field pattern**, not eigenvalue order. Implement an automatic field-symmetry check; reject and re-pick if the symmetry test fails.
 
 ---
 
-## 3. Extraction - the careful core (axisymmetric Jacobian made explicit)
+## 3. Extraction — the careful core (axisymmetric Jacobian made explicit) — UNCHANGED
 
-Every volume integral in 2D axisymmetric form carries the **2πr Jacobian**: ∭ g dV = 2π ∬ g · r dr dz. Get this right or every mode volume is wrong by an r-weighting.
+Every volume integral in 2D axisymmetric form carries the **2πr Jacobian**: ∭ g dV = 2π ∬ g · r dr dz.
 
 - **f** = Re(eigenfrequency).
-- **Q** - COMSOL returns a complex eigenfrequency f = f′ + i·f″ and exposes a built-in `emw.Qfactor`. Booth's definition is Q = ω/(2|δ|) with eigenvalue λ = δ − iω, i.e. **Q = f′ / (2 f″)** with sign care. **Do not trust the convention blind:** assert it against §8 (in the PEC + lossy-dielectric limit Q must equal 1/(p_e·tanδ)).
-- **V_mode** (magnetic mode volume) = [∭ |H|² dV] / |H|²_max = 2π∬ |H|²·r dr dz / max(|H|²). **Report two variants**: |H|²_max taken (a) globally over the cavity, (b) locally over the dielectric/gain region. The literature's 0.2–0.41 cm³ spread is partly this definitional choice - quantify it rather than inherit one convention silently.
-- **p_e** (electric energy filling factor) = [∭_dielectric ε|E|² dV] / [∭_all ε|E|² dV]. Directly COMSOL-extractable. **Required to interpret Q** (§4, §6).
-- **F_m** (magnetic Purcell factor) - **use the standard Purcell form, not Breeze's printed prefactor** (which is dimensionally inconsistent - provenance trap). The form that reproduces Breeze Table 1 is:
+- **Q** — COMSOL returns complex f = f′ + i·f″ and exposes `emw.Qfactor`. Booth: Q = ω/(2|δ|), λ = δ − iω, i.e. **Q = f′ / (2 f″)** with sign care. **Assert against §8** (PEC + lossy-dielectric limit ⇒ Q = 1/(p_e·tanδ)).
+- **V_mode** (magnetic) = 2π∬ |H|²·r dr dz / max(|H|²). **Report two variants**: max taken (a) globally, (b) locally over the dielectric/gain region.
+- **p_e** (electric energy filling factor) = ∭_dielectric ε|E|² dV / ∭_all ε|E|² dV. Required to interpret Q.
+- **F_m** (magnetic Purcell factor) — **F_m = (3 / 4π²) · λ³ · (Q / V_mode)**, λ = c/f. Validate once against Breeze Table 1 (STO: Q=10⁴, V=0.2 cm³, f=1.45 GHz → F_m ≈ 3.4×10⁷ vs tabulated 3.6×10⁷).
 
-  **F_m = (3 / 4π²) · λ³ · (Q / V_mode)**, with λ = c/f the free-space wavelength.
-
-  Validation of the formula itself (do this once, in the analytic/benchmark tests): Breeze STO row Q = 10⁴, V_mode = 0.2 cm³, f = 1.45 GHz → λ = 20.69 cm, λ³ = 8.86×10³ cm³ → F_m = 0.0760 × 8.86×10³ × (10⁴/0.2) = **3.4×10⁷** vs Breeze's tabulated 3.6×10⁷. Match. If your implementation can't reproduce ~3.6×10⁷ from Breeze's Q and V, the formula or units are wrong - stop and fix before trusting any F_m.
+**Now doubly load-bearing for Phase 2:** the **loaded** cavity linewidth κc = ωc/Q_L and the **gain-region H** (field the spins actually see) feed the thermal budget directly (§7T, §7.T2). Extraction must expose both cleanly, with the loaded/unloaded Q split single-sourced (§7.3 convention guard).
 
 ---
 
-## 4. Wall-loss decomposition (closes the geometry gap empirically)
+## 4. Wall-loss decomposition (closes the geometry gap empirically) — UNCHANGED
 
-Run the nominal geometry **twice**:
-- (a) Impedance-BC walls → **Q_total**.
-- (b) PEC walls (σ → ∞) → **Q_diel** (radiation = 0 in a closed cavity, so PEC isolates dielectric loss).
+Run the nominal geometry **twice**: (a) Impedance-BC walls → **Q_total**; (b) PEC walls → **Q_diel**. Then **1/Q_wall = 1/Q_total − 1/Q_diel**.
 
-Then **1/Q_wall = 1/Q_total − 1/Q_diel**.
-
-**Acceptance:** for Booth's geometry at tanδ = 1.1×10⁻⁴, expect **Q_diel ≈ 9,000–10,000** and a **wall-loss fraction ~23–27%**, giving **Q_total ≈ 6,980** (Booth Table 8). If the assumed cross-section reproduces this, **gap #1 is closed from the physics side** - the geometry is right. If not, vary dielectric height/shape until it does. This is also the proof that the model's confinement physics is correct *before* Phase 2 leans on it.
-
-Why this works (and why the 30% Breeze/Booth Q gap is **not** a loss-tangent difference): Breeze's modelled Q = 10,000 sits at the dielectric ceiling for the same tanδ (walls negligible, V_mode = 0.2). Booth's 6,980 = identical dielectric loss **plus** ~25% wall loss, because her looser-confined mode (V_mode = 0.409, magnetic field spilling out of the dielectric toward the copper) loads the walls. One mechanism - magnetic confinement - sets both V_mode and Q. (Full derivation in §6.)
+**Acceptance:** at tanδ = 1.1×10⁻⁴, expect **Q_diel ≈ 9,000–10,000**, **wall-loss fraction ~23–27%**, **Q_total ≈ 6,980** (Booth Table 8). If the assumed cross-section reproduces this, gap #1 is closed from the physics side. This is the proof that the model's confinement physics is correct *before* Phase 2 leans on it. (The 30% Breeze/Booth Q gap is confinement, not loss tangent — full derivation in §6.)
 
 ---
 
-## 5. Validation gate (Phase 1 complete = all pass)
+## 5. Validation gate (Phase 1 complete = all pass) — UNCHANGED as the gate
 
 | Check | Target | Source |
 |---|---|---|
 | Analytic benchmark passes | empty-cavity TE011 < 0.1% error | §8, build FIRST |
-| f | 1.45 GHz, ≥4 s.f. (Booth localises to 5 s.f.) | Booth, Breeze |
+| f | 1.45 GHz, ≥4 s.f. | Booth, Breeze |
 | Booth two-point | Q ≈ **6,980**, V_mode ≈ **0.409 cm³** at Booth geometry (walls on) | Booth Table 8 + App. A |
 | Confinement trend | tightening toward V_mode ≈ 0.2 raises Q toward **~10,000** | Breeze Table 1 |
 | Wall-loss split | Q_diel ≈ 9–10k, wall fraction ~23–27% | §4 |
 | F_m | order 10⁷ via §3 formula | Breeze (STO F_m = 3.6×10⁷) |
 
-**The gap must reproduce as a continuous confinement trend, not two unrelated points.** That trend *is* the validation that the wall-loss physics is right.
+**The gap must reproduce as a continuous confinement trend, not two unrelated points.** §5 still gates **first, unconditionally** — no Phase 2 (static or thermal) work until it passes.
 
-### 5b. Phase 1b - bore + crystal (required for §7, not for the gate)
+### 5a. Pre-Phase-2 checkpoint — run *your* model for Booth's real C₀ and κc (NEW, required before §7T is trusted)
 
-Add the central **bore** (the real device is a hollow ring) and the **pentacene:p-terphenyl crystal** sub-domain (3 mm diameter × 8 mm, 0.053% doping; Breeze 2017). Crystal εr < 5, μr ≈ 1 - Booth argues it barely perturbs the mode; **verify** rather than assume. Purpose: extract the field the spins actually see (gain-region H) for the coupling handshake (§7). Booth skipped this; it is required for any cooperativity output.
+Everything about "C ~ 190, ~0.5 K kills it" is currently Breeze's numbers + Wu's coefficients — **not** your forward model on Booth's actual geometry, which carries a real (if modest) Q gap. Once §5 passes, the first real thermal checkpoint is: run the validated model to extract Booth's **own** C₀ and loaded κc at the tuned operating point, and confirm the "decisively above threshold, thin thermal margin" story holds with your numbers before building the thermal layer on it. If C₀ or κc land materially off the assumed values, the margin arithmetic — and possibly the framing — changes. Cost: hours, once §5 is green.
+
+### 5b. Phase 1b — bore + crystal (required for §7 and §7T, not for the gate) — ELEVATED
+
+Add the central **bore** (hollow ring) and the **pentacene:p-terphenyl crystal** sub-domain (3 mm × 8 mm, 0.053% doping; Breeze 2017). Crystal εr < 5, μr ≈ 1 — Booth argues it barely perturbs the mode; **verify, don't assume.** This is now more critical than under the static plan, because it delivers **two Phase-2 inputs**: (i) the gain-region H the thermal coupling needs, and (ii) the plate-sensitivity ∂C/∂p_tune that decides whether §7.3 is coupled or decoupled. Both feed §7T.
 
 ---
 
-## 6. Parameter provenance (authoritative - use these, not paper face values)
+## 6. Parameter provenance (authoritative — use these, not paper face values)
 
-Live source-of-truth is `pentacene_maser_parameter_provenance.md` (graded). Summary of the load-bearing findings:
+Live source-of-truth is `pentacene_maser_parameter_provenance.md` (graded). Electromagnetic findings **unchanged**:
 
-- **εr:** standardise on **316.3–318** (Breeze 318 / Booth 316.3 / Wu 312). The 0.5% Breeze/Booth difference is Q-irrelevant. The full 1.9% spread shifts f by **~14 MHz** at 1.45 GHz (f ∝ εr^(−1/2) ⇒ Δf/f ≈ −½·Δεr/εr) - that's 35–85 cavity linewidths, i.e. a **tuning-range** matter, **not** a yield pass/fail (see §7).
-- **tanδ:** nominal **1.1×10⁻⁴** at 1.45 GHz. Provenance: Booth takes a 22-GHz literature value (1.6×10⁻³) and scales ∝ f (Debye, ω_τ,ionic ≫ ω_cavity). This sits at the **optimistic end**. Measured-device effective loss spans **1.0–2.3×10⁻⁴**: de-loading measured Q with k = 0.2 gives Breeze Q₀ ≈ 10,700 (tanδ ≤ 0.94×10⁻⁴) vs Wu Q₀ ≈ 4,320 (tanδ ≤ 2.3×10⁻⁴) - a ~2.5× spread across nominally identical flame-fusion STO.
-- **Modelled Q = tanδ × confinement** (the key correction to naive reading): Breeze 10,000 ≈ dielectric ceiling (walls negligible, V = 0.2); Booth 6,980 = same tanδ + ~25% wall loss (V = 0.409). **The 30% gap is confinement, not loss tangent.** Both used ~1.1×10⁻⁴. (Arithmetic: ceiling 1/(1.1×10⁻⁴) = 9,090; 1/6,980 − 1/9,090 = 0.333×10⁻⁴ → Q_wall ≈ 30,000 ≈ 23% of loss.)
+- **εr:** standardise on **316.3–318**. The 1.9% spread shifts f by ~14 MHz (tuning-range matter, not yield pass/fail).
+- **tanδ:** nominal **1.1×10⁻⁴** at 1.45 GHz (Booth's Debye-scaled 22-GHz value; optimistic end). Measured-device effective loss spans **1.0–2.3×10⁻⁴** (Breeze Q₀ ≈ 10,700 ↔ Wu Q₀ ≈ 4,320; ~2.5× spread).
+- **Modelled Q = tanδ × confinement.** Breeze 10,000 ≈ dielectric ceiling (walls negligible, V=0.2); Booth 6,980 = same tanδ + ~25% wall loss (V=0.409). The 30% gap is confinement, not loss tangent.
 - **Cu:** σ = 6.0×10⁷ S/m.
 - **Crystal:** pentacene:p-terphenyl, 3 mm × 8 mm, 0.053%; εr < 5 (Breeze 2017).
-- **De-loading convention:** k = 0.2 (Breeze 2017), Q₀ = Q_L(1 + k). Wu's coupling is unstated - flagged (§11).
+- **De-loading convention:** k = 0.2 (Breeze 2017), Q₀ = Q_L(1 + k). Wu's coupling unstated — flagged (§11).
+
+### 6T. Thermal provenance (NEW block — to source; feeds §7T)
+
+The thermal submodel needs material and coupling constants that are **not yet in the provenance file**. Pull, grade, and single-source them exactly as the EM parameters:
+
+- **c_p — primary in hand: Chang 1983, J. Chem. Phys. 79, 6229** (p-terphenyl adiabatic calorimetry; cited as Wu ref [45]). C_p = **0.94·T J K⁻¹ mol⁻¹ (200–480 K)** ⇒ c_p(300 K) ≈ **1225 J kg⁻¹ K⁻¹** (M = 230.29 g mol⁻¹). λ-transition peak **193.55 K** = hard low-T validity bound for the linear form (operating point is safely above; state it once). Note c_p is **not constrained by the calibration dataset** (§7.T5) — it enters transients only; Chang carries it alone. ρ still needs sourcing.
+- **k — provenance floor found: Hedley, Milnes & Yanko 1970 (JCED 15, 122).** ***Liquid*** p-terphenyl k ≈ **0.134–0.136 W m⁻¹ K⁻¹ at 213–254 °C**. The unreferenced ~0.1 W m⁻¹ K⁻¹ crystal figure (Breeze-2018 lineage) coincides suspiciously with the liquid value — plausible provenance origin. Crystals conduct better than their melts ⇒ treat **0.1 as a floor**, keep the 0.1–1 band and ~2× anisotropy. **k is the parameter the CW calibration actually constrains** (steady-state ΔT ∝ 1/k for conduction-dominated transport) — the open literature gap and the new data point at the same quantity. (Stretch framing, do not headline unlabelled: with laser power + spot size calibrated, the fit is an effective-k constraint on doped p-terphenyl via triplet thermometry.)
+- **STO frequency–temperature coefficient df/dT** at the operating point. This is the *mechanism* of thermal droop: STO is an incipient ferroelectric / quantum paraelectric with strongly T-dependent εr, and f ∝ εr^(−1/2), so small ΔT → large Δεr → large Δf. Source the low-field εr(T) slope (Goryachev / Rupprecht-adjacent literature already in the library) and convert to df/dT.
+- **df_spin/dT — pinned, with a spread to carry:** negative. **Lang, Sloop & Lin 2007 (JPCA 111, 4731) Fig. 4 — in refs** (provenance doc "must-obtain" #5): X–Z transition, ~**−70 kHz/K** average over 230–296 K, **nonlinear** (steepens toward the 193 K transition) → fit *locally* around operating T, do not adopt a single global number. Spread across sources: Oxborrow in-thread quotes **−50 kHz/K** (RT); **W20 prints −80 kHz/K citing the same Fig. 4** — a ±40% spread on one curve depending on where it is read. Carry as the coefficient prior in §7.6 channel 3 (SPEC §7-expanded). Second primary to pull: **Nat. Commun. 2025, doi 10.1038/s41467-025-65508-2** (triplet-ODMR T & P sensing; Angus's in-thread reference — modern, error-barred). Magnitude check vs the cavity arm stands: |df_spin/dT| ~ 50–80 kHz/K ≪ df_cavity/dT ~ +2.6 MHz/K; **note opposite signs — the differential adds.**
+- **Cowley-Semple ODMR dataset (calibration target; status + asks in §11, item 5; observable-split and checks in §7.T5).** Observable: **spin** resonance vs laser current, steady-state CW, Glasgow rig (no STO, no cavity). Source-term corollary now empirically supported: 0.1% shifts ≫ 0.01% at identical power ⇒ **q̇ ∝ [Pc]·I_pump** (absorption in the pentacene, not host background).
+- **Pump illumination model** — incident optical intensity / absorbed power density in the crystal. **Wu's numbers are from a different pump setup**; do not inherit them silently (see §11). Parameterise incident intensity; treat absorbed-power → heat as the source term.
 
 ---
 
-## 7. Phase 2 - yield/tolerance (the deliverable)
+## 7. Phase 2 — thermal-robustness pipeline (the deliverable)
 
-**Pipeline:** validated nominal model → parametric COMSOL sweep over DOFs → fit **surrogate** (polynomial / GP) per output (f, Q, V_mode, F_m) → LHS/Sobol sample the surrogate (10⁴–10⁵ draws) → aggregate yield. SiPhON infrastructure transplant; COMSOL is called only to build the sweep that trains the surrogate, not per Monte Carlo draw.
+The detailed statistics live in **SPEC §7 (expanded)** — surrogate design, CV gate, error budget, Sobol, tolerance curves. This section fixes the *architecture* of the pivot; the expanded doc is being revised in lockstep (its static-yield output framing is superseded here — the machinery survives, the output changes).
 
-**DOFs + input distributions (grounded in §6):**
-- εr ∈ [312, 318] → drives f (→ tuning-range output).
-- tanδ ∈ [1.0, 2.3]×10⁻⁴ → drives Q, C (→ hard yield).
-- Geometry: dielectric radius, height, box dimensions, **bore radius + eccentricity** (a polished hollow cylinder - bore-centring and wall-thickness tolerance are physically real and untunable), lid/tuning-plate position. Machining tolerances parameterised (start ±25 µm nominal; refine with supervisor).
+**Three-layer structure:**
 
-**Outputs / yield metrics - report BOTH; the second is the novel one:**
-1. **f-detuning vs available tuning range.** f is *tunable* (servo plate, Breeze), so the question is tuning-range adequacy: what fraction of as-built devices need more than |tuner range| to reach the 1.4493 GHz spin line. Required range ≳ ±15 MHz to absorb εr + geometry scatter.
-2. **Untunable figure-of-merit yield.** Scatter in **Q, F_m, cooperativity C**; fraction with **C > 1** (above maser threshold). These cannot be tuned post-build. **This is the owned result** - the literature has no error bars on the maser's figures of merit.
+**Layer A — static forward UQ (was the deliverable; now the intermediate).** Validated nominal model → parametric COMSOL sweep over fabrication/material DOFs → **validated, uncertainty-bearing surrogate** (PCE primary, GP cross-check/active-learning) per output → LHS/Sobol sample the surrogate (10⁴–10⁵ draws) → **distributions of C₀ and loaded κc at the tuned operating point** across the build population. This is the SPEC §7-expanded content, intact. COMSOL is called only to train the surrogate (O(150–300) solves total), never per MC draw. The old static yield P(C₀ > 1) is **dropped as a headline** (trivially ~1 at C ~ 190) but its producing machinery is exactly what Layer C consumes.
 
-**Sensitivity ranking** (Sobol indices) → **tolerance budget** (how tight radius / εr / tanδ must be for X% yield). Expectation: εr + dimensions dominate f; tanδ + confinement dominate C. Deliverable explains the literature's own 2× / 30% spread as tolerance- and provenance-driven.
+**Layer B — analytical thermal submodel (NEW, §7T).** Closed-form heat conduction on the *existing* geometry → the map from pump illumination to differential detuning: ΔT(r, z) field, and via §6T's df/dT the coefficient **Δf(P_pump)** (equivalently df/dΔT). No COMSOL. Explicitly **not** a shape or materials search (§9).
 
-**Framing note (state precisely, don't overclaim):** Booth named "a Monte Carlo simulation or gradient descent" as future work, but for **dielectric-ring shape optimisation** (searching geometry space for the best shape), and did **not** execute it. The **tolerance/yield** interpretation is the novel contribution. Do not assert Booth specified yield analysis.
+**Layer C — thermal-budget distribution (the owned result).** Per sampled build θ, at its tuned operating point:
+1. Max tolerable cavity–spin detuning before C falls through threshold:
+   **Δf_max(θ) = (κc/2)·√(C₀ − 1)**  — cavity-linewidth-limited, from a Lorentzian cooperativity roll-off C(Δ) = C₀ / (1 + (2Δ/κc)²).
+2. Convert to a **thermal budget** via Layer B: ΔT_max(θ) = Δf_max(θ) / |df_cavity/dT − df_spin/dT|, and further to a **pump-power budget** P_max(θ) via the ΔT(P_pump) coefficient.
+3. **Report the distributions** p(Δf_max), p(ΔT_max), p(P_max) across the build population — with error bars (sampling + emulator, per SPEC §7-expanded §7.6). *This is the literature's missing quantity: no one has error bars on the maser's thermal operating margin.*
+
+**DOFs + input distributions:** as SPEC §7-expanded §7.2/§7.4 — εr, tanδ, dielectric radius/height, box dims, bore radius + eccentricity; tuning plate is a **control** (solved per device to hit f_spin), not sampled. Thermal coefficients (§6T) enter Layer B, not as sampled noise unless their scatter is itself of interest (stretch).
+
+**Sensitivity → design lever (SPEC §7-expanded §7.7):** Sobol on p(ΔT_max) — which DOFs set the margin. Plus the Q-vs-margin analysis below, which is the scientific hook.
+
+### 7.T4. The Q-vs-margin hypothesis (OURS — flagged, not yet load-bearing)
+
+Napkin result: κc = ωc/Q_L ⇒ κc ∝ 1/Q; and if C₀ ∝ Q with N, g_s, κ_s fixed, then Δf_max = (κc/2)√(C₀ − 1) ∝ (1/Q)·√Q = **1/√Q**. I.e. **higher-Q builds have *less* thermal frequency margin, not more** — linewidth narrows faster than the static cooperativity gain. If it survives scrutiny this is the paper's actual scientific content (not the outcome-known-in-advance static yield).
+
+**Two hazards before this is a headline, not a napkin:**
+- The clean scaling assumes C ∝ Q with everything else fixed. **N, g_s, κ_s may carry their own geometry/Q dependence** (via V_mode, gain-region H, confinement) that breaks it. Derive C₀ and κc's *joint* dependence on the geometry DOFs from Layer A rather than asserting C ∝ Q.
+- The map to ΔT_max (not just Δf_max) folds in df/dT, which may itself vary across the build population. Check whether the 1/√Q trend holds in ΔT space, not only in Δf space.
+
+Test empirically against the Layer A/C samples (does p(ΔT_max) anti-correlate with sampled Q?) *and* derive it, before claiming it.
 
 ---
 
-## 8. Analytic benchmark (traceability anchor - build and pass FIRST)
+## 7T. Analytical thermal submodel (NEW module: `thermal/`)
 
-Validate the solver against closed-form modes **before** trusting it on the STO ring. This is the Oxborrow-2007 "traceable FEM" principle and the answer to "how do you know your COMSOL result is right."
+Closed-form / semi-analytical, Python-only, CI-testable. This is the §6T-fed engine of Layer B. Scope = the supervisor's "how hot does a piece of pentacene get, back of the envelope," on the **current STO/pentacene geometry** — no geometry departure.
 
-- **Empty (air-filled) right-circular copper cylinder**, radius a, length L. Closed-form eigenfrequencies:
-  - TM_mnp: f = (c/2π)·√[(x_mn/a)² + (pπ/L)²], x_mn = nth zero of J_m.
-  - TE_mnp: f = (c/2π)·√[(x′_mn/a)² + (pπ/L)²], x′_mn = nth zero of J_m′.
-  - **TE011** uses x′_01 = 3.8317.
-  Claude Code tabulates these and compares to an empty-cavity COMSOL solve at the same a, L. **Target: < 0.1% agreement** (mesh-limited). This is a pure-Python computation (Bessel zeros from scipy) - fully testable in CI without COMSOL.
-- **Q-from-tanδ closed checks:** homogeneously dielectric-filled cavity → Q_diel = 1/tanδ; with filling factor → Q = 1/(p_e·tanδ). Assert COMSOL recovers these in the appropriate limits - this is what pins the Q convention (§3).
-- Method/traceability citation: **Oxborrow 2007, IEEE Trans. Microw. Theory Tech. 55, 1209** ("Traceable 2-D finite-element simulation of the whispering-gallery modes of axisymmetric electromagnetic resonators"). Not a repo file - add the PDF if obtained (supervisor linked the IEEE stamp URL).
+**7.T1. Physical model.** Steady-state (and, if pulsed-pump timescales matter vs. thermal diffusion time, transient) heat conduction in the p-terphenyl host with an optical-absorption source term:
+- Governing PDE: ∇·(k∇T) + q̇(r, z) = ρc_p ∂T/∂t, cylindrical (r, z), axisymmetric — the same symmetry as the EM model.
+- Source q̇: absorbed pump power density from the illumination model (§6T).
+- **Boundary conditions:** radiative and convective at free surfaces; conductive to the substrate held near room temperature (Oxborrow's "substrate below at room temperature" framing). Bessel-function radial solution in cylindrical coordinates (his explicit steer).
+- **Thickness matters** (his flag): do **not** default to a semi-infinite half-space; the finite crystal thickness changes ΔT. Start with a first-approximation (semi-infinite or a simple finite slab) *stated as such*, then check thickness sensitivity.
+
+**7.T2. Outputs.**
+1. **Δf(P_pump), our geometry (the pipeline output).** The scalar(s) Layer C needs: the effective ΔT the mode/spins experience for a given pump, weighted by the **gain-region H** (§5b) so it reflects the field the spins actually see, converted via §6T's df/dT to Δf(P_pump). Report both the spatial ΔT field (for sanity / the writeup figure) and the reduced coefficient (for the pipeline).
+2. **Predicted steady-state ν_spin(I_laser), Cowley-Semple's geometry (the validation observable, §7.T5).** Under the Glasgow rig's conditions (no STO, no cavity), both concentrations. This is *not* the pipeline output — it is what the submodel is checked against before output 1 is trusted. (Predicted Δf_cavity(t) for our device remains model-only: it is an output of transferring the validated transport core to our geometry, not of calibration itself — see §7.T5.)
+
+**7.T3. Standing on Wu, sharpened.** This replaces Wu's crude bulk-heat-capacity ΔT estimate (single lumped number) with a spatially-resolved, BC-honest calculation on the actual geometry — genuinely unprecedented per Oxborrow, and the concrete upgrade that earns the "nobody's done this" credit without touching resonator shape.
+
+**7.T4. Convection question (bounded, not a research program).** Oxborrow asked "how effective is convection for dissipation." Answer it as a **coefficient sensitivity** — vary the convective BC over a plausible range, report how much ΔT_max moves — **not** as a cooling-geometry design study (ducts / channels / high-surface-area shapes are §9 future work).
+
+**7.T5. Calibration against the Cowley-Semple ODMR dataset.** The illumination-induced frequency-shift data raised as "Bayliss's" is identified: the **Cowley-Semple ODMR dataset** (Angus Cowley-Semple, Bayliss group, Glasgow; status + remaining asks in §11, item 5). This is the "measure, don't assume" anchor for the submodel — but it constrains a narrower slice of it than the device prediction, and the two must not be conflated.
+
+- **Two observables; do not conflate.**
+  **(a) Calibration observable — spin, Glasgow geometry.** The Cowley-Semple measurement is the **spin transition** via ODMR in a rig containing **no STO and no cavity**. Chain: pump → crystal ΔT(r,z) → ν_spin shift via df_spin/dT (§6T), ΔT weighted over the optically probed volume (≈ the illuminated spot; excitation/collection co-located). **No cavity path, no STO, no mode weighting enters the calibration.** This isolates exactly the "how hot does the layer get" question, with the triplet as in-situ thermometer.
+  **(b) Prediction observable — cavity-dominated, our geometry.** In the maser, the *device-relevant* frequency response is the differential detuning: cavity arm (+2.6 MHz/K via STO εr(T), E-energy-weighted over the STO) vs spin arm (−50…−80 kHz/K, gain-region-H-weighted). The cavity arm dominates the *magnitude* — and remains **model-only**: nothing in the Glasgow thread observes it. State this as the asymmetry it is: spin arm calibrated, cavity arm predicted.
+- **Model-boundary decision (recast from §6T/§7T's original scope).** The *calibration* model boundary is **crystal + mount in the ODMR rig** — the crystal→STO thermal-path extension (conduction through mount/air gap, radiation) is **not** needed to reproduce the Glasgow data. It **is** needed for the maser-geometry prediction (observable b) and for Phase 3's coefficients. Sequence accordingly: calibrate (a) first, then transfer the validated transport core to geometry (b). **ΔT numbers do not transfer between geometries; the transport model and dν/dT do.**
+- **Regime note.** The Glasgow data is **steady-state CW** — exactly the regime of the collaboration's cw-cooperativity projections (Ziqiu Huang's work), and distinct from the pulsed-Xe Breeze/Booth transients this project also carries. Both regimes stay in scope; the calibration lands in CW.
+
+**Validation checks, in order of what they test (supersedes "validated only internally"):**
+1. **Internal / limit checks** — energy balance, closed-form limits (§8's discipline extended to `thermal/`). Necessary, not sufficient.
+2. **Order-of-magnitude vs Wu** — the submodel's ΔT should be consistent with Wu's single lumped estimate to within the expected spatial-resolution correction.
+3. **Primary, data now in hand at scraped-points level: reproduce Cowley-Semple.** Sub-checks:
+   - **(3a) Slope magnitude** — predicted dν/dI for the 0.1% sample within the df_spin/dT spread band (§6T), given calibrated laser power + spot size. Tests **k and the BCs**. *Constraint honesty:* steady-state points constrain k and boundary coefficients; they do **not** constrain ρc_p (Chang carries c_p independently, §6T) — say so in the paper; a matched slope is not a validated transient model.
+   - **(3b) Concentration scaling** — ratio of 0.1% to 0.01% sensitivities. Same setup, same currents ⇒ **laser-power calibration cancels**; tests the q̇ ∝ [Pc] absorption model nearly free of the largest metadata uncertainty. The strongest cheap check in the project — do not skip it.
+   - **(3c) Timescale — conditional.** Only if time-resolved traces exist (§11, item 5, ask). If they do, they are the sole probe of α = k/ρc_p and promote the transient model from analytic-check-validated to data-validated.
+
+**Claim levels (restated):** 3a+3b met → *"explains observed, previously unmodelled behaviour"* (strong). Without → checks 1–2 only, claim softens to internally-consistent-and-order-of-magnitude-correct. Timescale language is conditional on 3c — do not state "magnitude and timescale" as a blanket requirement.
+
+---
+
+## 8. Analytic benchmark (traceability anchor — build and pass FIRST) — UNCHANGED
+
+Validate the EM solver against closed-form modes before trusting it on the STO ring (Oxborrow-2007 traceable-FEM principle).
+
+- **Empty right-circular copper cylinder**, radius a, length L: TM_mnp f = (c/2π)√[(x_mn/a)² + (pπ/L)²]; TE_mnp f = (c/2π)√[(x′_mn/a)² + (pπ/L)²]; **TE011** uses x′_01 = 3.8317. Compare to an empty-cavity COMSOL solve. **Target < 0.1%.** Pure-Python (scipy Bessel zeros) — CI-testable without COMSOL.
+- **Q-from-tanδ closed checks:** filled cavity → Q_diel = 1/tanδ; with filling factor → Q = 1/(p_e·tanδ). Pins the Q convention (§3).
+- Citation: **Oxborrow 2007, IEEE Trans. MTT 55, 1209.**
+
+*(The thermal submodel gets its own analytic limit checks — e.g. uniform source in a slab with fixed-T substrate has a closed-form parabolic profile; a point/line source has a known Bessel/Green's-function form. Assert these in `thermal/` CI, same discipline as the EM benchmark.)*
 
 ---
 
 ## 9. Non-goals / out of scope
 
-- No 3D. Axisymmetric m = 0 suffices for the eigenmode; the coupling loop/port is out of scope.
-- **No metallic / loop-gap resonators** - that is Zangwill's active project; do not overlap.
-- **No Maxwell–Bloch time evolution** - that is Niall/Nina's project (arXiv 2412.21166). This repo **feeds** it via §7; it does not reimplement it.
+Unchanged EM/dynamics exclusions:
+- **No 3D** (except a bounded eccentricity side-study if §7-expanded §7.4 requires it). Axisymmetric m=0 for the eigenmode; coupling loop/port out of scope.
+- **No Maxwell–Bloch time evolution** — Niall/Nina's project (arXiv 2412.21166). This repo *feeds* it; does not reimplement.
 - No spin dynamics / PyCCE.
-- No assumption of a COMSOL license in CI.
+- No assumption of a COMSOL licence in CI.
+
+**Explicitly out of scope from the 2026-07-01 meeting (PI brainstorm → future-work pointers only, NOT this UROP):**
+- **No resonator shape optimisation.** Swiss-cheese / starfish / high-surface-area bodies, prismatic / fettuccine / flat-planar geometries, high-aspect-ratio cross-sections, the "reactor-core" holed cylinder, "best shape for a flat 4mm×8mm target," the filling-factor×Q "grand challenge" — all a different, much larger research program. Note as future work in the eventual paper; do not attempt.
+- **No cooling-channel / duct engineering.** Growing channels into the resonator, flowing air/liquid coolant — out of scope. Convection enters only as a BC-coefficient sensitivity (§7.T4).
+- **No materials survey** for alternative dielectrics (better-than-STO search). The deliverable is on the *existing* STO/pentacene system.
+- **No loop-gap / metallic re-entrant / flat-target resonator design.** Double-flagged: (i) that is **Zangwill's active project** by name — do not overlap; (ii) out of 8-week scope regardless. Oxborrow raised loop-gap-out-of-metal mid-meeting; the boundary needs stating to him in writing (§11) so it doesn't harden into an assumed scope.
+
+The one part of the meeting's riff that *is* in scope is the analytical thermal submodel on the current geometry (§7T) — because it upgrades the existing pipeline without a geometry departure, needs no new licence, and plugs straight into the C₀ → thermal-budget chain.
 
 ---
 
-## 10. Suggested module shape (agent finalises - not prescriptive)
+## 10. Suggested module shape (agent finalises — not prescriptive)
 
-Logical components, layout at your discretion: `forward_model` (build + solve, returns complex eigenvalue + field handles) · `extraction` (the §3 integrals, Jacobian-correct) · `validation` (the §5 gate + §8 analytic benchmark) · `sweep` (parametric driver over §7 DOFs) · `surrogate` (fit / predict) · `mc_yield` (sample + aggregate + Sobol; SiPhON port) · `provenance` (the §6 constants as one typed, single-source config object). Keep the §6 numbers in exactly one place; everything imports them.
+Logical components: `forward_model` (build + solve, complex eigenvalue + field handles) · `extraction` (§3 integrals, Jacobian-correct; now also exposes κc and gain-region H) · `validation` (§5 gate + §8 benchmark + §5a checkpoint) · `sweep` (parametric driver over §7 DOFs) · `surrogate` (PCE/GP fit + predict + CV gate) · **`thermal`** (NEW — the §7T closed-form heat-conduction submodel, Bessel/cylindrical, BC-honest; its own analytic CI checks) · `mc_yield` (sample + aggregate + Sobol; SiPhON port) · `provenance` (§6 **and §6T** constants as one typed single-source object).
+
+**`mc_yield` output-layer retarget (not an architecture change).** Sampling + surrogate machinery over the DOF space is untouched — same input space, same surrogated forward model, out come C₀ and κc. What changes is post-processing: instead of thresholding at C₀ > 1, compute Δf_max = (κc/2)√(C₀−1) per draw → ΔT_max / P_max via `thermal` → report *those* distributions. Small, contained. **Rename candidate:** "yield" no longer describes the output — consider `robustness/` or `thermal_margin/`. Flag; decide with supervisor.
+
+Keep the §6/§6T numbers in exactly one place; everything imports them.
 
 ---
 
 ## 11. Open gaps to resolve (flagged, do not paper over)
 
-1. **Booth's dielectric cross-section is under-specified** (height / puck-vs-torus). → Obtain **Booth's `.mph` from the supervisor** and drop it in `refs/`; until then, the `dielectric_shape` switch + height sweep, with §4 as the empirical closure test.
-2. **22-GHz STO tanδ primary source** (Booth refs 16 / 20–24; likely Geyer et al., JAP 97, 104111 (2005)) - pull for the writeup; the ∝f scaling is approximate for an incipient ferroelectric.
+Carried EM gaps:
+1. **Booth's dielectric cross-section under-specified** (height / puck-vs-torus) → obtain Booth's `.mph`; until then `dielectric_shape` switch + height sweep, §4 as empirical closure.
+2. **22-GHz STO tanδ primary source** (likely Geyer et al., JAP 97, 104111 (2005)) — pull for writeup.
 3. **Wu coupling coefficient unstated** → de-loading assumes k ≈ 0.2.
-4. **COMSOL complex-eigenfrequency sign/convention for Q** → must be asserted via §8 before any Q is trusted.
+4. **COMSOL complex-eigenfrequency sign/convention for Q — RESOLVED (supervisor confirmation, in person, 2026-07-02).** (a) The STO model is built in the **packaged RF interface** (`Electromagnetic Waves, Frequency Domain`, tag `emw`) — not a custom weak-form PDE; (b) the Q convention is **Q = f′/(2 f″)** from the complex eigenfrequency, exactly as §3 already assumes. The `refs/comsol/booth/2D Resonator Lossy.mph` reference uses f′/(2 f″) — confirmed directly by the supervisor, who pointed to the frequencies and had the Q computed from them in-session. The `refs/comsol/oxborrow/sapphire_ring_1p45_mag_GHz.mph` is **method-reference only** (weak form, lossless, no Q) — never a convention source. An earlier probe reading of `imag(emw.freq) = 0` on the lossy file was a **script bug** (indexing/eval-path), not a genuine energy-method convention — retracted; do not re-introduce. **Mechanism pinned (2026-07-03, empirically on the lossy file):** in results evaluation COMSOL realifies the interface-scoped `emw.freq` per solution number (its imag reads 0 even on a lossy solve); the complex eigenfrequency lives in the **bare solver variable `freq` = iλ/(2π)** (λ = δ − iω, so f′ = −Im(λ)/2π, f″ = Re(λ)/2π), and f′/(2 f″) from bare `freq` reproduces `emw.Qfactor` exactly, mode by mode. Code must read `real(freq)` / `imag(freq)`, never `imag(emw.freq)` — guarded in tests/test_comsol_mph_server.py. The §8 assertion (PEC + lossy dielectric ⇒ Q = 1/(p_e·tanδ)) stays in force as the permanent regression guard on the convention, not as an open question.
+
+New (thermal pivot):
+5. **Cowley-Semple ODMR dataset — RESOLVED (identity + existence), metadata pending.** What exists (from the 2026-06-26 "linewidths" thread, Glasgow/MIT/Imperial):
+   - **Primary series (0.1% Pc-d₁₄:PTP-d₁₄):** CW-ODMR X–Z resonance vs laser drive current, same setup throughout: **1449.7 MHz @ 50 mA · 1449.4 @ 60 · 1449.1 @ 80 · 1448.6 @ 100** → LSQ slope **−21 kHz/mA**. Points scraped from thread figures — obtain raw.
+   - **Control series (0.01% Pc-d₁₄:PTP-d₁₄):** same setup, visibly less sensitive (peak near-stationary 60–100 mA). Treat as an upper bound on its dν/dI until raw data lands.
+   - **Linewidth table (feeds C-variance, not the thermal calibration):** 1.75 MHz (0.1% Pc:PTP) · 1.4 MHz (0.1% d₁₄) · **0.55 MHz (0.01% d₁₄)** · 7 MHz (picene) · 1.8 MHz (NAP). Best-per-host at differing MW/laser powers — not a controlled comparison; note it.
+   - **ΔT inference (Oxborrow's, in-thread):** with dν/dT ≈ −0.05 MHz/K, the −21 kHz/mA slope ⇒ ~0.4 K/mA ⇒ **~13–30 K steady-state heating at 100 mA** across the coefficient spread (§6T) and plausible diode thresholds. "Several tens of Celsius."
+   Remaining asks (via Oxborrow — request he loop us in with Angus directly):
+   - **Raw ν(I)** for both concentrations (not scraped points), + uncertainties.
+   - **Laser calibration:** wavelength; threshold current; slope efficiency (W/A) or measured power at each current. *Without this, absolute ΔT(P) is uncalibrated; the ν(I) slope and the concentration ratio still are.*
+   - **Optical geometry:** spot size at sample (lens known: Thorlabs AC254-030-AB, f = 30 mm; NAP sample used C240TMD-B, f = 8 mm — different spot, do not pool).
+   - **Sample:** crystal dimensions, mounting/substrate, ambient conditions.
+   - **Any time-resolved traces** (shift vs time after laser on/off). Existence unknown; decides whether §7.T5 check 3c is live.
+   Sets (i) Phase 2's claim level (§7.T5) and (ii) the calibration model boundary — which is now **crystal + mount in the Glasgow ODMR rig**, not crystal→STO (§7.T5).
+6. **Real pump illumination / power model** (replace Wu's numbers). Wu's ΔT ~ 0.3 K is from a *different pump setup*; the incident-intensity → absorbed-power → heat-source chain must be grounded in *this* device's pump, not inherited. — ACTION, ask supervisor.
+7. **p-terphenyl thermal properties and coefficients — largely sourced, one pull remains.** k (floor), c_p, and df_spin/dT now have primaries in §6T; ρ is still open. **Pull Nat. Commun. 2025 (doi 10.1038/s41467-025-65508-2)** — modern df_spin/dT primary with pressure dependence; supersedes single-point readings of Lang 2007 Fig. 4 for the local coefficient fit.
+8. **Pre-Phase-2 C₀/κc re-run** (§5a) — confirm the thin-margin story on *your* model, not Breeze/Wu numbers, before building §7T on it.
+9. **Q-vs-margin derivation rigor** (§7.T4) — derive C₀/κc joint DOF dependence from Layer A and confirm 1/√Q holds in ΔT space, before making it a headline claim.
+10. **Framing confirmation from Oxborrow.** He blessed thermal-modelling-as-direction and the analytical method; he has *not* explicitly ratified the budget-*distribution* framing or the Q-margin hypothesis (he engaged, then went to shape optimisation). His in-thread coefficient inversion (revision-note endorsement ladder, above) is mechanism engagement on record — it is **not** ratification of the calibration-target plan; keep the two distinct in any written summary to him. Send the specific written proposal; treat this plan as pending his reply. Fold the §9 scope boundary (loop-gap = Zangwill, shape-opt = future work) into the same note so it doesn't drift into assumed scope.
+    - **Nobody-else check — partially informed by the thread, still confirm explicitly:** in-thread, Angus *measures* (no transport model), Oxborrow *inverts a coefficient* (no transport model), **Ziqiu Huang (Imperial) simulates cw maser cooperativity from linewidths** for the host–guest paper — no thermal content visible, but this is the nearest active workstream to Phase 3's composition. Ask Oxborrow directly: does Ziqiu's simulation include any pump-heating/detuning term, and is anyone modelling heat transport in the gain medium. Also request the Angus introduction (item 5 asks, above).
+11. **SPEC §7 (expanded) revision** — its static-yield output framing is superseded (§7 here). The statistics (surrogate, CV gate, error budget, Sobol, tolerance curves) transfer; the output section and a thermal sub-section need the companion rewrite.
