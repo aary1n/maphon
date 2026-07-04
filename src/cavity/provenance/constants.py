@@ -274,8 +274,10 @@ class SpinFreqTempCoefficient:
     doi 10.1038/s41467-025-65508-2 (Ajoy group, Berkeley — not
     Bayliss). Sample: 0.1% Bridgman-grown pentacene:p-terphenyl single
     crystal, CW-ODMR vs temperature. `df_dt_hz_per_k = -101e3` is the
-    region-III linear fit (monoclinic phase, ~195-330 K, includes RT;
-    Fig. 2B(iii) red line). Sign is negative: ODMR peaks blue-shift as
+    region-III linear fit (monoclinic phase; region III = cold-finger
+    150-330 K per SI Table S1 footnote — "includes RT" only in
+    cold-finger readings, see the reanalysis caveat below; Fig.
+    2B(iii) red line). Sign is negative: ODMR peaks blue-shift as
     temperature DECREASES (Fig. 1D/E caption) — opposite in sign to
     the STO cavity arm (~ +2.6 MHz/K), so the differential detuning
     ADDS (SPEC §6T).
@@ -294,10 +296,47 @@ class SpinFreqTempCoefficient:
     over-weights the steeper near-transition end if Lang's curvature
     is real.
 
-    Caveats carried from Singh: no printed uncertainty on the slope
-    in the main text; temperatures are cryostat cold-finger readings
-    with a laser-heating offset the authors state is constant (the
-    slope is unaffected only if the offset is truly constant).
+    Caveats carried from Singh — upgraded by the 2026-07-04 SI pass
+    and figure reanalysis (refs/singh_fig2biii_reanalysis.md):
+
+    - No uncertainty exists in print anywhere: main text and SI
+      Table S1 both print the slope bare. The raw data are a Zenodo
+      record (doi 10.5281/zenodo.17231876) whose files are
+      RESTRICTED — request access if the +/- ever becomes
+      load-bearing. No numeric +/- is therefore carried here.
+    - Vector extraction of Fig. 2B(iii) (197 points, tick-exact
+      axes) shows the statistical error of any one fit window is
+      negligible (+/-1-2 kHz/K); the dominant uncertainty is the
+      FIT-WINDOW SYSTEMATIC: OLS gives -68.4 over cold-finger
+      150-330 K (the SI's region III), -88 over 200-330, -97 over
+      220-330, and -112 over 254-324 K — the span the paper's own
+      red fit line is actually drawn on (OLS reproduces the drawn
+      line exactly). The printed -101 matches no stated window and
+      disagrees with the paper's own drawn fit.
+    - The temperature axis is the cryostat COLD-FINGER: the
+      "abs. T 193 K" transition marker is drawn at cold-finger
+      ~138.5 K, i.e. a laser-heating offset of ~ +55 K at the
+      stated 110 mW cw. The -101/-112 window therefore samples
+      actual ~310-380 K, ABOVE room temperature. Offset-corrected,
+      Singh's own local slope at actual RT reads ~ -70...-80 kHz/K,
+      consistent with Lang 2007 / W20 — not -101.
+    - Curvature is confirmed and monotonic (local slope ~0 at
+      cold-finger 180-210 K, -130 kHz/K at 290-320 K). The flat
+      stretch maps to actual ~225-265 K where Lang shows ~-50:
+      either the heating offset is NOT constant (contradicting the
+      authors' assertion) or the samples differ — both argue
+      against importing -101 as a local RT coefficient.
+
+    Verdict: keep -101 as the conservative band edge; the band
+    below is now empirically supported by Singh's own plotted data,
+    not merely prudent.
+
+    Deuteration caveat (carry alongside): Singh measured PROTONATED
+    Pc:PTP; the Cowley-Semple calibration-dataset samples are
+    Pc-d14:PTP-d14. Transfer of df_spin/dT to the deuterated system
+    is assumed small — the mechanism is host-lattice thermal
+    expansion and the d14 host is nominally the same lattice — but
+    it is unverified by any measurement in hand.
     """
 
     df_dt_hz_per_k: float = -101e3
