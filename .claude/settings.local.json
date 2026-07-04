@@ -17,7 +17,13 @@
       "Bash(python \"C:\\\\Users\\\\AARYAN~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Aaryan-Sharif-Documents----Academia----Projects-Microwave-Cavity-Resonator-Design\\\\d15bcc51-51be-4d6c-8b97-78718959c4ef\\\\scratchpad\\\\report_nominal.py\")",
       "Bash(python -m pytest --comsol tests/test_forward_model_comsol.py -q)",
       "Bash(python -m pytest --comsol -q)",
-      "PowerShell(Get-Process *)"
+      "PowerShell(Get-Process *)",
+      "mcp__zotero__zotero_search_items",
+      "mcp__zotero__zotero_get_item_children",
+      "mcp__zotero__zotero_get_pdf_outline",
+      "mcp__zotero__zotero_get_attachment_path",
+      "mcp__zotero__zotero_get_item_fulltext",
+      "WebFetch(domain:arxiv.org)"
     ]
   }
 }
