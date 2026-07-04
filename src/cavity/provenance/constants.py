@@ -1,4 +1,4 @@
-"""SPEC §6 — load-bearing constants, the single source of truth.
+"""SPEC §6 / §6T — load-bearing constants, the single source of truth.
 
 Every numeric value here traces back to a specific finding in
 refs/pentacene_maser_parameter_provenance.md or to a published anchor
@@ -265,6 +265,46 @@ class FMBenchmarkRange:
     f_m_hi: float = 3.6e7
 
 
+@dataclass(frozen=True)
+class SpinFreqTempCoefficient:
+    """SPEC §6T — df_spin/dT of the X-Z (1.45 GHz) transition near RT.
+
+    Primary (RT): Singh, D'Souza, Garrett, Singh, Blankenship, Druga,
+    Montis, Tan & Ajoy, Nat. Commun. 16, 10530 (2025),
+    doi 10.1038/s41467-025-65508-2 (Ajoy group, Berkeley — not
+    Bayliss). Sample: 0.1% Bridgman-grown pentacene:p-terphenyl single
+    crystal, CW-ODMR vs temperature. `df_dt_hz_per_k = -101e3` is the
+    region-III linear fit (monoclinic phase, ~195-330 K, includes RT;
+    Fig. 2B(iii) red line). Sign is negative: ODMR peaks blue-shift as
+    temperature DECREASES (Fig. 1D/E caption) — opposite in sign to
+    the STO cavity arm (~ +2.6 MHz/K), so the differential detuning
+    ADDS (SPEC §6T).
+
+    DO NOT use the paper's headline 247 kHz/K: that is the T_xy
+    (107 MHz) transition inside the 193 K phase-transition region
+    (region II; Table 1 footnote "taken from phase transition
+    region") — not an RT coefficient and not the maser transition.
+
+    Band across sources (carry as the §7.6 channel-3 prior; do not
+    collapse to a point): Oxborrow in-thread RT quote -50 kHz/K;
+    Lang 2007 Fig. 4 average -70 kHz/K over 230-296 K (nonlinear,
+    steepens toward 193 K); W20 prints -80 kHz/K off the same figure;
+    Singh region-III fit -101 kHz/K. Treat -101 as the band edge, not
+    a replacement local fit: a single linear fit over 195-330 K
+    over-weights the steeper near-transition end if Lang's curvature
+    is real.
+
+    Caveats carried from Singh: no printed uncertainty on the slope
+    in the main text; temperatures are cryostat cold-finger readings
+    with a laser-heating offset the authors state is constant (the
+    slope is unaffected only if the offset is truly constant).
+    """
+
+    df_dt_hz_per_k: float = -101e3
+    df_dt_band_lo_hz_per_k: float = -101e3
+    df_dt_band_hi_hz_per_k: float = -50e3
+
+
 STO = STOSingleCrystal()
 COPPER = Copper()
 CRYSTAL = Crystal()
@@ -274,6 +314,7 @@ TOL = TolRanges()
 EXTRACTION_TOL = ExtractionTolerances()
 F_M_BENCHMARK = FMBenchmarkRange()
 WALL_LOSS_THRESHOLDS = WallLossThresholds()
+DF_SPIN_DT = SpinFreqTempCoefficient()
 
 TARGETS = ValidationTargets(
     breeze=PublishedTarget(
