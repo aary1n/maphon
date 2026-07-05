@@ -73,7 +73,10 @@
       "Bash(cp SPEC.md __TRACKED_VAR__/../scratchpad/SPEC_before.md)",
       "Bash(cp SPEC.md \"C:\\\\Users\\\\AARYAN~1\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-Aaryan-Sharif-Documents----Academia----Projects-Microwave-Cavity-Resonator-Design\\\\00f3d4de-afef-4de4-a329-72670c1714c2\\\\scratchpad\\\\SPEC_before.md\")",
       "PowerShell(uv run *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(git add *)",
+      "Bash(git status *)"
     ]
   }
 }
