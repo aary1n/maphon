@@ -274,8 +274,10 @@ class SpinFreqTempCoefficient:
     doi 10.1038/s41467-025-65508-2 (Ajoy group, Berkeley — not
     Bayliss). Sample: 0.1% Bridgman-grown pentacene:p-terphenyl single
     crystal, CW-ODMR vs temperature. `df_dt_hz_per_k = -101e3` is the
-    region-III linear fit (monoclinic phase, ~195-330 K, includes RT;
-    Fig. 2B(iii) red line). Sign is negative: ODMR peaks blue-shift as
+    region-III linear fit (monoclinic phase; region III = cold-finger
+    150-330 K per SI Table S1 footnote — "includes RT" only in
+    cold-finger readings, see the reanalysis caveat below; Fig.
+    2B(iii) red line). Sign is negative: ODMR peaks blue-shift as
     temperature DECREASES (Fig. 1D/E caption) — opposite in sign to
     the STO cavity arm (~ +2.6 MHz/K), so the differential detuning
     ADDS (SPEC §6T).
@@ -294,15 +296,210 @@ class SpinFreqTempCoefficient:
     over-weights the steeper near-transition end if Lang's curvature
     is real.
 
-    Caveats carried from Singh: no printed uncertainty on the slope
-    in the main text; temperatures are cryostat cold-finger readings
-    with a laser-heating offset the authors state is constant (the
-    slope is unaffected only if the offset is truly constant).
+    Caveats carried from Singh — upgraded by the 2026-07-04 SI pass
+    and figure reanalysis (refs/singh_fig2biii_reanalysis.md):
+
+    - No uncertainty exists in print anywhere: main text and SI
+      Table S1 both print the slope bare. The raw data are a Zenodo
+      record (doi 10.5281/zenodo.17231876) whose files are
+      RESTRICTED — request access if the +/- ever becomes
+      load-bearing. No numeric +/- is therefore carried here.
+    - Vector extraction of Fig. 2B(iii) (197 points, tick-exact
+      axes) shows the statistical error of any one fit window is
+      negligible (+/-1-2 kHz/K); the dominant uncertainty is the
+      FIT-WINDOW SYSTEMATIC: OLS gives -68.4 over cold-finger
+      150-330 K (the SI's region III), -88 over 200-330, -97 over
+      220-330, and -112 over 254-324 K — the span the paper's own
+      red fit line is actually drawn on (OLS reproduces the drawn
+      line exactly). The printed -101 matches no stated window and
+      disagrees with the paper's own drawn fit.
+    - The temperature axis is the cryostat COLD-FINGER: the
+      "abs. T 193 K" transition marker is drawn at cold-finger
+      ~138.5 K, i.e. a laser-heating offset of ~ +55 K at the
+      stated 110 mW cw. The -101/-112 window therefore samples
+      actual ~310-380 K, ABOVE room temperature. Offset-corrected,
+      Singh's own local slope at actual RT reads ~ -70...-80 kHz/K,
+      consistent with Lang 2007 / W20 — not -101.
+    - Curvature is confirmed and monotonic (local slope ~0 at
+      cold-finger 180-210 K, -130 kHz/K at 290-320 K). The flat
+      stretch maps to actual ~225-265 K where Lang shows ~-50:
+      either the heating offset is NOT constant (contradicting the
+      authors' assertion) or the samples differ — both argue
+      against importing -101 as a local RT coefficient.
+
+    Verdict: keep -101 as the conservative band edge; the band
+    below is now empirically supported by Singh's own plotted data,
+    not merely prudent.
+
+    Deuteration caveat (carry alongside): Singh measured PROTONATED
+    Pc:PTP; the Cowley-Semple calibration-dataset samples are
+    Pc-d14:PTP-d14. Transfer of df_spin/dT to the deuterated system
+    is assumed small — the mechanism is host-lattice thermal
+    expansion and the d14 host is nominally the same lattice — but
+    it is unverified by any measurement in hand.
     """
 
     df_dt_hz_per_k: float = -101e3
     df_dt_band_lo_hz_per_k: float = -101e3
     df_dt_band_hi_hz_per_k: float = -50e3
+
+
+@dataclass(frozen=True)
+class PTerphenylThermalConductivity:
+    """SPEC §6T — thermal conductivity of crystalline p-terphenyl (the host).
+
+    THE PARAMETER UNDER TEST in the §7.T5 check-3a identifiability sweep
+    (`cavity.thermal.identifiability`): the CW calibration observable
+    constrains k in the conduction-dominated regime (steady-state
+    ΔT ∝ 1/k), and this is exactly where the open literature gap sits.
+
+    Provenance floor: Hedley, Milnes & Yanko, J. Chem. Eng. Data 15, 122
+    (1970) — *liquid* p-terphenyl k ≈ 0.134–0.136 W m⁻¹ K⁻¹ at
+    213–254 °C. The unreferenced ~0.1 W m⁻¹ K⁻¹ crystal figure in the
+    Breeze-2018 lineage coincides suspiciously with the liquid value
+    (plausible provenance origin). Crystals conduct better than their
+    melts, so 0.1 is treated as a FLOOR, and the working band is
+    0.1–1.0 W m⁻¹ K⁻¹ (SPEC §6T). ~2× anisotropy is expected for a
+    monoclinic molecular crystal; the thermal submodel currently uses an
+    isotropic k — the anisotropy is folded into the band, not modelled.
+
+    `k_mid_w_m_k` is the geometric midpoint of the band (the band is a
+    multiplicative ×10 bracket, so the log-midpoint √(0.1·1.0) ≈ 0.316
+    is the natural centre); it is the reference denominator of the
+    identifiability ratio R in the §7.T5 sweep, not a physical claim.
+    """
+
+    k_floor_w_m_k: float = 0.1
+    k_band_lo_w_m_k: float = 0.1
+    k_band_hi_w_m_k: float = 1.0
+    k_mid_w_m_k: float = 0.31622776601683794  # sqrt(lo * hi)
+    anisotropy_factor: float = 2.0
+
+
+@dataclass(frozen=True)
+class ParaffinWaxThermal:
+    """SPEC §6T — paraffin-wax mounting layer in the Glasgow ODMR rig.
+
+    Mena et al., PRL 133, 120801 (2024), Methods: crystals are "attached
+    to a glass slide using paraffin wax before being polished into
+    plates". This is the ONLY published mounting for the rig; the Mann
+    2025 SI leaves mounting unstated, and nothing confirms it for the
+    Cowley-Semple dataset samples (Angus ask 2, SPEC §11 item 5).
+
+    GRADE: GENERIC-HANDBOOK, NOT MEASURED FOR THIS RIG. Nominal
+    k = 0.24 W m⁻¹ K⁻¹ is the "paraffin" entry of Incropera & DeWitt,
+    Fundamentals of Heat and Mass Transfer (Table A.3, 300 K). Handbook
+    values for paraffin waxes span ~0.2–0.3 W m⁻¹ K⁻¹ across grades and
+    temperature; the wax grade in the rig is unknown. The bond-line
+    thickness `t_wax` is completely unsourced — it is a NUISANCE
+    PARAMETER swept over `t_wax_box` in the §7.T5 identifiability sweep
+    (1–100 µm brackets hand-applied wax bond lines; an assumption, not a
+    measurement). No wax/crystal or wax/glass contact resistance is
+    carried: any interface resistance is partially degenerate with
+    t_wax/k_wax and is absorbed into the t_wax sweep.
+    """
+
+    k_w_m_k: float = 0.24
+    k_range_lo_w_m_k: float = 0.2
+    k_range_hi_w_m_k: float = 0.3
+    t_wax_box_lo_m: float = 1e-6
+    t_wax_box_hi_m: float = 100e-6
+
+
+@dataclass(frozen=True)
+class GlassSlideThermal:
+    """SPEC §6T — microscope-slide substrate in the Glasgow ODMR rig.
+
+    GRADE: GENERIC-HANDBOOK, MATERIAL UNCONFIRMED. Nominal
+    k = 1.14 W m⁻¹ K⁻¹ is the room-temperature borosilicate
+    (Corning 7740 / Pyrex-class) value; handbook spread for borosilicate
+    is ~1.0–1.4 W m⁻¹ K⁻¹ (Incropera & DeWitt Table A.3 prints 1.4 for
+    "Pyrex"; manufacturer datasheets 1.1–1.2). Standard microscope
+    slides are frequently SODA-LIME glass (k ≈ 0.9–1.1 W m⁻¹ K⁻¹), and
+    the actual slide material is not stated anywhere in the published
+    record — folded into Angus ask 2 (substrate material and mounting).
+    The `k_range` below spans both glass families.
+
+    `t_glass_m = 1.0 mm` is the standard-slide assumption (commercial
+    slides are 0.8–1.2 mm); SPEC §7.T5 prescribes a ±50% sensitivity
+    check rather than a sweep dimension, because glass enters as a
+    series term that the sweep shows is not verdict-setting.
+    """
+
+    k_w_m_k: float = 1.14
+    k_range_lo_w_m_k: float = 0.9
+    k_range_hi_w_m_k: float = 1.4
+    t_glass_m: float = 1.0e-3
+    t_glass_sensitivity_frac: float = 0.5
+
+
+@dataclass(frozen=True)
+class PumpAbsorptionLength:
+    """SPEC §6T — optical absorption length of the 520–590 nm pump in Pc:PTP.
+
+    GRADE: UNSOURCED-SCOPING. There is NO provenance-grade absorption
+    length for the Cowley-Semple dataset samples (0.01–0.1% Pc-d14 in
+    PTP-d14, pump 520 nm diode or 532 nm Nd:YAG depending on rig — §11
+    item 5, asks 3/4). The grid below exists only to scope the §7.T5
+    check-3a volumetric-source sensitivity (does burying the near-spot
+    source move the k–w degeneracy?); it brackets plausible 520–590 nm
+    penetration in 0.01–0.1% doped material across ~1.5 orders of
+    magnitude. None of these numbers may be used as a physical input to
+    an absolute ΔT prediction.
+
+    Likely primary when this becomes load-bearing: the Takeda 2002
+    zero-field-ESR-era optical characterisation of Pc:PTP and/or the
+    Breeze-thesis-era light-penetration discussion of pump absorption in
+    doped p-terphenyl. NEITHER has been pulled and read for this number
+    — deliberately NOT cited as a source here; obtain and grade before
+    promoting any value out of scoping status (same discipline as the
+    rest of §6T: no fabricated provenance).
+    """
+
+    l_abs_scoping_grid_m: tuple[float, ...] = (
+        5e-6,
+        10e-6,
+        20e-6,
+        50e-6,
+        100e-6,
+        200e-6,
+    )
+
+
+@dataclass(frozen=True)
+class RigSampleGeometry:
+    """SPEC §7.T5 — Glasgow-rig sample forms and pump-spot sweep box.
+
+    Two sample forms, run SEPARATELY in the identifiability sweep (the
+    per-sample form is Angus ask 1 — the single most load-bearing
+    unknown for check 3a):
+
+    - PLATE: t = 0.5 mm. Mena 2024 Methods (0.01% crystals polished into
+      plates against 0.5 mm silicon guide plates); re-corroborated by
+      the Mann 2025 JACS SI.
+    - FILM: t = 100 nm. The only published 0.1% Pc:PTP is a 100 nm OMBD
+      evaporated film on glass (Mann 2025, "for maximal contrast, we use
+      thin films").
+
+    Spot-radius box (1/e² radius w), set by the two-optic record of SPEC
+    §7.T5 / §11 item 5 — no spot size is published for either rig
+    configuration:
+
+    - LOWER, 1 µm: diffraction-limited spot of the Mann 2025 cw+pulsed
+      optic (Thorlabs C061TMD-A molded aspheric, f = 11.0 mm, NA 0.24,
+      catalogue values checked 2026-07-04): filled-aperture Gaussian
+      waist w ≈ λ/(π·NA) ≈ 0.7 µm at 532 nm, rounded up.
+    - UPPER, 500 µm: the Mena 2024 cw optic (AC254-030-AB f = 30 mm
+      achromatic doublet) with a fibre-coupled diode is tens-of-µm
+      class; 500 µm covers an unfocused/misaligned doublet worst case
+      with margin. (Extends the ~100 µm figure quoted in SPEC §7.T5's
+      first pass; the sweep box deliberately over-covers.)
+    """
+
+    t_plate_m: float = 0.5e-3
+    t_film_m: float = 100e-9
+    w_box_lo_m: float = 1e-6
+    w_box_hi_m: float = 500e-6
 
 
 STO = STOSingleCrystal()
@@ -315,6 +512,11 @@ EXTRACTION_TOL = ExtractionTolerances()
 F_M_BENCHMARK = FMBenchmarkRange()
 WALL_LOSS_THRESHOLDS = WallLossThresholds()
 DF_SPIN_DT = SpinFreqTempCoefficient()
+K_PTP = PTerphenylThermalConductivity()
+WAX = ParaffinWaxThermal()
+GLASS_SLIDE = GlassSlideThermal()
+RIG_GEOMETRY = RigSampleGeometry()
+L_ABS_PUMP = PumpAbsorptionLength()
 
 TARGETS = ValidationTargets(
     breeze=PublishedTarget(
