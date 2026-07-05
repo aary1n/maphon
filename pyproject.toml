@@ -15,6 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest>=7.0"]
 comsol = ["mph>=1.2"]
+reports = ["matplotlib>=3.7"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
