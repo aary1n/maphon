@@ -10,5 +10,9 @@ Two anchor geometries (SPEC §7.T1 geometry split):
 `volumetric_3a` re-checks the PLATE k–w degeneracy with the volumetric
 (Beer-Lambert) source (`layered.delta_t_gaussian_volumetric`) — the
 appendix to the 3a decision report.
+`broadening` is the §7.T2 output-3 layer (2026-07-06): it maps a
+weighted ΔT distribution through df_spin/dT to the mean line shift plus
+the inhomogeneous width, reported in linewidths — geometry-agnostic
+map + a Gaussian-spot rig instance on `layered`'s surface field.
 All physical constants come from `cavity.provenance.constants` (§6T).
 """

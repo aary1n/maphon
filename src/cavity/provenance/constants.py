@@ -63,6 +63,16 @@ class Crystal:
 
     Booth argues this perturbs the mode only slightly; Phase 1b (§5b)
     verifies rather than assumes.
+
+    `doping_mol_frac` is the NOMINAL melt doping. Oxborrow (verbal,
+    in-person meeting 2026-07-06): Bridgman growth does NOT incorporate
+    pentacene at the nominal doping — the growth acts as a zone-refining
+    step, so the crystal holds LESS pentacene than the melt (and the
+    p-terphenyl host is purified in the same pass). Direction known,
+    factor unknown. Any quantity computed from this value (spin count N,
+    absorption arithmetic) inherits a bias in a known direction; see
+    `PumpAbsorptionLength` for the l_abs consequence and SPEC §7.T5 for
+    the check-3b concentration-ratio caveat.
     """
 
     diameter_m: float = 3.0e-3
@@ -384,7 +394,9 @@ class ParaffinWaxThermal:
     to a glass slide using paraffin wax before being polished into
     plates". This is the ONLY published mounting for the rig; the Mann
     2025 SI leaves mounting unstated, and nothing confirms it for the
-    Cowley-Semple dataset samples (Angus ask 2, SPEC §11 item 5).
+    Cowley-Semple dataset samples (Angus substrate/mounting rider —
+    was ask 2, demoted 2026-07-06 when the list was finalised at three;
+    SPEC §11 item 5).
 
     GRADE: GENERIC-HANDBOOK, NOT MEASURED FOR THIS RIG. Nominal
     k = 0.24 W m⁻¹ K⁻¹ is the "paraffin" entry of Incropera & DeWitt,
@@ -417,8 +429,8 @@ class GlassSlideThermal:
     "Pyrex"; manufacturer datasheets 1.1–1.2). Standard microscope
     slides are frequently SODA-LIME glass (k ≈ 0.9–1.1 W m⁻¹ K⁻¹), and
     the actual slide material is not stated anywhere in the published
-    record — folded into Angus ask 2 (substrate material and mounting).
-    The `k_range` below spans both glass families.
+    record — folded into the Angus substrate/mounting rider (was ask 2;
+    SPEC §11 item 5). The `k_range` below spans both glass families.
 
     `t_glass_m = 1.0 mm` is the standard-slide assumption (commercial
     slides are 0.8–1.2 mm); SPEC §7.T5 prescribes a ±50% sensitivity
@@ -440,12 +452,12 @@ class PumpAbsorptionLength:
     GRADE: UNSOURCED-SCOPING. There is NO provenance-grade absorption
     length for the Cowley-Semple dataset samples (0.01–0.1% Pc-d14 in
     PTP-d14, pump 520 nm diode or 532 nm Nd:YAG depending on rig — §11
-    item 5, asks 3/4). The grid below exists only to scope the §7.T5
-    check-3a volumetric-source sensitivity (does burying the near-spot
-    source move the k–w degeneracy?); it brackets plausible 520–590 nm
-    penetration in 0.01–0.1% doped material across ~1.5 orders of
-    magnitude. None of these numbers may be used as a physical input to
-    an absolute ΔT prediction.
+    item 5, asks 2/3 in the 2026-07-06 numbering). The grid below exists
+    only to scope the §7.T5 check-3a volumetric-source sensitivity (does
+    burying the near-spot source move the k–w degeneracy?); it brackets
+    plausible 520–590 nm penetration in 0.01–0.1% doped material across
+    ~1.5 orders of magnitude. None of these numbers may be used as a
+    physical input to an absolute ΔT prediction.
 
     Likely primary when this becomes load-bearing: the Takeda 2002
     zero-field-ESR-era optical characterisation of Pc:PTP and/or the
@@ -454,6 +466,17 @@ class PumpAbsorptionLength:
     — deliberately NOT cited as a source here; obtain and grade before
     promoting any value out of scoping status (same discipline as the
     rest of §6T: no fabricated provenance).
+
+    Nominal-doping caveat — CONFIRMED WITH DIRECTION (Oxborrow, verbal,
+    in-person meeting 2026-07-06; previously an unsourced-scoping flag):
+    Bridgman growth zone-refines, so actual [Pc] sits BELOW nominal by
+    an unknown factor. Consequence for this constant: any l_abs computed
+    from nominal doping OVERSTATES absorption and UNDERSTATES the
+    penetration depth — a bias in a known direction. The "prefer
+    measured penetration data over nominal-doping arithmetic" rule
+    (SPEC §7.T5 volumetric rider) is therefore supervisor-backed, not
+    merely prudent. See also `Crystal.doping_mol_frac` and the §7.T5
+    check-3b concentration-ratio caveat.
     """
 
     l_abs_scoping_grid_m: tuple[float, ...] = (
