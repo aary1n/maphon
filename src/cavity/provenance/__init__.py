@@ -7,6 +7,10 @@ anywhere else.
 The graded provenance lives in
 refs/pentacene_maser_parameter_provenance.md; this module encodes only
 the §6 summary findings and the §5/§5b published anchors.
+
+§5 gate ACCEPTANCE windows (decisions, not physics) live separately in
+`gate_targets` — they reference the anchors here and are revisable
+without touching graded provenance.
 """
 
 from cavity.provenance.constants import (
@@ -34,8 +38,18 @@ from cavity.provenance.constants import (
     ValidationTargets,
     WallLossThresholds,
 )
+from cavity.provenance.gate_targets import (
+    GATE_ROWS,
+    GateCheckSpec,
+    GateRowSpec,
+    GateWindow,
+)
 
 __all__ = [
+    "GATE_ROWS",
+    "GateCheckSpec",
+    "GateRowSpec",
+    "GateWindow",
     "COPPER",
     "CRYSTAL",
     "C_LIGHT",
