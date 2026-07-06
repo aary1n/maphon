@@ -76,7 +76,15 @@
       "Bash(git commit *)",
       "Bash(echo \"exit: $?\")",
       "Bash(git add *)",
-      "Bash(git status *)"
+      "Bash(git status *)",
+      "Bash(git stash *)",
+      "Bash(git merge *)",
+      "Bash(python -m pytest tests/test_thermal_identifiability.py tests/test_thermal_layered.py tests/test_thermal_volumetric.py -q)",
+      "mcp__zotero__zotero_search_by_citation_key",
+      "mcp__zotero__zotero_read_pdf_pages",
+      "Bash(uv run *)",
+      "Bash(git diff *)",
+      "Bash(git rm *)"
     ]
   }
 }
