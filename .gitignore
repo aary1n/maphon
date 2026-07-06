@@ -66,6 +66,11 @@ outputs/
 *.npz
 *.pkl
 *.joblib
+# EXCEPT refs/gate_runs/: archived licence-session gate runs whose numbers
+# are cited from SPEC §8 / provenance/constants.py. Load-bearing provenance,
+# not re-derivable without a licence session — tracked (npz via LFS), same
+# rationale as the refs/ .mph exception above.
+!refs/gate_runs/**
 
 # --- Jupyter ---------------------------------------------------------------
 .ipynb_checkpoints/

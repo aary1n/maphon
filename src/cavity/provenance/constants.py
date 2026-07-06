@@ -211,6 +211,21 @@ class ExtractionTolerances:
     limited; loose enough that converged solves pass but inverted sign
     conventions or wrong Jacobians fail. This is the assertion that
     pins the COMSOL eigenfrequency convention (SPEC §11 gap #4).
+
+    Live status (licence-session run, 2026-07-06): the §5 gate's live
+    PEC + lossy arm CLEARS this tolerance at the gate's default mesh
+    level (dielectric_max_h_m = 1.25e-4, air_max_h_m = 5.0e-4 — the
+    §2 e2e test's finest ladder level; assumed a/L = 0.5 puck).
+    Measured: residual |Q*p_e*tan_delta - 1| = 5.64e-5, i.e. ~1.1% of
+    the 5e-3 tolerance consumed (headroom margin 0.989), from
+    Q = 9112.8, p_e = 0.9977, tan_delta = 1.1e-4; COMSOL 6.0, 3,825
+    elements. Artifact archived with the raw eigensolution:
+    refs/gate_runs/20260706T211615Z_live_comsol — git-tracked, npz
+    via LFS (§1 SolveRecord 888536d768e0fba1); a working copy also
+    sits in the gitignored runs/gate/, but the refs/ copy is the
+    citation. This is a CONVENTION PASS AT THAT LEVEL, not a
+    mesh-independence result — convergence remains §2's job. Recorded
+    so the pec_lossy default mesh is not re-litigated.
     """
 
     q_emw_cross_check_rel_tol: float = 1.0e-3

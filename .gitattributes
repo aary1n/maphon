@@ -7,3 +7,4 @@
 
 *.mph filter=lfs diff=lfs merge=lfs -text
 *.pdf filter=lfs diff=lfs merge=lfs -text
+refs/gate_runs/**/*.npz filter=lfs diff=lfs merge=lfs -text
