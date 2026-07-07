@@ -292,91 +292,139 @@ class FMBenchmarkRange:
 
 @dataclass(frozen=True)
 class SpinFreqTempCoefficient:
-    """SPEC §6T — df_spin/dT of the X-Z (1.45 GHz) transition near RT.
+    """SPEC §6T — df_spin/dT of the X-Z (1.45 GHz) transition at
+    operating temperature.
 
-    Primary (RT): Singh, D'Souza, Garrett, Singh, Blankenship, Druga,
-    Montis, Tan & Ajoy, Nat. Commun. 16, 10530 (2025),
-    doi 10.1038/s41467-025-65508-2 (Ajoy group, Berkeley — not
-    Bayliss). Sample: 0.1% Bridgman-grown pentacene:p-terphenyl single
-    crystal, CW-ODMR vs temperature. `df_dt_hz_per_k = -101e3` is the
-    region-III linear fit (monoclinic phase; region III = cold-finger
-    150-330 K, the shared region-III span drawn across all three Fig.
-    2B panels — NOT independently table-sourced for X-Z: SI Table S1's
-    footnote (c) for "150-330" is attached to the X-Y row's high-T
-    sub-slope (8.7 kHz/K), one of three footnoted X-Y values (a/b/c
-    for low-T/phase-transition/high-T); the X-Z row's df/dT = 101 is
-    printed with no window footnote at all. The 150 K lower bound used
-    here for X-Z is inferred from the shared region I/II/III partition
-    (same phase transition, same cold-finger axis, all three panels),
-    not read off a footnote on the X-Z entry itself — see the
-    reanalysis caveat below; Fig. 2B(iii) red line). Sign is negative:
-    ODMR peaks blue-shift as
-    temperature DECREASES (Fig. 1D/E caption) — opposite in sign to
-    the STO cavity arm (~ +2.7 MHz/K at 300 K — see
-    `CavityFreqTempCoefficient`), so the differential detuning
-    ADDS (SPEC §6T).
+    RAW-DATA-GRADED (2026-07-07). Primary: the raw point series behind
+    Singh, D'Souza, Garrett, Singh, Blankenship, Druga, Montis, Tan &
+    Ajoy, Nat. Commun. 16, 10530 (2025), doi
+    10.1038/s41467-025-65508-2, Fig. 2B(iii) (Ajoy group, Berkeley —
+    not Bayliss; 0.1% Bridgman-grown PROTONATED Pc:PTP single crystal,
+    CW-ODMR vs temperature), received 2026-07-07 from Harpreet Singh
+    (first author) via the Berkeley contact thread (Noella D'Souza /
+    Joseph Garrett), archived byte-for-byte in refs/singh_2025_raw/
+    (SHA-256-pinned; PROVENANCE.md there). All values below are OLS
+    fits by the committed script `cavity.provenance.singh_raw_fits`
+    (report: refs/singh_2025_raw/fit_report.md), pinned in
+    tests/test_provenance_df_spin_dt.py with band endpoints checked
+    THROUGH the fit functions at test time. This supersedes the
+    197-point vector re-digitisation (refs/singh_fig2biii_reanalysis.md,
+    supersession note appended there) and retires the REFUTED-class
+    audit status (audits/provenance_6T_audit.md — frozen snapshot,
+    correct at audit time: the refutation targeted the printed/figure
+    lineage, resolved below).
+
+    LINEAGE AND RESOLUTION (printed -101 -> digitised -112 -> raw):
+
+    - PRINTED -101 kHz/K (main text p. 3; SI Table S1, bare; no fit
+      window printed anywhere — that absence stands as flagged, exact
+      window still a Harpreet ask): CONSISTENT WITH THE RAW DATA. Raw
+      OLS over the span the paper's red line is drawn on gives
+      -102.3 +/- 1.1 (file-axis 254-324) / -103.4 +/- 1.0 (254-330) —
+      the paper's number agrees with its own raw data to ~1%.
+    - DIGITISED -112 kHz/K (2026-07-04 vector reanalysis): a FAITHFUL
+      READING OF THE FIGURE. Rank-order pairing of the 197 raw points
+      with the 197 extracted marker centres: frequency residuals rms
+      39.5 kHz ~= the 0.1 MHz quantisation floor (28.9 kHz) — the
+      pairing is right — while THE TWO TEMPERATURE AXES DIFFER BY AN
+      EXACT AFFINE MAP, T_fig = 0.9316*T_raw + 16.56 K (rms residual
+      0.09 K). Slopes in figure-axis units are inflated x1.073:
+      -103.4 x 1.073 ~= -111, matching the -111.9 measured; the drawn
+      red line back-maps to ~= -104 in file-axis units, i.e. it IS the
+      raw-data fit rendered on the other axis. WHICH SIDE CARRIES THE
+      CALIBRATED SENSOR READING IS UNRESOLVED — the file's 5-dp values
+      look sensor-native (the likelier reading), but a
+      publication-side recalibration of the file data is the live
+      alternative; the Harpreet metadata ask decides. Every
+      figure-derived number (-68.4/-88/-97/-112 window fits, the
+      +55 K offset) is superseded by its raw-axis equivalent either
+      way. The blinded-refuter canary (provenance_6T_audit.md) remains
+      valid as a METHODOLOGY test: it validated faithful extraction
+      from the figure, not the figure's fidelity to the data.
+    - RAW (this grading): the fields below.
+
+    VALUE AND BAND — the point is a BRANCH CHOICE, not a best
+    estimate. The unresolved temperature-axis definition splits the
+    operating-T reading into two branches ~x1.7 apart, and the band
+    spans them:
+
+    - `df_dt_hz_per_k` = -1.09e5 (3 s.f. of the OLS -108.5 +/- 2.2
+      kHz/K over file-axis `t_window_lo_k`-`t_window_hi_k` = 293-310 K):
+      the FACE-VALUE branch — the file axis read as sample
+      temperature. Chosen as the point because it is the CONSERVATIVE
+      branch (steeper |slope| => the differential detuning grows
+      faster => smaller thermal margin). If the file axis is a
+      cold-finger sensor and the +61 K offset is real, the true
+      operating-T slope is the band-hi branch instead.
+    - `df_dt_band_lo_hz_per_k` = -1.2e5 (outward 2 s.f. of the
+      steepest operating-adjacent window, 290-330: -119.7 +/- 1.2).
+    - `df_dt_band_hi_hz_per_k` = -6.4e4 (outward 2 s.f. of the
+      COLD-FINGER branch: the raw X-Z series puts the 193 K-absolute
+      transition jump at file-axis ~132.0 K => offset ~= +61 K at
+      110 mW cw, so actual 293-310 K maps to file-axis 232-249 K,
+      where OLS gives -64.4 +/- 1.7).
+
+    CONVENTION SHIFT, DELIBERATE (2026-07-07): the previous grading
+    put the point AT the conservative band edge (-101 = band lo); this
+    grading's point is INTERIOR to the band — a documented branch
+    choice at the operating window, not an edge. A future audit should
+    read the edge->interior move as this re-convention, not drift.
+
+    Ensemble context (no longer band-setting): Lang 2007 Fig. 4
+    (~-70 kHz/K average, 230-296 K) and W20's -80 (same figure) sit
+    near the cold-finger branch — corroboration of that branch.
+    Oxborrow's in-thread RT quote of -50 kHz/K falls OUTSIDE the new
+    band and is RETIRED from band duty (its audit verdict was
+    SOURCE_MISSING/AMBIGUOUS — no document exists); kept here as
+    context only.
+
+    Sign is negative — verified from the raw data, no longer only from
+    the Fig. 1D/E caption: spins red-shift on heating, OPPOSITE to the
+    STO cavity arm (~ +2.7 MHz/K, `CavityFreqTempCoefficient`), so the
+    differential detuning ADDS (SPEC §6T). Magnitude check:
+    |df_spin/dT| ~ 60-120 kHz/K << df_cavity/dT ~ +2.7 MHz/K.
 
     DO NOT use the paper's headline 247 kHz/K: that is the T_xy
     (107 MHz) transition inside the 193 K phase-transition region
     (region II; Table 1 footnote "taken from phase transition
-    region") — not an RT coefficient and not the maser transition.
+    region") — not an operating-T coefficient and not the maser
+    transition.
 
-    Band across sources (carry as the §7.6 channel-3 prior; do not
-    collapse to a point): Oxborrow in-thread RT quote -50 kHz/K;
-    Lang 2007 Fig. 4 average -70 kHz/K over 230-296 K (nonlinear,
-    steepens toward 193 K); W20 prints -80 kHz/K off the same figure;
-    Singh region-III fit -101 kHz/K. Treat -101 as the band edge, not
-    a replacement local fit: a single linear fit over 195-330 K
-    over-weights the steeper near-transition end if Lang's curvature
-    is real.
+    Caveats carried:
 
-    Caveats carried from Singh — upgraded by the 2026-07-04 SI pass
-    and figure reanalysis (refs/singh_fig2biii_reanalysis.md):
-
-    - No uncertainty exists in print anywhere: main text and SI
-      Table S1 both print the slope bare. The raw data are a Zenodo
-      record (doi 10.5281/zenodo.17231876) whose files are
-      RESTRICTED — request access if the +/- ever becomes
-      load-bearing. No numeric +/- is therefore carried here.
-    - Vector extraction of Fig. 2B(iii) (197 points, tick-exact
-      axes) shows the statistical error of any one fit window is
-      negligible (+/-1-2 kHz/K); the dominant uncertainty is the
-      FIT-WINDOW SYSTEMATIC: OLS gives -68.4 over cold-finger
-      150-330 K (the shared region-III span; not itself
-      footnote-sourced for X-Z, see above), -88 over 200-330, -97 over
-      220-330, and -112 over 254-324 K — the span the paper's own
-      red fit line is actually drawn on (OLS reproduces the drawn
-      line exactly). The printed -101 matches no stated window and
-      disagrees with the paper's own drawn fit.
-    - The temperature axis is the cryostat COLD-FINGER: the
-      "abs. T 193 K" transition marker is drawn at cold-finger
-      ~138.5 K, i.e. a laser-heating offset of ~ +55 K at the
-      stated 110 mW cw. The -101/-112 window therefore samples
-      actual ~310-380 K, ABOVE room temperature. Offset-corrected,
-      Singh's own local slope at actual RT reads ~ -70...-80 kHz/K,
-      consistent with Lang 2007 / W20 — not -101.
-    - Curvature is confirmed and monotonic (local slope ~0 at
-      cold-finger 180-210 K, -130 kHz/K at 290-320 K). The flat
-      stretch maps to actual ~225-265 K where Lang shows ~-50:
-      either the heating offset is NOT constant (contradicting the
-      authors' assertion) or the samples differ — both argue
-      against importing -101 as a local RT coefficient.
-
-    Verdict: keep -101 as the conservative band edge; the band
-    below is now empirically supported by Singh's own plotted data,
-    not merely prudent.
-
-    Deuteration caveat (carry alongside): Singh measured PROTONATED
-    Pc:PTP; the Cowley-Semple calibration-dataset samples are
-    Pc-d14:PTP-d14. Transfer of df_spin/dT to the deuterated system
-    is assumed small — the mechanism is host-lattice thermal
-    expansion and the d14 host is nominally the same lattice — but
-    it is unverified by any measurement in hand.
+    - TEMPERATURE-AXIS DEFINITION UNRESOLVED (the dominant systematic
+      — it IS the band): cold-finger vs sample vs recalibrated; see
+      the affine-map finding above and PROVENANCE.md asks 1/4/5.
+    - Deuteration caveat (carry alongside): Singh measured PROTONATED
+      Pc:PTP; the Cowley-Semple calibration-dataset samples are
+      Pc-d14:PTP-d14. Transfer of df_spin/dT to the deuterated system
+      is assumed small — the mechanism is host-lattice thermal
+      expansion and the d14 host is nominally the same lattice — but
+      it is unverified by any measurement in hand.
+    - LOCAL slope only: curvature is real and monotone on the raw data
+      (quadratic 2a ~= -1.0 kHz/K^2 over 254-324; 30 K sliding windows
+      run ~0 at file-axis 165-210 to -119 at 300-330). Never use any
+      single window as a global fit.
+    - The files are PLOTTED-POINT EXPORTS, not raw acquisition
+      (N = 197 = the figure's marker count; 0.1 MHz frequency grid;
+      5-dp processed temperatures). Per-point processing unknown.
+    - 0.1 MHz quantisation: sigma_q = 28.9 kHz/point => ~1.2 kHz/K
+      quantisation-only SE at the point window; statistical +
+      quantisation is 1-3 kHz/K throughout, dwarfed by the axis-branch
+      systematic. The paper still prints NO uncertainty anywhere; the
+      +/- carried here is ours, residual-based.
+    - Identity with the restricted Zenodo record
+      (doi 10.5281/zenodo.17231876) assumed, unverified (ask 6).
+    - Attribution: acknowledgement for use of this privately-shared
+      data is to be brokered via Oxborrow EARLY, not at submission
+      (PROVENANCE.md; same guard as the Cowley-Semple dataset).
     """
 
-    df_dt_hz_per_k: float = -101e3
-    df_dt_band_lo_hz_per_k: float = -101e3
-    df_dt_band_hi_hz_per_k: float = -50e3
+    df_dt_hz_per_k: float = -1.09e5
+    df_dt_band_lo_hz_per_k: float = -1.2e5
+    df_dt_band_hi_hz_per_k: float = -6.4e4
+    t_window_lo_k: float = 293.0
+    t_window_hi_k: float = 310.0
 
 
 @dataclass(frozen=True)

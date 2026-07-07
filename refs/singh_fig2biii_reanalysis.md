@@ -111,3 +111,22 @@ for d in page.get_drawings():
 # calibration: T = 100 + (x-260.3)*200/(345.6-260.3)
 #              nu = 1446 + (289.7-y)*8/(289.7-242.5)
 ```
+
+## Supersession note (2026-07-07 — raw data received; quantitative use routes elsewhere)
+
+The raw point series behind Fig. 2B arrived 2026-07-07 (Harpreet Singh, first author,
+via the Berkeley contact thread) — archived at `refs/singh_2025_raw/` with provenance
+note; fits in `cavity.provenance.singh_raw_fits` (committed report
+`refs/singh_2025_raw/fit_report.md`). Outcome for this file: the extraction above is a
+**faithful reading of the figure** (rank-order pairing against the raw points gives
+frequency residuals of rms 39.5 kHz ≈ the 0.1 MHz quantisation floor), but **the
+figure's temperature axis and the raw file's differ by an exact affine map**,
+T_fig = 0.9316·T_raw + 16.56 K (rms residual 0.09 K) — *which side carries the
+calibrated sensor reading is unresolved* (Harpreet metadata ask). All slopes in this
+file's axis units are therefore inflated ×1.073 relative to the raw file: the drawn red
+line (−112 here) back-maps to ≈ −104, matching raw OLS −103.4 ± 1.0 over 254–330; the
+printed −101 is consistent with the paper's own raw data (raw OLS −102.3 ± 1.1 over
+254–324). Finding 2 above ("−101 matches no stated window") is resolved accordingly;
+Finding 1 (no ± in print) stands. This file is retained as the extraction-methodology
+record — the blinded-refuter canary it anchors validated faithful figure extraction —
+and all quantitative use now routes to the raw archive.
