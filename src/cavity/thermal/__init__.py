@@ -14,5 +14,8 @@ appendix to the 3a decision report.
 weighted ΔT distribution through df_spin/dT to the mean line shift plus
 the inhomogeneous width, reported in linewidths — geometry-agnostic
 map + a Gaussian-spot rig instance on `layered`'s surface field.
+`radiation` is the §7.T7 first implementation slot (2026-07-07): the
+linearised radiative coefficient h_rad = 4εσT³ and its additive
+composition into `layered`'s Robin `h_top` (h_eff = h_conv + h_rad).
 All physical constants come from `cavity.provenance.constants` (§6T).
 """

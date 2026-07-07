@@ -673,6 +673,48 @@ class GlassSlideThermal:
 
 
 @dataclass(frozen=True)
+class PTerphenylSurfaceEmissivity:
+    """SPEC §7.T7 — thermal-IR emissivity of the p-terphenyl crystal surface.
+
+    Feeds the linearised radiative loss h_rad = 4εσT³ that folds into the
+    layered model's switchable Robin `h_top`
+    (`cavity.thermal.radiation.h_rad_linearized`; §7.T7 first
+    implementation slot, Oxborrow-verbal 2026-07-06 rung). ε must never be
+    baked into solver code — the solver takes only the composed scalar
+    `h_top`; callers pull ε from here.
+
+    GRADE: PLANNING-ASSUMPTION BAND, CLASS-GENERIC (organic solids),
+    UNSOURCED for Pc:PTP. No primary measurement of the emissivity of a
+    doped p-terphenyl crystal surface exists in the project files or, to
+    current knowledge, in print. The band 0.80–0.95 is the generic
+    total-hemispherical class for nonmetallic organic solids (plastics,
+    paints, molecular solids) at ~300 K thermal IR (Incropera & DeWitt
+    Table A.11-class entries) — cited as the CLASS, not as a material
+    measurement. `eps_nominal = 0.90` is the conventional organic-solid
+    handbook point value, sitting in the band's upper half — a
+    convenience reference, not a band midpoint and not a physical claim.
+    Ratification joins the §11 item-10 Oxborrow bundle (alongside the
+    additive h_conv + h_rad composition and the fixed-ambient T³, both
+    ratified internally 2026-07-07).
+
+    Caveats:
+    - Semi-transparency: a 0.5-mm organic plate may be partially
+      transparent in bands of the thermal IR, so the effective emitting
+      surface is partly the stack below (glass, itself ε ≈ 0.9-class) —
+      the band absorbs this; do not sharpen to a point value without a
+      measurement on the actual sample form.
+    - ε enters h_rad linearly, so the band maps directly onto
+      h_rad ≈ 4.9–5.8 W m⁻² K⁻¹ at 300 K (4σT³ = 6.12 at ε = 1).
+    - Band applies at ~300 K surface temperature; re-derive h_rad, not ε,
+      for other operating points (T³ carries the temperature dependence).
+    """
+
+    eps_band_lo: float = 0.80
+    eps_band_hi: float = 0.95
+    eps_nominal: float = 0.90
+
+
+@dataclass(frozen=True)
 class PumpAbsorptionLength:
     """SPEC §6T — optical absorption length of the 520–590 nm pump in Pc:PTP.
 
@@ -766,6 +808,7 @@ DF_CAVITY_DT = CavityFreqTempCoefficient()
 K_PTP = PTerphenylThermalConductivity()
 WAX = ParaffinWaxThermal()
 GLASS_SLIDE = GlassSlideThermal()
+EMISSIVITY_PTP = PTerphenylSurfaceEmissivity()
 RIG_GEOMETRY = RigSampleGeometry()
 L_ABS_PUMP = PumpAbsorptionLength()
 
