@@ -300,9 +300,17 @@ class SpinFreqTempCoefficient:
     Bayliss). Sample: 0.1% Bridgman-grown pentacene:p-terphenyl single
     crystal, CW-ODMR vs temperature. `df_dt_hz_per_k = -101e3` is the
     region-III linear fit (monoclinic phase; region III = cold-finger
-    150-330 K per SI Table S1 footnote — "includes RT" only in
-    cold-finger readings, see the reanalysis caveat below; Fig.
-    2B(iii) red line). Sign is negative: ODMR peaks blue-shift as
+    150-330 K, the shared region-III span drawn across all three Fig.
+    2B panels — NOT independently table-sourced for X-Z: SI Table S1's
+    footnote (c) for "150-330" is attached to the X-Y row's high-T
+    sub-slope (8.7 kHz/K), one of three footnoted X-Y values (a/b/c
+    for low-T/phase-transition/high-T); the X-Z row's df/dT = 101 is
+    printed with no window footnote at all. The 150 K lower bound used
+    here for X-Z is inferred from the shared region I/II/III partition
+    (same phase transition, same cold-finger axis, all three panels),
+    not read off a footnote on the X-Z entry itself — see the
+    reanalysis caveat below; Fig. 2B(iii) red line). Sign is negative:
+    ODMR peaks blue-shift as
     temperature DECREASES (Fig. 1D/E caption) — opposite in sign to
     the STO cavity arm (~ +2.6 MHz/K), so the differential detuning
     ADDS (SPEC §6T).
@@ -333,7 +341,8 @@ class SpinFreqTempCoefficient:
       axes) shows the statistical error of any one fit window is
       negligible (+/-1-2 kHz/K); the dominant uncertainty is the
       FIT-WINDOW SYSTEMATIC: OLS gives -68.4 over cold-finger
-      150-330 K (the SI's region III), -88 over 200-330, -97 over
+      150-330 K (the shared region-III span; not itself
+      footnote-sourced for X-Z, see above), -88 over 200-330, -97 over
       220-330, and -112 over 254-324 K — the span the paper's own
       red fit line is actually drawn on (OLS reproduces the drawn
       line exactly). The printed -101 matches no stated window and

@@ -36,7 +36,7 @@ Ordinary least squares on the extracted points (slope ± statistical s.e.):
 
 | fit window (cold-finger K) | slope (kHz/K) | RMSE (kHz) | n |
 |---|---|---|---|
-| 150–330 (SI Table S1's region III) | −68.4 ± 1.7 | 930 | 173 |
+| 150–330 (shared region-III span, all 3 panels — see Finding 6) | −68.4 ± 1.7 | 930 | 173 |
 | 195–330 | −86.3 ± 1.4 | 544 | 155 |
 | 200–330 | −88.0 ± 1.3 | 509 | 153 |
 | 220–330 | −96.9 ± 1.2 | 362 | 140 |
@@ -69,6 +69,30 @@ near-flat stretch (−2 to −4 kHz/K) at 170–210 K, steepening monotonically 
    genuinely differ. Both readings argue against importing −101 as a local RT
    coefficient; a growing offset also stretches the axis and inflates |slope| at the
    high-T end.
+
+6. **Correction (2026-07-07): the "150-330 K" bound is not table-sourced for X-Z.**
+   Word-position extraction of SI page 4 (Table S1, x-column ≈382-387 pt = the
+   df/dT column) shows three footnoted values stacked in the **X-Y** row —
+   `6.8a` (y=339.9), `247b` (y=352.8), `8.7c` (y=365.8) — against footnotes a/b/c
+   = 77-125 / 125-150 (phase transition) / 150-330 [K, printed as "150-330oC" —
+   almost certainly a degree-symbol extraction artifact, not literal Celsius: 77
+   is the canonical LN2 cold-finger start, and 330°C exceeds p-terphenyl's
+   melting point]. The **X-Z** row's df/dT entry, `101` (y=423.5, same column),
+   carries **no footnote at all**. Table S1 never states a window for the X-Z
+   slope; footnote (c)'s "150-330" belongs to a different transition's
+   high-T sub-value entirely. Main-text Table 1 doesn't tabulate 101 either
+   (only 247-XY with the phase-transition asterisk) — the -101 kHz/K figure
+   exists only as prose ("101 kHz/K for Txz in region III... red line in Fig.
+   2B(iii)"), with no numeric window given anywhere in the paper.
+   **Consequence:** every "150-330 K, the SI's region III" framing above (this
+   file, SPEC §6T, `constants.py`) is better read as *the shared region I/II/III
+   partition drawn across all three Fig. 2B panels* (same crystal, same 193 K
+   phase transition, same cold-finger axis) — a reasonable inference, since
+   regions are a lattice-phase property not a per-transition one — rather than
+   a number read off a footnote attached to the X-Z entry. It was previously
+   cited as if it were the latter; it isn't. The downstream numbers (OLS fits,
+   the -101-as-band-edge verdict) are unchanged, since they come from the
+   vector extraction of the figure itself, not from the table.
 
 **Verdict for §6T:** keep −101 kHz/K as the conservative band edge of the
 −50…−101 kHz/K prior; do not promote it to an RT-local value. The band framing is now
