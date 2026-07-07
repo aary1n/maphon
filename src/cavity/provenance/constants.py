@@ -312,7 +312,8 @@ class SpinFreqTempCoefficient:
     reanalysis caveat below; Fig. 2B(iii) red line). Sign is negative:
     ODMR peaks blue-shift as
     temperature DECREASES (Fig. 1D/E caption) — opposite in sign to
-    the STO cavity arm (~ +2.6 MHz/K), so the differential detuning
+    the STO cavity arm (~ +2.7 MHz/K at 300 K — see
+    `CavityFreqTempCoefficient`), so the differential detuning
     ADDS (SPEC §6T).
 
     DO NOT use the paper's headline 247 kHz/K: that is the T_xy
@@ -376,6 +377,208 @@ class SpinFreqTempCoefficient:
     df_dt_hz_per_k: float = -101e3
     df_dt_band_lo_hz_per_k: float = -101e3
     df_dt_band_hi_hz_per_k: float = -50e3
+
+
+@dataclass(frozen=True)
+class CavityFreqTempCoefficient:
+    """SPEC §6T — df_cavity/dT of the STO TE01δ mode near room temperature.
+
+    THE PREDICTION-ARM COEFFICIENT (SPEC §7.T5 observable (b)): model-only.
+    Nothing in the Glasgow calibration thread observes the cavity arm; the
+    spin arm (`SpinFreqTempCoefficient`) is the calibrated one. Do not blur
+    the two — this constant is predicted physics, checked against
+    literature parameterisations, never against a collaboration dataset.
+
+    Derivation (encoded in `cavity_df_dt_hz_per_k`, guarded in
+    tests/test_provenance_df_cavity_dt.py): f ∝ εr^(-1/2) ⇒
+
+        df/dT = -(f/2) · (dεr/dT) / εr,    dεr/dT = -C / (T - T0)²
+
+    with the Curie-Weiss parameters below and εr, f taken from the
+    canonical constants of this module — `STO.epsilon_r_real` = 316.3
+    (primary: Goryachev 2015) and `TARGET.f_design_hz` = 1.45 GHz (§2
+    search target; the 1.4493 GHz measured peak differs by 0.05%,
+    immaterial). No fresh εr or f literals enter the derivation.
+
+    Primary (Curie-Weiss parameters, printed in text): Rupprecht & Bell,
+    Phys. Rev. 125, 1915 (1962), p. 1916, Eq. (1): ε = C/(T - Tc) with
+    C = 8.25e4 K, Tc = 37 K (extrapolated Curie temperature). Conditions:
+    SrTiO3 single-crystal and polycrystalline specimens, microwave
+    3-36 GHz, zero DC bias, paraelectric regime (their analysis is
+    restricted to T above the 112 K phase transition — the validity
+    floor below). CITATION-DEPTH CAVEAT (superscripts re-verified on
+    the page image 2026-07-07, second pass — law sentence cites ref
+    14; ref 12 = Bell & Rupprecht, IRE Trans. MTT-9, 239 (1961);
+    ref 13 = RBS below; ref 14 = AFCRL): Eq. (1)'s parameters cite
+    ref 14 = Rupprecht et al., AFCRL-TR-60-37, Raytheon, 1960 — an
+    UNPUBLISHED Air Force report. The printed C/T0 are in hand; the
+    specific NUMERIC values remain report-depth. Partially retired
+    2026-07-07: the published companion (Rupprecht, Bell & Silverman,
+    Phys. Rev. 123, 97 (1961), ref 13 on the same page — now in hand,
+    read) MEASURES the Curie-Weiss form on single crystals over
+    90-230 K, 1 kc/s-36 GHz (its Eq. (2): ε(T,0) = C/(T - Tc), "can
+    adequately be described in the form"), but prints NO numeric C or
+    Tc — only the nonlinearity constants A_hkl, B_100 and loss-fit
+    constants. So: the CW FORM at microwave on single crystals is
+    published-paper-backed in hand; the parameter VALUES still bottom
+    out in the unpublished report. Note also RBS 1961's measured
+    εr(T) window is 90-230 K — BELOW this constant's 293-310 K
+    evaluation window; RT-end support comes from the cross-checks
+    (Geyer 300 K point, Goryachev RT value) and from Saifi & Cross
+    (lineage caveat below).
+
+    Cross-check (independent group and data): Geyer, Riddle, Krupka &
+    Boatner, JAP 97, 104111 (2005) Table I reprints the Vendik-model
+    parameterisation (after Vendik et al., JAP 84, 993 (1998); ε00 =
+    2080, TC = 42 K, θD = 175 K, ξS = 0.018), validated against NIST
+    dielectric-resonator data at ~2.3 GHz, zero bias, 5.4/77/300 K. Its
+    logarithmic slope at 300 K, d(ln εr)/dT = -3.789e-3 /K, agrees with
+    R&B's -1/(T - T0) = -3.802e-3 /K to 0.4%. Only the logarithmic
+    slope is used as the cross-check: the Vendik parameterisation's
+    absolute εr(300 K) ≈ 334 runs ~6% above the canonical 316.3 —
+    flagged, not adopted.
+
+    RT-value anchor: Goryachev et al., arXiv:1508.07550 (2015) — the
+    canonical εr = 316.3 ± 2.2 primary (single crystal, stress-free
+    mount, isotropic and frequency-flat 4-11 GHz at RT). R&B's own
+    implied εr(300 K) = C/263 = 313.7 agrees to 0.8%, so mixing R&B's
+    dεr/dT with the canonical εr is harmless at the band's resolution.
+
+    GRADE: DERIVED (M→D) FROM PARAMETERS PRINTED IN IN-HAND MICROWAVE
+    SOURCES; BAND, NO PRINTED UNCERTAINTY; MODEL-ONLY ARM. Not M-grade:
+    no source measured df/dT at 1.45 GHz directly; neither
+    parameterisation prints an uncertainty; and the R&B parameter
+    VALUES bottom out in the unpublished AFCRL report above (the CW
+    form itself is published-measurement-backed in hand — RBS 1961).
+    The value stands on the two-parameterisation 0.4% agreement plus
+    the Goryachev consistency, not on any single citation chain.
+
+    Value and band: `df_dt_hz_per_k` = +2.73e6 Hz/K at t_ref = 300 K.
+    Band [+2.5e6, +2.9e6] Hz/K = bare `cavity_df_dt_hz_per_k`
+    evaluations at the operating-envelope endpoints (293 K → +2.885e6,
+    310 K → +2.537e6, rounded outward to 2 s.f.); the ±0.5%
+    parameterisation spread and ±0.8% normalisation-convention spread
+    are folded around the POINT value only, NOT stacked on the endpoint
+    evaluations (the endpoints are bare function values). The 293-310 K
+    envelope is a PLANNING ASSUMPTION (lab ambient floor 293 K + ~12 K
+    heating headroom): Oxborrow's "several tens of Celsius" inference
+    is Glasgow-crystal heating, not our-geometry STO heating — the
+    transfer is unestablished. If a wider envelope is later ratified,
+    the band widens mechanically via the window fields (e.g. 320 K →
+    ≈ +2.4e6 Hz/K) — a one-line re-derivation by design.
+
+    SIGN CONVENTION — verified from the source, not assumed:
+    ε = C/(T - Tc) with T >> Tc ⇒ dεr/dT < 0 ⇒ df_cavity/dT > 0 — the
+    cavity mode BLUE-shifts on heating. OPPOSITE in sign to the spin
+    arm (`SpinFreqTempCoefficient`, negative: spins red-shift on
+    heating), so the differential detuning ADDS:
+
+        |df_cav/dT - df_spin/dT| = df_cav/dT + |df_spin/dT|.
+
+    Caveats carried:
+
+    - LOCAL slope only. STO is a quantum paraelectric; εr(T) is steep
+      and curved (Barrett-law saturation below ~θD/2, Curie-Weiss
+      above). The point value is the local slope at 300 K, drifting
+      ±6% across 293-310 K and ±25% across 270-330 K. Never use it as
+      a global linear fit; below the 112 K transition the form is
+      invalid outright (the function raises). For excursions
+      ΔT ≳ 20 K integrate the closed form
+      Δf/f = (1/2)·ln((T2 - T0)/(T1 - T0)) rather than multiplying the
+      point slope (~5% error already at ΔT = 30 K).
+    - Measurement-regime consistency: all three sources are
+      zero-DC-bias, unstressed, single-crystal-class measurements —
+      the same regime the canonical εr = 316.3 usage assumes.
+    - Frequency transfer: R&B 3-36 GHz, Geyer ~2.3 GHz, Goryachev
+      4-11 GHz — all above our 1.45 GHz. Justified by measured
+      frequency-flatness (Goryachev: no dependence 4-11 GHz; soft-mode
+      theory: flat to >100 GHz at RT). A mild downward extrapolation,
+      stated.
+    - E-energy weighting assumed ≈ 1: the exact first-order
+      perturbation is df/f = -(p_e/2)·Δεr/εr; the §8 gate run measured
+      p_e = 0.9977, a -0.2% correction folded inside the band. A
+      forward-model finite difference over εr can retire this
+      assumption (open ask; not a §5 gate row).
+    - Lineage of the figure this displaces — CLOSED 2026-07-07: the
+      prose "+2.6 MHz/K" was W20's own back-of-envelope (Wu 2020,
+      p. 064017-8: "estimated to be around +2.6 MHz/K") via its
+      ref [48], Saifi & Cross, PRB 2, 677 (1970) — now in hand, read.
+      SC p. 678 §III B (UNANNEALED single crystal) prints the
+      modified Curie-Weiss fit, image-verified:
+
+          ε = 40 + (8.5e4)/(T - 40),   "room temperature to 100 K"
+
+      Conditions: bridge at 1 kHz, weak field, gold-electroded [100]
+      plates ~4x4x0.4 mm. Self-consistently differentiated (its own
+      ε(T) in the denominator) this gives +2.48 MHz/K at 300 K
+      (+2.51 at 298 K with W20's f); variant arithmetic — pure-CW log
+      slope 1/(T-40), or mixing SC's dε/dT with W20's εr = 312 —
+      spans ~+2.5 to +2.9. W20's "around +2.6" is therefore EXPLAINED
+      as SC-based RT arithmetic (it sits mid-spread), though W20
+      prints no intermediates to pin the exact route. SC does NOT
+      enter this constant's value or band: it is a 1 kHz ELECTRODED
+      measurement — precisely the electrode-stress artifact class
+      Goryachev 2015 identifies — whose absolute εr(300 K) ≈ 367 runs
+      ~16% above the canonical microwave 316.3 and whose logarithmic
+      slope at 300 K (-3.43e-3 /K) sits ~10% below the microwave
+      parameterisations (R&B -3.80e-3, Geyer/Vendik -3.79e-3). Its
+      implied +2.48 MHz/K lands at the band's low edge — consistent,
+      regime-mismatched, not band-setting. Verdict unchanged:
+      DISPLACED-AND-BANDED — W20's rounded figure falls inside the
+      band's low half but understates the microwave-sourced 300 K
+      local slope by ~5%.
+    """
+
+    curie_constant_k: float = 8.25e4
+    curie_weiss_t0_k: float = 37.0
+    t_validity_floor_k: float = 112.0
+    t_ref_k: float = 300.0
+    t_window_lo_k: float = 293.0
+    t_window_hi_k: float = 310.0
+    df_dt_hz_per_k: float = 2.73e6
+    df_dt_band_lo_hz_per_k: float = 2.5e6
+    df_dt_band_hi_hz_per_k: float = 2.9e6
+
+
+def cavity_df_dt_hz_per_k(
+    temp_k: float,
+    *,
+    f_hz: float | None = None,
+    epsilon_r: float | None = None,
+    curie_constant_k: float | None = None,
+    curie_weiss_t0_k: float | None = None,
+) -> float:
+    """SPEC §6T — local cavity frequency-temperature slope at `temp_k`, Hz/K.
+
+    df/dT = -(f/2)·(dεr/dT)/εr with dεr/dT = -C/(T - T0)² (Curie-Weiss;
+    Rupprecht & Bell 1962 Eq. (1) — full provenance, grade, and caveats
+    on `CavityFreqTempCoefficient`). Defaults resolve at call time to
+    the canonical constants: f = `TARGET.f_design_hz`, εr =
+    `STO.epsilon_r_real`, C/T0 = the `DF_CAVITY_DT` fields — no fresh
+    εr or f literals.
+
+    Raises ValueError below `DF_CAVITY_DT.t_validity_floor_k` (the
+    112 K phase transition; the paraelectric Curie-Weiss form is
+    invalid there). This is a LOCAL slope — see the dataclass caveats
+    before using it away from room temperature or across large ΔT.
+    """
+    if f_hz is None:
+        f_hz = TARGET.f_design_hz
+    if epsilon_r is None:
+        epsilon_r = STO.epsilon_r_real
+    if curie_constant_k is None:
+        curie_constant_k = DF_CAVITY_DT.curie_constant_k
+    if curie_weiss_t0_k is None:
+        curie_weiss_t0_k = DF_CAVITY_DT.curie_weiss_t0_k
+    if temp_k < DF_CAVITY_DT.t_validity_floor_k:
+        raise ValueError(
+            f"temp_k = {temp_k} K is below the "
+            f"{DF_CAVITY_DT.t_validity_floor_k} K phase transition; the "
+            "paraelectric Curie-Weiss form (and this local slope) is "
+            "invalid there (SPEC §6T, CavityFreqTempCoefficient)."
+        )
+    d_eps_dt = -curie_constant_k / (temp_k - curie_weiss_t0_k) ** 2
+    return -(f_hz / 2.0) * d_eps_dt / epsilon_r
 
 
 @dataclass(frozen=True)
@@ -559,6 +762,7 @@ EXTRACTION_TOL = ExtractionTolerances()
 F_M_BENCHMARK = FMBenchmarkRange()
 WALL_LOSS_THRESHOLDS = WallLossThresholds()
 DF_SPIN_DT = SpinFreqTempCoefficient()
+DF_CAVITY_DT = CavityFreqTempCoefficient()
 K_PTP = PTerphenylThermalConductivity()
 WAX = ParaffinWaxThermal()
 GLASS_SLIDE = GlassSlideThermal()
