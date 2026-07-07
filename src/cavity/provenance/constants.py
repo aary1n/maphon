@@ -715,6 +715,36 @@ class PTerphenylSurfaceEmissivity:
 
 
 @dataclass(frozen=True)
+class FreeConvectionAir:
+    """SPEC §7.T4/§7T — free-convection coefficient band, small bodies in still air.
+
+    The convective half of the Robin boundary coefficient h that the
+    thermal submodel's free surfaces carry (composed with the radiative
+    half via `cavity.thermal.radiation.h_top_with_radiation`,
+    h_eff = h_conv + h_rad).
+
+    GRADE: PLANNING-ASSUMPTION BAND, CLASS-GENERIC. Free convection from
+    small bodies in still air is a handbook class — Incropera & DeWitt,
+    Fundamentals of Heat and Mass Transfer, Ch. 9-class gas free
+    convection, 2–25 W m⁻² K⁻¹ — narrowed here to the 5–20 W m⁻² K⁻¹
+    scale this repo already uses (the `layered.py` module-docstring
+    "h ~ 5–20" scale and the h = 20 sensitivity knob of the §7.T5
+    identifiability report, `identifiability.robin_h20_frac_drop`). No
+    primary measurement exists for this rig or cavity; ratification
+    joins the §11 item-10 Oxborrow bundle (alongside the additive
+    h_conv + h_rad composition, the fixed-ambient T³, and the ε band).
+
+    Existing consumers are NOT retrofitted: `layered.py`'s docstring
+    scale and `identifiability.py`'s bare h = 20 stay as written; this
+    constant single-sources the band for NEW consumers (the
+    maser-cylinder anchor's tests and worked example, §7.T1).
+    """
+
+    h_band_lo_w_m2_k: float = 5.0
+    h_band_hi_w_m2_k: float = 20.0
+
+
+@dataclass(frozen=True)
 class PumpAbsorptionLength:
     """SPEC §6T — optical absorption length of the 520–590 nm pump in Pc:PTP.
 
@@ -809,6 +839,7 @@ K_PTP = PTerphenylThermalConductivity()
 WAX = ParaffinWaxThermal()
 GLASS_SLIDE = GlassSlideThermal()
 EMISSIVITY_PTP = PTerphenylSurfaceEmissivity()
+H_CONV_AIR = FreeConvectionAir()
 RIG_GEOMETRY = RigSampleGeometry()
 L_ABS_PUMP = PumpAbsorptionLength()
 

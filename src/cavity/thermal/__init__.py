@@ -4,7 +4,12 @@ Two anchor geometries (SPEC §7.T1 geometry split):
 
 - `layered`: Gaussian-spot spreading resistance on a layered medium
   (Hankel transform) — the Glasgow calibration-rig anchor (§7.T5).
-- (future) cylinder Bessel/Robin — the maser-crystal anchor.
+- `cylinder`: finite-cylinder Bessel/Robin conduction — the maser-crystal
+  anchor (§7.T5 observable (b), 2026-07-07). Per-surface Robin/Dirichlet
+  BCs, volumetric Beer-Lambert / uniform / surface-flux deposition, flood
+  / sub-disc / Gaussian radial profiles, native k_r ≠ k_z; closed-form
+  axial solutions (no axial truncation error). Anchor only: no
+  observable-(b) prediction runs live here.
 
 `identifiability` runs the §7.T5 check-3a sweep on top of `layered`.
 `volumetric_3a` re-checks the PLATE k–w degeneracy with the volumetric
