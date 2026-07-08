@@ -18,7 +18,9 @@ The solver is untouched: `layered.py` keeps taking a single scalar
 prior convective-only / insulated-top results exactly.
 
 Design decisions (ratified internally 2026-07-07; flagged in SPEC §7.T7
-as planning assumptions pending Oxborrow, with the ε band):
+as planning assumptions pending Oxborrow — the ε band itself was
+ratified as-is, Oxborrow-verbal 2026-07-08; the two decisions below
+remain pending):
 
 - ADDITIVE composition. Convection and radiation are parallel loss paths
   from the same surface, and the model's convective ambient and the

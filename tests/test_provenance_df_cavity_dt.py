@@ -89,6 +89,18 @@ class TestCanonicalInputConsistency:
 
 
 class TestBandAndWindow:
+    def test_window_is_the_2026_07_08_envelope_ruling(self):
+        """Operating envelope 293-323 K — SUPERVISOR-CONFIRMED
+        (Oxborrow-verbal, 2026-07-08): a 30 K heating envelope,
+        superseding the 293-310 K planning assumption. "293 + 30 =
+        323" is our reading of the verbal ruling, not his verbatim
+        range (caveat carried in the dataclass docstring). Window
+        literals pinned so the fields cannot drift silently; band
+        endpoints stay deliberately un-pinned (checked THROUGH the
+        derivation function below)."""
+        assert DF_CAVITY_DT.t_window_lo_k == 293.0
+        assert DF_CAVITY_DT.t_window_hi_k == 323.0
+
     def test_window_brackets_t_ref(self):
         assert (
             DF_CAVITY_DT.t_window_lo_k

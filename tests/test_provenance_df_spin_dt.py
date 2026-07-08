@@ -191,11 +191,22 @@ class TestConstantScriptConsistency:
         assert DF_SPIN_DT.df_dt_band_lo_hz_per_k <= band_lo_window_fit().slope_hz_per_k
         assert DF_SPIN_DT.df_dt_band_hi_hz_per_k >= band_hi_window_fit().slope_hz_per_k
 
-    def test_window_matches_cavity_operating_envelope(self):
-        """Same 293-310 numerals as the cavity arm's planning envelope
-        (different axis semantics — file axis; documented)."""
-        assert DF_SPIN_DT.t_window_lo_k == DF_CAVITY_DT.t_window_lo_k
-        assert DF_SPIN_DT.t_window_hi_k == DF_CAVITY_DT.t_window_hi_k
+    def test_window_within_cavity_operating_envelope(self):
+        """Containment, not numeral equality. The two windows have
+        DIFFERENT SEMANTICS and diverge deliberately: the spin window
+        is a Singh FILE-AXIS fit window (a raw-data grading choice,
+        293-310, unchanged this pass); the cavity window is the STO
+        operating envelope (widened to 293-323, Oxborrow-verbal
+        2026-07-08). Their historical 293-310 numeral equality was
+        coincidence, not structure — the physical requirement is only
+        that the spin coefficient is fitted INSIDE the operating
+        range, asserted here as containment so a legitimate future
+        move of the spin fit window (e.g. after Harpreet's axis
+        metadata resolves the branch) does not re-fail this test."""
+        assert DF_SPIN_DT.t_window_lo_k < DF_SPIN_DT.t_window_hi_k
+        assert DF_CAVITY_DT.t_window_lo_k < DF_CAVITY_DT.t_window_hi_k
+        assert DF_SPIN_DT.t_window_lo_k >= DF_CAVITY_DT.t_window_lo_k
+        assert DF_SPIN_DT.t_window_hi_k <= DF_CAVITY_DT.t_window_hi_k
 
     def test_sign_and_magnitude_class(self):
         """Negative, and 60-120 kHz/K class — two orders below the

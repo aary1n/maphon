@@ -470,7 +470,7 @@ class CavityFreqTempCoefficient:
     constants. So: the CW FORM at microwave on single crystals is
     published-paper-backed in hand; the parameter VALUES still bottom
     out in the unpublished report. Note also RBS 1961's measured
-    εr(T) window is 90-230 K — BELOW this constant's 293-310 K
+    εr(T) window is 90-230 K — BELOW this constant's 293-323 K
     evaluation window; RT-end support comes from the cross-checks
     (Geyer 300 K point, Goryachev RT value) and from Saifi & Cross
     (lineage caveat below).
@@ -502,18 +502,23 @@ class CavityFreqTempCoefficient:
     the Goryachev consistency, not on any single citation chain.
 
     Value and band: `df_dt_hz_per_k` = +2.73e6 Hz/K at t_ref = 300 K.
-    Band [+2.5e6, +2.9e6] Hz/K = bare `cavity_df_dt_hz_per_k`
+    Band [+2.3e6, +2.9e6] Hz/K = bare `cavity_df_dt_hz_per_k`
     evaluations at the operating-envelope endpoints (293 K → +2.885e6,
-    310 K → +2.537e6, rounded outward to 2 s.f.); the ±0.5%
+    323 K → +2.312e6, rounded outward to 2 s.f.); the ±0.5%
     parameterisation spread and ±0.8% normalisation-convention spread
     are folded around the POINT value only, NOT stacked on the endpoint
-    evaluations (the endpoints are bare function values). The 293-310 K
-    envelope is a PLANNING ASSUMPTION (lab ambient floor 293 K + ~12 K
-    heating headroom): Oxborrow's "several tens of Celsius" inference
-    is Glasgow-crystal heating, not our-geometry STO heating — the
-    transfer is unestablished. If a wider envelope is later ratified,
-    the band widens mechanically via the window fields (e.g. 320 K →
-    ≈ +2.4e6 Hz/K) — a one-line re-derivation by design.
+    evaluations (the endpoints are bare function values). The 293-323 K
+    envelope is SUPERVISOR-CONFIRMED (Oxborrow-verbal, 2026-07-08): he
+    set the operating heating envelope at 30 K, superseding the earlier
+    293-310 K planning assumption (lab ambient floor + ~17 K headroom).
+    CAVEAT: "293 + 30 = 323 K" is OUR reading of the verbal "30 K"
+    ruling, not his verbatim range. The band re-derivation stays
+    mechanical via the window fields (this pass cashed the previous
+    "one-line re-derivation by design" promise — the 2026-07-07 band
+    was [+2.5e6, +2.9e6] over 293-310 K). Oxborrow's "several tens of
+    Celsius" inference remains Glasgow-crystal heating, not
+    our-geometry STO heating — that transfer is still unestablished;
+    the envelope ruling supersedes it as the window's basis.
 
     SIGN CONVENTION — verified from the source, not assumed:
     ε = C/(T - Tc) with T >> Tc ⇒ dεr/dT < 0 ⇒ df_cavity/dT > 0 — the
@@ -528,12 +533,14 @@ class CavityFreqTempCoefficient:
     - LOCAL slope only. STO is a quantum paraelectric; εr(T) is steep
       and curved (Barrett-law saturation below ~θD/2, Curie-Weiss
       above). The point value is the local slope at 300 K, drifting
-      ±6% across 293-310 K and ±25% across 270-330 K. Never use it as
-      a global linear fit; below the 112 K transition the form is
-      invalid outright (the function raises). For excursions
+      +6%/-15% across 293-323 K and ±25% across 270-330 K. Never use
+      it as a global linear fit; below the 112 K transition the form
+      is invalid outright (the function raises). For excursions
       ΔT ≳ 20 K integrate the closed form
       Δf/f = (1/2)·ln((T2 - T0)/(T1 - T0)) rather than multiplying the
-      point slope (~5% error already at ΔT = 30 K).
+      point slope (~5% error already at ΔT = 30 K — and the ruled 30 K
+      envelope sits exactly in this regime, so budget arithmetic over
+      the full envelope should integrate, not multiply).
     - Measurement-regime consistency: all three sources are
       zero-DC-bias, unstressed, single-crystal-class measurements —
       the same regime the canonical εr = 316.3 usage assumes.
@@ -582,9 +589,9 @@ class CavityFreqTempCoefficient:
     t_validity_floor_k: float = 112.0
     t_ref_k: float = 300.0
     t_window_lo_k: float = 293.0
-    t_window_hi_k: float = 310.0
+    t_window_hi_k: float = 323.0
     df_dt_hz_per_k: float = 2.73e6
-    df_dt_band_lo_hz_per_k: float = 2.5e6
+    df_dt_band_lo_hz_per_k: float = 2.3e6
     df_dt_band_hi_hz_per_k: float = 2.9e6
 
 
@@ -731,19 +738,22 @@ class PTerphenylSurfaceEmissivity:
     baked into solver code — the solver takes only the composed scalar
     `h_top`; callers pull ε from here.
 
-    GRADE: PLANNING-ASSUMPTION BAND, CLASS-GENERIC (organic solids),
-    UNSOURCED for Pc:PTP. No primary measurement of the emissivity of a
-    doped p-terphenyl crystal surface exists in the project files or, to
-    current knowledge, in print. The band 0.80–0.95 is the generic
-    total-hemispherical class for nonmetallic organic solids (plastics,
-    paints, molecular solids) at ~300 K thermal IR (Incropera & DeWitt
-    Table A.11-class entries) — cited as the CLASS, not as a material
-    measurement. `eps_nominal = 0.90` is the conventional organic-solid
-    handbook point value, sitting in the band's upper half — a
-    convenience reference, not a band midpoint and not a physical claim.
-    Ratification joins the §11 item-10 Oxborrow bundle (alongside the
-    additive h_conv + h_rad composition and the fixed-ambient T³, both
-    ratified internally 2026-07-07).
+    GRADE: CLASS-GENERIC BAND, RATIFIED AS-IS (Oxborrow-verbal,
+    2026-07-08), UNSOURCED for Pc:PTP. No primary measurement of the
+    emissivity of a doped p-terphenyl crystal surface exists in the
+    project files or, to current knowledge, in print. The band 0.80–0.95
+    is the generic total-hemispherical class for nonmetallic organic
+    solids (plastics, paints, molecular solids) at ~300 K thermal IR
+    (Incropera & DeWitt Table A.11-class entries) — cited as the CLASS,
+    not as a material measurement. `eps_nominal = 0.90` is the
+    conventional organic-solid handbook point value, sitting in the
+    band's upper half — a convenience reference, not a band midpoint and
+    not a physical claim. The 2026-07-08 ratification covers the band
+    AS-IS — band, nominal, and caveats unchanged; it does not convert
+    the class-generic band into a material measurement. ε thereby
+    LEAVES the §11 item-10 Oxborrow bundle; the additive h_conv + h_rad
+    composition and the fixed-ambient T³ REMAIN in it (ratified
+    internally 2026-07-07, still pending Oxborrow).
 
     Caveats:
     - Semi-transparency: a 0.5-mm organic plate may be partially
@@ -771,16 +781,30 @@ class FreeConvectionAir:
     half via `cavity.thermal.radiation.h_top_with_radiation`,
     h_eff = h_conv + h_rad).
 
-    GRADE: PLANNING-ASSUMPTION BAND, CLASS-GENERIC. Free convection from
-    small bodies in still air is a handbook class — Incropera & DeWitt,
-    Fundamentals of Heat and Mass Transfer, Ch. 9-class gas free
-    convection, 2–25 W m⁻² K⁻¹ — narrowed here to the 5–20 W m⁻² K⁻¹
-    scale this repo already uses (the `layered.py` module-docstring
-    "h ~ 5–20" scale and the h = 20 sensitivity knob of the §7.T5
-    identifiability report, `identifiability.robin_h20_frac_drop`). No
-    primary measurement exists for this rig or cavity; ratification
-    joins the §11 item-10 Oxborrow bundle (alongside the additive
-    h_conv + h_rad composition, the fixed-ambient T³, and the ε band).
+    GRADE: PLANNING-ASSUMPTION BAND, CLASS-GENERIC — label unchanged by
+    the 2026-07-08 reframe below: what was ratified is the REGIME
+    FRAMING, not a measured value. The band is free convection from
+    small bodies in OPEN STILL AIR — Incropera & DeWitt, Fundamentals
+    of Heat and Mass Transfer, Ch. 9-class gas free convection,
+    2–25 W m⁻² K⁻¹ — narrowed here to the 5–20 W m⁻² K⁻¹ scale this
+    repo already uses (the `layered.py` module-docstring "h ~ 5–20"
+    scale and the h = 20 sensitivity knob of the §7.T5 identifiability
+    report, `identifiability.robin_h20_frac_drop`). No primary
+    measurement exists for this rig or cavity.
+
+    Regime reframe (Oxborrow-verbal, 2026-07-08): BOTH real geometries
+    likely sit BELOW the open-air band — the Glasgow rig's enclosure is
+    unknown (Angus ask, §11 item 5 rider: a housing suppresses free
+    circulation), and the maser crystal sits in the semi-enclosed STO
+    bore (suppressed circulation). Treat 5–20 as a plausible CEILING;
+    h → 0 remains the floor via the switchable Robin BC (insulated
+    limit).
+
+    Forced-air variant (Oxborrow suggestion, verbal, 2026-07-08 — NOT
+    adopted): forced-air cooling as a device design option would move h
+    into the forced-gas class (~25–250 W m⁻² K⁻¹). Recorded as a
+    flagged FUTURE SWEEP only — not a current modelling target; no
+    constant carries a forced-air value.
 
     Existing consumers are NOT retrofitted: `layered.py`'s docstring
     scale and `identifiability.py`'s bare h = 20 stay as written; this

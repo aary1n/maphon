@@ -141,7 +141,8 @@ Convergence and validity caveats
   conductance, §7.T6-style sapphire sink) enters later.
 
 SPEC-silent decisions (D1–D7, taken 2026-07-07 as parameterised planning
-assumptions — flagged for Oxborrow ratification, §11 item-10 bundle)
+assumptions — flagged for Oxborrow ratification, §11 item-10 bundle;
+D2's illumination geometry ruled 2026-07-08, see D2)
 ------------------------------------------------------------------------
 D1  Mounting/contact: fully parameterised per-surface BCs (independent Robin
     h per surface, ambient = bath, exact Dirichlet option). NO hard-coded
@@ -150,12 +151,16 @@ D1  Mounting/contact: fully parameterised per-surface BCs (independent Robin
     side/top — Oxborrow's "substrate below at room temperature" framing —
     labelled a planning assumption.
 D2  Pump entry: AXIAL illumination of the z = 0 end face, Beer-Lambert in
-    depth (§7.T5 volumetric convention; §7.T7 rider (a)). Side-pumping —
+    depth (§7.T5 volumetric convention; §7.T7 rider (a)).
+    SUPERVISOR-PREFERRED (Oxborrow-verbal, 2026-07-08 — upgraded from
+    planning assumption): END-FIRE pumping is the preferred geometry for
+    our maser, so axial illumination is the ruled default; adapt to
+    side-fire only if the Glasgow rig requires it — whether it does is an
+    Angus metadata question (SPEC §11 item 5 rider). Side-pumping —
     W20's invasive-LC pump geometry is SIDE-ON — is not axisymmetric about
     the cylinder axis and is outside this eigenbasis: EXCLUDED, a structural
-    limitation of this anchor, not a parameter choice. If our maser pump is
-    also side-on this anchor's illumination model must be revisited — a
-    question for Oxborrow, not a footnote.
+    limitation of this anchor, not a parameter choice (unchanged by the
+    ruling).
 D3  Radial beam profile: flood (default) / uniform sub-disc / truncated-
     renormalised Gaussian.
 D4  Unabsorbed pump light: truncated-renormalised exponential (see source

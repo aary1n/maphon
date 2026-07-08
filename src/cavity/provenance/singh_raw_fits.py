@@ -55,10 +55,13 @@ SIGMA_QUANT_MHZ = FREQ_QUANTUM_MHZ / math.sqrt(12.0)
 # frequency jump) anchors the cold-finger-branch offset.
 T_TRANSITION_ABS_K = 193.0
 
-# Operating-temperature window, same numerals as
-# CavityFreqTempCoefficient's 293-310 K planning envelope — but on the
-# FILE axis (face-value branch). Under the cold-finger branch the same
-# actual window maps down by `coldfinger_offset_k()`.
+# Operating-temperature window on the FILE axis (face-value branch).
+# The numerals matched CavityFreqTempCoefficient's then-293-310 K
+# planning envelope at grading time (2026-07-07); the cavity envelope
+# has since widened to 293-323 K (Oxborrow-verbal, 2026-07-08) — this
+# fit window is a raw-data grading choice and deliberately unchanged.
+# Under the cold-finger branch the same actual window maps down by
+# `coldfinger_offset_k()`.
 T_WINDOW_LO_K = 293.0
 T_WINDOW_HI_K = 310.0
 
