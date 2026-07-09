@@ -54,3 +54,27 @@ def axisymmetric_volume_integral(
     # no re-implementation is allowed.
     integrand = weights_m2 * r_m * g
     return complex(2.0 * math.pi * integrand.sum())
+
+
+def axisymmetric_node_volumes(
+    r_m: NDArray[np.floating],
+    weights_m2: NDArray[np.floating],
+) -> NDArray[np.floating]:
+    """Per-node volume measure dV_i = 2*pi * r_i * w_i in m^3.
+
+    The discrete measure behind `axisymmetric_volume_integral`
+    (int g dV ~= sum_i dV_i * g_i), exposed for consumers that need the
+    measure itself rather than an integral: probe measures over weight
+    densities (`cavity.extraction.weights`), and volume-weighted
+    statistics/histograms over (r, z) nodes (the §C export's
+    coupling-histogram recipe — uniform (r, z) samples are NOT
+    volume-uniform). Lives here so the Jacobian still enters in exactly
+    one module.
+    """
+    if r_m.shape != weights_m2.shape:
+        raise ValueError(
+            f"shape mismatch: r_m={r_m.shape}, weights_m2={weights_m2.shape}"
+        )
+    # JACOBIAN: the same 2*pi * r * dr * dz volume element as
+    # axisymmetric_volume_integral, returned per node instead of summed.
+    return 2.0 * math.pi * r_m * weights_m2

@@ -13,6 +13,9 @@ Layout:
   qfactor.py     — Q with sign assertion + emw.Qfactor cross-check
   purcell.py     — F_m
   validate.py    — SPEC §8 PEC + lossy-dielectric Q consistency hook
+  weights.py     — §7.T5(b) normalised weight functionals (cavity-arm
+                   w_E + companion p_e; spin-arm w_s with parameterised
+                   SpinProjection, |H|^2 default)
 
 Top-level `extract(field)` runs the full pipeline and returns an
 `ExtractionResult` with both V_mode and both F_m variants populated.
@@ -30,8 +33,20 @@ from cavity.extraction.modal import (
 )
 from cavity.extraction.purcell import magnetic_purcell_factor
 from cavity.extraction.qfactor import q_from_eigenfrequency
-from cavity.extraction.quadrature import axisymmetric_volume_integral
+from cavity.extraction.quadrature import (
+    axisymmetric_node_volumes,
+    axisymmetric_volume_integral,
+)
 from cavity.extraction.validate import assert_pec_lossy_q_consistency
+from cavity.extraction.weights import (
+    CavityArmWeight,
+    SpinArmWeight,
+    SpinProjection,
+    WeightField,
+    cavity_arm_weight,
+    projected_h2_density,
+    spin_arm_weight,
+)
 
 
 @dataclass(frozen=True)
@@ -92,14 +107,22 @@ def extract(field: FieldSample) -> ExtractionResult:
 
 
 __all__ = [
+    "CavityArmWeight",
     "ExtractionResult",
     "FieldSample",
     "ModeVolumes",
+    "SpinArmWeight",
+    "SpinProjection",
+    "WeightField",
     "assert_pec_lossy_q_consistency",
+    "axisymmetric_node_volumes",
     "axisymmetric_volume_integral",
+    "cavity_arm_weight",
     "electric_filling_factor",
     "extract",
     "magnetic_purcell_factor",
     "mode_volumes",
+    "projected_h2_density",
     "q_from_eigenfrequency",
+    "spin_arm_weight",
 ]

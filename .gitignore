@@ -71,6 +71,11 @@ outputs/
 # not re-derivable without a licence session — tracked (npz via LFS), same
 # rationale as the refs/ .mph exception above.
 !refs/gate_runs/**
+# AND refs/exports/: committed field-export reference bundles
+# (docs/field_export_schema.md; schema examples / handoff artifacts).
+# The npz is LFS-routed via .gitattributes; these are citation targets,
+# re-derivable from refs/gate_runs records but frozen for the handoff.
+!refs/exports/**
 
 # --- Jupyter ---------------------------------------------------------------
 .ipynb_checkpoints/
