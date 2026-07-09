@@ -1,0 +1,209 @@
+{
+  "conventions": {
+    "azimuthal_index_m": 0,
+    "component_order": [
+      "r",
+      "phi",
+      "z"
+    ],
+    "frequency": "cyclic hertz (Hz), NOT angular rad/s",
+    "grid_ordering": "flattened 'ij': reshape (N,) arrays to shape_rz = (n_r, n_z); r varies slowest",
+    "permittivity": "eps_r = eps_r' * (1 - i*tan_delta)",
+    "phasor": "exp(+i*omega*t); Im(f) > 0 means temporal decay",
+    "q_definition": "Q = f'/(2 f'') from the bare complex eigenfrequency (SPEC section 11 item 4); consumed, never re-derived",
+    "units": "SI throughout; coordinates m, fields V/m and A/m",
+    "volume_element": "dV = 2*pi*r dr dz"
+  },
+  "export_schema_version": 1,
+  "exporter": {
+    "exported_at_utc": "2026-07-09T16:03:20+00:00",
+    "git_commit": "f9dd89899c687e52bbbba4f30526b552f3285346",
+    "git_dirty": false,
+    "package": "sto-maser-cavity",
+    "package_version": "0.0.1",
+    "schema_doc": "FIELD_EXPORT_SCHEMA.md"
+  },
+  "mode_selection": {
+    "criteria": {
+      "axis_noise_floor_fraction": 0.1,
+      "max_axis_hz_sign_changes": 0,
+      "min_axis_hz_antinode_ratio": 0.5,
+      "min_azimuthal_e_energy_fraction": 0.99
+    },
+    "criteria_source": "package defaults at export time \u2014 the SolveRecord meta (persistence schema 1) does not record the thresholds used at solve time",
+    "method": "SPEC section 2 field-symmetry test (azimuthal-E dominance, on-axis Hz antinode, single axial lobe); proximity to search_hz used ONLY as a tiebreak among field-verified candidates \u2014 never a hardcoded index",
+    "picked_index_semantics": "picked_index indexes the spectrum_* arrays; the solve.diagnostics list covers only candidates with Im(f) > 0, so its positions need not align with spectrum indices"
+  },
+  "normalisation": {
+    "convention": "unit_total_stored_em_energy",
+    "note": "e_complex/h_complex are scaled by 1/sqrt(raw_total_energy_j); multiply by sqrt(raw_total_energy_j) to recover raw COMSOL amplitudes. Densities: u_E = eps0*eps_r'*|E|^2/4, u_H = mu0*|H|^2/4 (time-averaged peak phasors). u_e_fraction ~ 0.5 is a mode-health diagnostic (U_E = U_H at resonance).",
+    "raw_total_energy_j": 9.577493007898207e-16,
+    "raw_u_e_j": 4.813406685240458e-16,
+    "raw_u_h_j": 4.764086322657749e-16,
+    "total_energy_j": 1.0,
+    "u_e_fraction": 0.5025748054601573
+  },
+  "q_loading": {
+    "note": "Q here is the eigensolve (unloaded, material+wall) quality factor; no coupling port is modelled. The Maxwell-Bloch kappa_c = 2*pi*f/Q_L (rad/s) needs the LOADED Q_L: de-load convention Q_0 = Q_L*(1 + k) with k = 0.2 (Breeze 2017; Wu 2020 coupling unstated - SPEC section 11 item 3). The loaded/unloaded split is a flagged, separate pass \u2014 see the schema doc's kappa_c section and its W20 angular-'Hz' trap warning.",
+    "q_is_unloaded": true
+  },
+  "solve": {
+    "comsol_version": "6.0",
+    "created_at_utc": "2026-07-06T21:16:29+00:00",
+    "diagnostics": [
+      {
+        "axis_hz_antinode_ratio": 1.0,
+        "axis_hz_sign_changes": 28,
+        "azimuthal_e_energy_fraction": 4.064241175280563e-22,
+        "f_imag_hz": 34165.47727500973,
+        "f_real_hz": 124.99979003389099
+      },
+      {
+        "axis_hz_antinode_ratio": 1.0,
+        "axis_hz_sign_changes": 28,
+        "azimuthal_e_energy_fraction": 4.806890834217432e-22,
+        "f_imag_hz": 28.60870707816124,
+        "f_real_hz": 32642.199073354117
+      },
+      {
+        "axis_hz_antinode_ratio": 1.0,
+        "axis_hz_sign_changes": 0,
+        "azimuthal_e_energy_fraction": 1.0,
+        "f_imag_hz": 172529.53843848748,
+        "f_real_hz": 3144446185.2020273
+      },
+      {
+        "axis_hz_antinode_ratio": 1.0,
+        "axis_hz_sign_changes": 1,
+        "azimuthal_e_energy_fraction": 1.0,
+        "f_imag_hz": 224080.2665138564,
+        "f_real_hz": 4081945031.99336
+      },
+      {
+        "axis_hz_antinode_ratio": 0.5765062966747803,
+        "axis_hz_sign_changes": 40,
+        "azimuthal_e_energy_fraction": 7.705396762836463e-31,
+        "f_imag_hz": 244595.39545513518,
+        "f_real_hz": 4494132962.874325
+      },
+      {
+        "axis_hz_antinode_ratio": 1.0,
+        "axis_hz_sign_changes": 2,
+        "azimuthal_e_energy_fraction": 1.0,
+        "f_imag_hz": 291115.7213251307,
+        "f_real_hz": 5301683450.720711
+      },
+      {
+        "axis_hz_antinode_ratio": 0.6474406530192017,
+        "axis_hz_sign_changes": 2,
+        "azimuthal_e_energy_fraction": 1.8820417080757556e-28,
+        "f_imag_hz": 295874.4099639302,
+        "f_real_hz": 5395757990.839499
+      },
+      {
+        "axis_hz_antinode_ratio": 1.0,
+        "axis_hz_sign_changes": 0,
+        "azimuthal_e_energy_fraction": 1.0,
+        "f_imag_hz": 347732.5855088404,
+        "f_real_hz": 6337391162.54384
+      },
+      {
+        "axis_hz_antinode_ratio": 1.0,
+        "axis_hz_sign_changes": 11,
+        "azimuthal_e_energy_fraction": 8.553124082630163e-23,
+        "f_imag_hz": 362869.98142154695,
+        "f_real_hz": 6615379891.397324
+      },
+      {
+        "axis_hz_antinode_ratio": 1.0,
+        "axis_hz_sign_changes": 3,
+        "azimuthal_e_energy_fraction": 1.0,
+        "f_imag_hz": 365896.95096169587,
+        "f_real_hz": 6663841439.427876
+      }
+    ],
+    "fingerprint": {
+      "geometry": {
+        "box_height_m": 0.01842,
+        "box_radius_m": 0.00614,
+        "dielectric_height_m": 0.00492,
+        "dielectric_minor_radius_m": null,
+        "dielectric_radius_m": 0.00246,
+        "shape": "puck"
+      },
+      "grid": {
+        "n_r": 201,
+        "n_z": 301
+      },
+      "materials": {
+        "copper_mu_r": 1.0,
+        "copper_sigma": 60000000.0,
+        "sto_epsilon_r_real": 316.3,
+        "sto_mu_r": 1.0,
+        "sto_sigma": 0.0,
+        "sto_tan_delta": 0.00011,
+        "wall_pec": true
+      },
+      "mesh": {
+        "air_max_h_m": 0.0005,
+        "curved_dielectric_boundary": true,
+        "dielectric_max_h_m": 0.000125
+      },
+      "schema_version": 1,
+      "study": {
+        "azimuthal_index_m": 0,
+        "n_modes": 12,
+        "search_hz": 3100000000.0,
+        "wall_bc": "pec"
+      }
+    },
+    "interface_tag": "emw",
+    "mesh_element_count": 3825,
+    "picked_index": 4,
+    "q_emw_cross_check": 9112.776321264915,
+    "record_hash": "888536d768e0fba1"
+  },
+  "status_notes": [
+    "SCHEMA EXAMPLE, not physics handoff: gain_region_mask is the STO-dielectric fallback (Phase 1b bore + pentacene crystal unbuilt) \u2014 spin-arm quantities describe the STO puck, NOT the pentacene gain region.",
+    "PEC-walled solve: no wall loss in Q; the impedance-walled variant is the SPEC \u00a74 companion."
+  ],
+  "summary": {
+    "export_schema_version": 1,
+    "f_imag_hz": 172529.53843848748,
+    "f_m_global": 30310524.84453326,
+    "f_m_local": 30310524.84453326,
+    "f_real_hz": 3144446185.2020273,
+    "gain_mask_is_fallback": true,
+    "h_phi_energy_share": 2.0280536377239128e-31,
+    "magnetic_filling_factor": 0.7840336668441453,
+    "p_e": 0.9976566720273174,
+    "q": 9112.776321264915,
+    "q_emw_cross_check": 9112.776321264915,
+    "raw_total_energy_j": 9.577493007898207e-16,
+    "record_hash": "888536d768e0fba1",
+    "spin_projection_mode": "isotropic_h2",
+    "u_e_fraction": 0.5025748054601573,
+    "u_e_raw_j": 4.813406685240458e-16,
+    "u_h_raw_j": 4.764086322657749e-16,
+    "v_mode_global_m3": 1.9799233667058304e-08,
+    "v_mode_local_m3": 1.9799233667058304e-08
+  },
+  "weights": {
+    "w_e_per_m3": {
+      "companion_p_e": 0.9976566720273174,
+      "definition": "w_E = eps'|E|^2 / int_STO eps'|E|^2 dV over dielectric_mask; int w_E dV = 1",
+      "note": "p_e (STO share of total electric energy) is carried separately and never folded into the weight"
+    },
+    "w_spin_per_m3": {
+      "definition": "w_s = |H_proj|^2 / int_gain |H_proj|^2 dV over gain_region_mask; int w_s dV = 1",
+      "gain_mask_is_fallback": true,
+      "h_phi_energy_share": 2.0280536377239128e-31,
+      "magnetic_filling_factor": 0.7840336668441453,
+      "projection": {
+        "components": null,
+        "mode": "isotropic_h2"
+      },
+      "projection_rung": "isotropic |H|^2 default is literature-backed (Breeze 2017 npj QI 3, 40; arXiv:2412.21166 practice); axis-projected variants implement Breeze's S_y statement \u2014 derived, unratified"
+    }
+  }
+}
