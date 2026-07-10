@@ -7,9 +7,15 @@ Two switchable dielectric cross-sections (`DielectricShape`):
   TORUS  ring with major radius `dielectric_radius_m` and circular minor
          radius `dielectric_minor_radius_m`, centred at the mid-plane.
 
-Booth's appendix under-specifies the cross-section (gap #1, SPEC §11) —
-expose the switch and let §4 (wall-loss split) decide empirically which
-shape reproduces the Booth two-point target.
+Booth's appendix under-specified the cross-section (gap #1, SPEC §11);
+the switch was exposed so §4 (wall-loss split) could decide empirically.
+RESOLVED at the Booth point (2026-07-10, refs/booth_geometry_recovery.md):
+the dielectric is a TORUS (Booth's own words, pp. 13/16), App. A's
+2.46 mm is the cross-section (MINOR) radius per Table 4's x/5 ratio
+(ratio-exact 2.456 mm), and the major radius is the one free DOF,
+pinned at x/2 = 6.14 mm by the supervisor .mph (= App. A's anapole
+row). The recovered values live in `provenance.GEOM_BOOTH_TE01D`; the
+puck branch stays for non-Booth studies (e.g. the §8 PEC anchors).
 
 Pure Python. COMSOL knows nothing about this module; `build.py`
 translates the geometry into MPh calls.
@@ -149,11 +155,17 @@ class CavityGeometry:
         dielectric_minor_radius_m: float | None = None,
         nominal: NominalGeometry = GEOM,
     ) -> "CavityGeometry":
-        """Build the Booth Appendix A geometry from `NominalGeometry`.
+        """Build a geometry from `NominalGeometry` (the SUPERSEDED
+        width-as-diameter reading — see `NominalGeometry`'s docstring).
 
         Pass `dielectric_height_m` for PUCK or `dielectric_minor_radius_m`
-        for TORUS — Booth tabulates only the major radius (2.46 mm); the
-        second dimension is unpinned (SPEC §11 gap #1).
+        for TORUS. NOTE (2026-07-10 recovery): Booth's tabulated 2.46 mm
+        is the torus MINOR (cross-section) radius per Table 4, not the
+        major radius as this constructor's nominal wiring assumes; the
+        major radius is the free DOF, pinned at x/2 by the supervisor
+        .mph. For the Booth point build from `GEOM_BOOTH_TE01D` directly
+        (validation.providers does); this constructor remains for the
+        §8 anchors that solved at the old nominals.
         """
         return cls(
             box_radius_m=nominal.box_radius_m,

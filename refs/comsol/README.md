@@ -12,10 +12,15 @@ inspections don't need to re-launch the GUI to find out what each file is.
 
 ## `booth/2D Resonator Lossy.mph`
 
-**STO TE01δ resonator, torus dielectric in a copper cavity.** Closes the
-**`dielectric_shape = torus`** half of SPEC §11 gap #1 (Booth's appendix is
-ambiguous between puck and torus; this is the torus implementation). The
-published-paper dimensions are still outstanding — see "deviations" below.
+**STO ANAPOLE resonator (Booth App. A anapole row, verbatim), torus dielectric
+in a copper cavity.** Identification corrected 2026-07-10 (see
+`refs/booth_geometry_recovery.md`): the read-off values below match Booth's
+Appendix A (p. 29) **anapole** row — 22.36 / 33.54 / 4.472 mm — exactly, with
+"Resonator Width" read as the axisymmetric r-extent, and the solved
+Q = 9581.37 matches Table 8's anapole Q = 9.58E+03 to 3 s.f. This file is what
+pinned the recovery: it proves width = r-extent, torus topology, minor radius
+= the tabulated "Dielectric Radius" (= x/5, Table 4), and the untabulated
+major radius = the radial midpoint x/2.
 
 | | Value |
 |---|---|
@@ -44,11 +49,17 @@ f′/(2 f″) from it reproduces `emw.Qfactor` exactly (e.g. 1.451348 GHz →
 Q = 9581.37). This is what the retracted probe got wrong — one prefix.
 Guarded in `tests/test_comsol_mph_server.py` (requires_comsol tier).
 
-**Deviations from SPEC §11 Booth nominals (App. A):** box height is 1.82×
-Booth's 18.42 mm, dielectric cross-section radius is 1.82× Booth's 2.46 mm,
-but cavity radial extent is **3.64×** Booth's 6.14 mm — i.e. *not* a uniform
-scale of her published numbers. Treat as a Booth-tradition torus reference,
-not as a drop-in replacement for her paper geometry.
+**Superseded description (kept for the audit trail):** this file was
+previously recorded here as a "1.82×-scaled torus variant" with non-uniform
+"deviations" from Booth's TE01δ nominals (height 1.82×, cross-section 1.82×,
+radial extent "3.64×"). That reading was a misidentification produced by
+comparing against the TE01δ row with width read as a diameter. Against the
+anapole row with width = r-extent the file matches **uniformly and exactly**
+(the anapole row is 22.36/12.28 ≈ 1.82× the TE01δ row by Table 4's
+proportionate-scaling rule — the "1.82×" was real, the row was wrong). Booth's
+TE01δ geometry is recovered in `refs/booth_geometry_recovery.md` and
+single-sourced as `provenance.GEOM_BOOTH_TE01D`; Q = 9581.37 ↔ Table 8 anapole
+9.58E+03 is the cross-check that pins the identification.
 
 **What this anchors in the repo.** This is the first concrete supervisor-
 provided STO model with the **right material physics + torus topology** at
@@ -89,10 +100,13 @@ this file.
 
 ## What's still missing (open asks)
 
-1. **Booth's actual paper-geometry `.mph`** — the published (12.28 × 18.42
-   mm cavity, 2.46 mm dielectric radius) numbers from SPEC §11 line 31.
-   The torus file above does not supply these dimensions.
-2. **The `dielectric_shape = puck` variant** — needed for the SPEC §11
-   "implement both and let §4 decide" plan.
+1. ~~**Booth's actual paper-geometry `.mph`**~~ — **CLOSED 2026-07-10 by
+   document recovery** (`refs/booth_geometry_recovery.md`): the TE01δ
+   geometry is fully determined from App. A + Table 4 + this file's
+   anapole correspondence; no further `.mph` needed. (Booth's own TE01δ
+   `.mph`, if it ever arrives, becomes a nice-to-have cross-check.)
+2. ~~**The `dielectric_shape = puck` variant**~~ — moot at the Booth point:
+   the torus form is Booth's own statement (pp. 13/16); the puck branch
+   remains in the geometry engine for non-Booth studies.
 3. **The Oxborrow 2007 PDF itself** — SPEC §8/§11 line 128 names it as the
    traceability citation; not in the repo yet.

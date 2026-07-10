@@ -14,6 +14,7 @@ without touching graded provenance.
 """
 
 from cavity.provenance.constants import (
+    BOOTH_MPH_TAN_DELTA,
     COPPER,
     CRYSTAL,
     C_LIGHT,
@@ -21,11 +22,13 @@ from cavity.provenance.constants import (
     EXTRACTION_TOL,
     F_M_BENCHMARK,
     GEOM,
+    GEOM_BOOTH_TE01D,
     STO,
     TARGET,
     TARGETS,
     TOL,
     WALL_LOSS_THRESHOLDS,
+    BoothTE01DeltaGeometry,
     Copper,
     Crystal,
     ExtractionTolerances,
@@ -50,6 +53,9 @@ __all__ = [
     "GateCheckSpec",
     "GateRowSpec",
     "GateWindow",
+    "BOOTH_MPH_TAN_DELTA",
+    "BoothTE01DeltaGeometry",
+    "GEOM_BOOTH_TE01D",
     "COPPER",
     "CRYSTAL",
     "C_LIGHT",

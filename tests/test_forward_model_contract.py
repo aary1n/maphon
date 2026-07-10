@@ -196,6 +196,93 @@ class TestComsolUnavailablePath:
             )
 
 
+class TestWallLossStudyMaterialsPropagation:
+    """§5a prerequisite: a custom base MaterialSpec (e.g. the Booth
+    faithful-branch tan_delta) must reach BOTH §4 arms — the
+    `materials=None` placeholder in run_wall_loss_study's common dict
+    is overridden per-arm via material_spec_for(study, base)."""
+
+    def test_custom_base_materials_reach_both_arms(self, monkeypatch):
+        from types import SimpleNamespace
+
+        from cavity.forward_model import runner as runner_mod
+        from cavity.provenance import BOOTH_MPH_TAN_DELTA
+        from cavity.provenance.constants import STOSingleCrystal
+
+        captured: list[tuple[WallBC, MaterialSpec]] = []
+
+        def fake_run_convergence_study(geom, study, materials=None, **kwargs):
+            captured.append((study.wall_bc, materials))
+            q = 9500.0 if study.wall_bc is WallBC.PEC else 7000.0
+            return SimpleNamespace(
+                finest=SimpleNamespace(extraction=SimpleNamespace(q=q)),
+                sigma_q=1.0,
+            )
+
+        monkeypatch.setattr(
+            runner_mod, "run_convergence_study", fake_run_convergence_study
+        )
+        custom_sto = STOSingleCrystal(tan_delta=BOOTH_MPH_TAN_DELTA)
+        result = runner_mod.run_wall_loss_study(
+            _nominal_puck(),
+            EigenStudyConfig(),
+            materials=MaterialSpec(sto=custom_sto),
+        )
+        assert len(captured) == 2
+        by_bc = dict(captured)
+        assert by_bc[WallBC.IMPEDANCE].sto == custom_sto
+        assert by_bc[WallBC.PEC].sto == custom_sto
+        # each arm re-derives ONLY the wall switch
+        assert by_bc[WallBC.IMPEDANCE].wall_pec is False
+        assert by_bc[WallBC.PEC].wall_pec is True
+        assert result.decomposition.q_total == pytest.approx(7000.0)
+        assert result.decomposition.q_diel == pytest.approx(9500.0)
+
+
+class TestConvergenceStudySaveMph:
+    """`save_mph_dir` reaches the FINEST ladder level only (the §5a
+    archive keeps one raw .mph per gated arm, not the whole ladder)."""
+
+    def test_save_mph_dir_finest_level_only(self, monkeypatch, tmp_path):
+        from types import SimpleNamespace
+
+        from cavity.forward_model import runner as runner_mod
+
+        # monotonically shrinking deltas so assess_convergence passes
+        freqs = [
+            complex(1.45e9 + 4000.0, 7.0e4 + 40.0),
+            complex(1.45e9 + 1000.0, 7.0e4 + 10.0),
+            complex(1.45e9, 7.0e4),
+        ]
+        seen_dirs: list = []
+
+        def fake_run_forward_model(
+            geom, study, materials=None, mesh_cfg=None, **kwargs
+        ):
+            i = len(seen_dirs)
+            seen_dirs.append(kwargs.get("save_mph_dir"))
+            return SimpleNamespace(
+                record=SimpleNamespace(
+                    complex_eigenfrequency_hz=freqs[i],
+                    mesh_element_count=100 * (i + 1),
+                    record_hash=f"synthetic{i}",
+                ),
+                extraction=None,
+                from_cache=False,
+            )
+
+        monkeypatch.setattr(
+            runner_mod, "run_forward_model", fake_run_forward_model
+        )
+        runner_mod.run_convergence_study(
+            _nominal_puck(),
+            EigenStudyConfig(),
+            n_levels=3,
+            save_mph_dir=tmp_path,
+        )
+        assert seen_dirs == [None, None, tmp_path]
+
+
 class TestRefinementLadderConfigs:
     def test_ladder_shrinks_both_sizes(self):
         from cavity.forward_model.mesh import refinement_ladder

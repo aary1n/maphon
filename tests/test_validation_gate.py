@@ -260,7 +260,16 @@ class TestDeferredGate:
         report = run_gate(provider)
         check = check_by_name(report, "booth_two_point/q")
         assert reason in check.notes
-        assert "gap #1" in check.notes  # row blocked_on rides along
+        # gap #1 CLOSED 2026-07-10 (geometry recovery,
+        # refs/booth_geometry_recovery.md): the Booth rows no longer
+        # carry a blocked_on ride-along — a deferred note is just the
+        # provider's reason now.
+        assert "gap #1" not in check.notes
+        assert "row blocked on" not in check.notes
+        # the one remaining blocked row still rides its blocker along
+        conf = check_by_name(report, "confinement_trend/monotonic")
+        assert "row blocked on" in conf.notes
+        assert "confinement sweep" in conf.notes
 
     def test_status_serialises_to_required_literal(self):
         report = run_gate(StaticProvider())
@@ -760,28 +769,70 @@ class TestAggregation:
 
 class TestProviders:
     def test_live_provider_importable_and_deferrable_without_mph(self):
-        # empty_cavity() and pec_lossy() are the two LIVE arms — not
-        # called here (they would start a licence session; MPh is
-        # installed on this host). The still-blocked arms defer.
+        # Since the 2026-07-10 geometry recovery, empty_cavity(),
+        # pec_lossy(), booth_walls_on() and wall_loss_split() are ALL
+        # live arms — not called here (they would start a licence
+        # session; MPh is installed on this host). Only the
+        # confinement-trend row still defers unconditionally.
         provider = LiveComsolProvider(client=None)
-        assert isinstance(provider.booth_walls_on(), Unavailable)
-        assert isinstance(provider.confinement_trend(), Unavailable)
-        assert isinstance(provider.wall_loss_split(), Unavailable)
+        conf = provider.confinement_trend()
+        assert isinstance(conf, Unavailable)
+        assert "confinement sweep" in conf.reason
         repro = provider.reproducibility()
         assert repro.comsol_version is None
         assert repro.rng_seed is None
 
     def test_live_provider_through_gate_defers_blocked_rows(self):
         # Same single code path, no live solves (need a licence):
-        # patch the two wired arms out with Unavailable to keep this
-        # tier pure.
+        # patch the four wired arms out with Unavailable to keep this
+        # tier pure. booth_walls_on/wall_loss_split are live since the
+        # 2026-07-10 recovery and must be patched like the §8 arms.
         provider = LiveComsolProvider(client=None)
-        provider.empty_cavity = lambda: Unavailable(  # type: ignore
-            "not called in the no-licence tier"
-        )
-        provider.pec_lossy = lambda: Unavailable(  # type: ignore
-            "not called in the no-licence tier"
-        )
+        for arm in (
+            "empty_cavity",
+            "pec_lossy",
+            "booth_walls_on",
+            "wall_loss_split",
+        ):
+            setattr(
+                provider,
+                arm,
+                lambda: Unavailable("not called in the no-licence tier"),
+            )
         report = run_gate(provider)
         assert report.provider_kind == "live_comsol"
         assert report.n_deferred == 6
+
+    def test_booth_recovered_geometry_matches_provenance(self):
+        from cavity.forward_model.geometry import DielectricShape
+        from cavity.provenance import GEOM_BOOTH_TE01D
+        from cavity.validation.providers import (
+            booth_faithful_materials,
+            booth_recovered_geometry,
+        )
+
+        geom = booth_recovered_geometry()
+        assert geom.dielectric_shape is DielectricShape.TORUS
+        assert geom.box_radius_m == GEOM_BOOTH_TE01D.box_radius_m
+        assert geom.box_height_m == GEOM_BOOTH_TE01D.box_height_m
+        assert (
+            geom.dielectric_radius_m
+            == GEOM_BOOTH_TE01D.torus_major_radius_m
+        )
+        assert (
+            geom.dielectric_minor_radius_m
+            == GEOM_BOOTH_TE01D.torus_minor_radius_m
+        )
+        sens = booth_recovered_geometry(
+            GEOM_BOOTH_TE01D.printed_minor_radius_m
+        )
+        assert (
+            sens.dielectric_minor_radius_m
+            == GEOM_BOOTH_TE01D.printed_minor_radius_m
+        )
+        mats = booth_faithful_materials()
+        from cavity.provenance import BOOTH_MPH_TAN_DELTA
+
+        assert mats.sto.tan_delta == BOOTH_MPH_TAN_DELTA
+        assert mats.sto.epsilon_r_real == 316.3
+        assert mats.wall_pec is False  # arm switch derived per-arm

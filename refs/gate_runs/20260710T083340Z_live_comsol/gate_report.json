@@ -1,0 +1,323 @@
+{
+  "schema_version": 1,
+  "created_at_utc": "2026-07-10T08:35:40+00:00",
+  "provider_kind": "live_comsol",
+  "phase1_complete": false,
+  "n_pass": 3,
+  "n_fail": 2,
+  "n_deferred": 1,
+  "rows": [
+    {
+      "row_id": "analytic_benchmark",
+      "check": "Analytic benchmark passes",
+      "target": "empty-cavity TE011 < 0.1% error",
+      "source": "\u00a78, build FIRST",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "analytic_benchmark/te011",
+          "row_id": "analytic_benchmark",
+          "target": "min relative error of the solved empty-cavity spectrum against the closed-form TE011 frequency",
+          "target_value": 0.0,
+          "measured": 5.376059122319532e-07,
+          "window": {
+            "lo": null,
+            "hi": 0.001
+          },
+          "status": "pass",
+          "margin": 0.999462394087768,
+          "inputs": {
+            "f_analytic_te011_hz": 30867865927.806793,
+            "closest_eigenfrequency_hz": 30867882522.554012,
+            "n_spectrum_candidates": 10,
+            "box_radius_m": 0.00614,
+            "box_height_m": 0.01842
+          },
+          "provenance": "SPEC \u00a78 (Oxborrow 2007, IEEE Trans. MTT 55, 1209); TARGETS.empty_cavity_rel_error_max",
+          "tolerance_rationale": "0.1% is the SPEC \u00a78 mesh-limited target; the bound is referenced from TARGETS.empty_cavity_rel_error_max (single source), the same constant the live COMSOL anchor test asserts.",
+          "notes": "min relative error over the solved spectrum against the closed-form TE011 (x'_01 = 3.8317)"
+        },
+        {
+          "name": "analytic_benchmark/pec_lossy_q",
+          "row_id": "analytic_benchmark",
+          "target": "closed-form residual |Q * p_e * tan_delta - 1| on a PEC-walled lossy-dielectric solve (SPEC \u00a78: Q = 1/(p_e * tan_delta))",
+          "target_value": 0.0,
+          "measured": 5.643073625227757e-05,
+          "window": {
+            "lo": null,
+            "hi": 0.005
+          },
+          "status": "pass",
+          "margin": 0.9887138527495445,
+          "inputs": {
+            "q": 9112.776321264711,
+            "p_e": 0.9976566720273174,
+            "tan_delta": 0.00011
+          },
+          "provenance": "SPEC \u00a78 Q-from-tan_delta closed check; EXTRACTION_TOL.q_pec_lossy_rel_tol; guard: cavity.extraction.assert_pec_lossy_q_consistency",
+          "tolerance_rationale": "Same constant the \u00a78 guard uses: EXTRACTION_TOL.q_pec_lossy_rel_tol \u2014 one constant, no fork (assert_pec_lossy_q_consistency is invoked alongside this check as the convention guard). Mesh-limited: loose enough that converged solves pass, tight enough that an inverted eigenfrequency sign convention or a missing 2*pi*r Jacobian fails.",
+          "notes": "margin is numerical-residual headroom on the closed-form identity Q*p_e*tan_delta = 1 (mesh/extraction residual), not a statement of Q-convention correctness \u2014 the convention guard is assert_pec_lossy_q_consistency (invoked here) and the \u00a78 PEC-lossy tests."
+        }
+      ]
+    },
+    {
+      "row_id": "f",
+      "check": "f",
+      "target": "1.45 GHz, \u22654 s.f.",
+      "source": "Booth, Breeze",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "f/f_at_booth_geometry",
+          "row_id": "f",
+          "target": "extracted f of the walls-on solve at Booth geometry (eps_r = 316.3)",
+          "target_value": 1450000000.0,
+          "measured": 1450382242.5463839,
+          "window": {
+            "lo": 1449500000.0,
+            "hi": 1450500000.0
+          },
+          "status": "pass",
+          "margin": 0.23551490723228455,
+          "inputs": {
+            "f_hz": 1450382242.5463839,
+            "epsilon_r_real": 316.3
+          },
+          "provenance": "TARGET.f_design_hz (Booth, Breeze design value; SPEC \u00a75)",
+          "tolerance_rationale": "'>=4 s.f.' read literally: rounding the extracted f to four significant figures must give 1.450 GHz, i.e. |f - 1.45 GHz| <= 0.5 MHz (half a unit in the fourth significant figure). Scope clauses: (a) 4-s.f. CONVERGENCE STABILITY is asserted upstream by the \u00a72 mesh-convergence study, not re-checked here \u2014 the gate presupposes a converged f; (b) the window is meaningful only at the standardised eps_r of the target being reproduced: it is far tighter than the ~14 MHz shift the \u00a76 eps_r spread (316.3-318) induces, so this row is a convergence-at-fixed-material check, not a material-uncertainty tolerance.",
+          "notes": "judged on the walls-on Booth-geometry extraction; convergence to 4 s.f. is the \u00a72 mesh study's assertion, presupposed here."
+        }
+      ]
+    },
+    {
+      "row_id": "booth_two_point",
+      "check": "Booth two-point",
+      "target": "Q \u2248 6,980, V_mode \u2248 0.409 cm\u00b3 at Booth geometry (walls on)",
+      "source": "Booth Table 8 + App. A",
+      "status": "fail",
+      "checks": [
+        {
+          "name": "booth_two_point/q",
+          "row_id": "booth_two_point",
+          "target": "extracted Q, Impedance-BC walls",
+          "target_value": 6980.0,
+          "measured": 6981.316301709651,
+          "window": {
+            "lo": 6910.2,
+            "hi": 7049.8
+          },
+          "status": "pass",
+          "margin": 0.9811418093173171,
+          "inputs": {
+            "q": 6981.316301709651,
+            "f_hz": 1450382242.5463839,
+            "epsilon_r_real": 316.3
+          },
+          "provenance": "TARGETS.booth (Booth 2018 Table 8 + Appendix A; eps_r = 316.3)",
+          "tolerance_rationale": "\u00b11% (BOOTH_TWO_POINT_REL_TOL) about the Booth Table 8 printed value: printed-value half-ULP is far tighter (0.007% on Q, 0.12% on V_mode) than plausible mesh-convergence scatter, while 1% stays an order below the 30% Breeze/Booth confinement gap the row must discriminate. Provisional until the first live converged solve calibrates the actual scatter. V_mode is judged on the GLOBAL-max variant (the standard definition); the local variant is recorded in inputs for diagnosis (SPEC \u00a73 requires both).",
+          "notes": "Q = f'/(2 f'') from the \u00a73 extraction (never re-derived)."
+        },
+        {
+          "name": "booth_two_point/v_mode",
+          "row_id": "booth_two_point",
+          "target": "extracted V_mode (global-max variant), m^3",
+          "target_value": 4.09e-07,
+          "measured": 6.557763612558703e-07,
+          "window": {
+            "lo": 4.0491000000000004e-07,
+            "hi": 4.1309e-07
+          },
+          "status": "fail",
+          "margin": -59.33651864446736,
+          "inputs": {
+            "v_mode_global_m3": 6.557763612558703e-07,
+            "v_mode_local_m3": 6.557763612558703e-07,
+            "epsilon_r_real": 316.3
+          },
+          "provenance": "TARGETS.booth (Booth 2018 Table 8 + Appendix A; eps_r = 316.3)",
+          "tolerance_rationale": "\u00b11% (BOOTH_TWO_POINT_REL_TOL) about the Booth Table 8 printed value: printed-value half-ULP is far tighter (0.007% on Q, 0.12% on V_mode) than plausible mesh-convergence scatter, while 1% stays an order below the 30% Breeze/Booth confinement gap the row must discriminate. Provisional until the first live converged solve calibrates the actual scatter. V_mode is judged on the GLOBAL-max variant (the standard definition); the local variant is recorded in inputs for diagnosis (SPEC \u00a73 requires both).",
+          "notes": "judged on the global-max variant; local variant recorded for diagnosis (SPEC \u00a73 reports both)."
+        }
+      ]
+    },
+    {
+      "row_id": "confinement_trend",
+      "check": "Confinement trend",
+      "target": "tightening toward V_mode \u2248 0.2 raises Q toward ~10,000",
+      "source": "Breeze Table 1",
+      "status": "deferred_requires_comsol",
+      "checks": [
+        {
+          "name": "confinement_trend/monotonic",
+          "row_id": "confinement_trend",
+          "target": "min consecutive Q increment as V_mode tightens (strictly > 0 over >= 3 points)",
+          "target_value": null,
+          "measured": null,
+          "window": {
+            "lo": 0.0,
+            "hi": null
+          },
+          "status": "deferred_requires_comsol",
+          "margin": null,
+          "inputs": {},
+          "provenance": "SPEC \u00a75 confinement-trend clause; \u00a76",
+          "tolerance_rationale": "Endpoint window [9,000, 10,500] brackets 'toward ~10,000' across the \u00a76 tan_delta band (dielectric ceiling 1/tan_delta = 10,000 at 1.0e-4, 9,091 at 1.1e-4), allowing residual wall loss below and the 1.0e-4 ceiling above. The trend must be strictly monotone (Q rises as V_mode tightens) over >= 3 points and must reach V_mode <= 0.22 cm^3*1e-6 (within 10% of Breeze's 0.2 cm^3) \u2014 SPEC \u00a75 demands a continuous trend, not two unrelated points. Provisional pending the first live sweep.",
+          "notes": "deferred: requires the \u00a77 parametric confinement sweep \u2014 deliberately not implemented in this pass (SPEC \u00a75 gate scope). [row blocked on: requires the \u00a77 parametric confinement sweep \u2014 deliberately not implemented in this pass (SPEC \u00a75 gate scope).]"
+        },
+        {
+          "name": "confinement_trend/endpoint_q",
+          "row_id": "confinement_trend",
+          "target": "Q at the tightest sampled V_mode (which must reach <= 0.22e-6 m^3)",
+          "target_value": 10000.0,
+          "measured": null,
+          "window": {
+            "lo": 9000.0,
+            "hi": 10500.0
+          },
+          "status": "deferred_requires_comsol",
+          "margin": null,
+          "inputs": {},
+          "provenance": "TARGETS.breeze (Breeze 2017 Table 1, STO row; eps_r = 318)",
+          "tolerance_rationale": "Endpoint window [9,000, 10,500] brackets 'toward ~10,000' across the \u00a76 tan_delta band (dielectric ceiling 1/tan_delta = 10,000 at 1.0e-4, 9,091 at 1.1e-4), allowing residual wall loss below and the 1.0e-4 ceiling above. The trend must be strictly monotone (Q rises as V_mode tightens) over >= 3 points and must reach V_mode <= 0.22 cm^3*1e-6 (within 10% of Breeze's 0.2 cm^3) \u2014 SPEC \u00a75 demands a continuous trend, not two unrelated points. Provisional pending the first live sweep.",
+          "notes": "deferred: requires the \u00a77 parametric confinement sweep \u2014 deliberately not implemented in this pass (SPEC \u00a75 gate scope). [row blocked on: requires the \u00a77 parametric confinement sweep \u2014 deliberately not implemented in this pass (SPEC \u00a75 gate scope).]"
+        }
+      ]
+    },
+    {
+      "row_id": "wall_loss_split",
+      "check": "Wall-loss split",
+      "target": "Q_diel \u2248 9\u201310k, wall fraction ~23\u201327%",
+      "source": "\u00a74",
+      "status": "pass",
+      "checks": [
+        {
+          "name": "wall_loss_split/q_diel",
+          "row_id": "wall_loss_split",
+          "target": "Q_diel from the \u00a74 PEC solve",
+          "target_value": null,
+          "measured": 9511.457002008648,
+          "window": {
+            "lo": 9000.0,
+            "hi": 10000.0
+          },
+          "status": "pass",
+          "margin": 0.9770859959827031,
+          "inputs": {
+            "q_total": 6981.316301709651,
+            "q_diel": 9511.457002008648,
+            "q_wall": 26244.58387365033,
+            "sigma_q_wall": 0.2071794947844043,
+            "wall_fraction": 0.266009792165877,
+            "below_resolution": false
+          },
+          "provenance": "TARGETS.q_diel_lo/hi (SPEC \u00a74; Booth Table 8 + tan_delta ceiling)",
+          "tolerance_rationale": "Windows referenced from TARGETS.q_diel_lo/hi and TARGETS.wall_loss_fraction_lo/hi \u2014 the SPEC \u00a74 acceptance intervals derived from Booth Table 8 and the tan_delta ceiling; not re-typed here. A below_resolution decomposition fails the wall-fraction check: at the Booth regime the split must be resolved (the cancellation guard is for the Breeze end, not here).",
+          "notes": "Q_diel is the PEC-solve Q directly (closed cavity); unaffected by the reciprocal-subtraction cancellation."
+        },
+        {
+          "name": "wall_loss_split/wall_fraction",
+          "row_id": "wall_loss_split",
+          "target": "wall-loss fraction Q_total/Q_wall from the \u00a74 two-solve decomposition",
+          "target_value": null,
+          "measured": 0.266009792165877,
+          "window": {
+            "lo": 0.23,
+            "hi": 0.27
+          },
+          "status": "pass",
+          "margin": 0.19951039170615079,
+          "inputs": {
+            "q_total": 6981.316301709651,
+            "q_diel": 9511.457002008648,
+            "q_wall": 26244.58387365033,
+            "sigma_q_wall": 0.2071794947844043,
+            "wall_fraction": 0.266009792165877,
+            "below_resolution": false
+          },
+          "provenance": "TARGETS.wall_loss_fraction_lo/hi (SPEC \u00a74; Booth Table 8)",
+          "tolerance_rationale": "Windows referenced from TARGETS.q_diel_lo/hi and TARGETS.wall_loss_fraction_lo/hi \u2014 the SPEC \u00a74 acceptance intervals derived from Booth Table 8 and the tan_delta ceiling; not re-typed here. A below_resolution decomposition fails the wall-fraction check: at the Booth regime the split must be resolved (the cancellation guard is for the Breeze end, not here).",
+          "notes": "wall fraction = Q_total / Q_wall from the \u00a74 decomposition."
+        }
+      ]
+    },
+    {
+      "row_id": "f_m",
+      "check": "F_m",
+      "target": "order 10\u2077 via \u00a73 formula",
+      "source": "Breeze (STO F_m = 3.6\u00d710\u2077)",
+      "status": "fail",
+      "checks": [
+        {
+          "name": "f_m/order_of_magnitude",
+          "row_id": "f_m",
+          "target": "F_m (global-max V_mode variant) via the SPEC \u00a73 formula",
+          "target_value": 36000000.0,
+          "measured": 7144268.405931775,
+          "window": {
+            "lo": 10000000.0,
+            "hi": 100000000.0
+          },
+          "status": "fail",
+          "margin": -0.06346070209040498,
+          "inputs": {
+            "f_m_global": 7144268.405931775,
+            "f_m_local": 7144268.405931775,
+            "q": 6981.316301709651,
+            "v_mode_global_m3": 6.557763612558703e-07,
+            "f_hz": 1450382242.5463839,
+            "epsilon_r_real": 316.3
+          },
+          "provenance": "TARGETS.breeze.f_m (Breeze 2017 Table 1); SPEC \u00a73 formula; F_M_BENCHMARK gates the formula itself in the \u00a73 tests",
+          "tolerance_rationale": "'order 10^7' read as floor(log10(F_m)) == 7, i.e. F_m in [1e7, 1e8]. Judged on the global-max V_mode variant (the conservative, smaller-F_m choice); the formula's own 3.3-3.6e7 self-consistency anchor on Breeze inputs is gated separately by F_M_BENCHMARK in the \u00a73 extraction tests.",
+          "notes": "judged on the global-max V_mode variant (the conservative, smaller-F_m choice); local variant recorded for diagnosis."
+        }
+      ]
+    }
+  ],
+  "reproducibility": {
+    "rng_seed": null,
+    "comsol_version": "6.0",
+    "mesh_settings": {
+      "booth_impedance": {
+        "dielectric_max_h_m": 0.00012499999999999998,
+        "air_max_h_m": 0.0004999999999999999,
+        "curved_dielectric_boundary": true
+      },
+      "booth_pec": {
+        "dielectric_max_h_m": 0.00012499999999999998,
+        "air_max_h_m": 0.0004999999999999999,
+        "curved_dielectric_boundary": true
+      },
+      "empty_cavity_te011": {
+        "dielectric_max_h_m": 0.0004,
+        "air_max_h_m": 0.0004
+      },
+      "pec_lossy": {
+        "dielectric_max_h_m": 0.000125,
+        "air_max_h_m": 0.0005,
+        "curved_dielectric_boundary": true
+      }
+    },
+    "mesh_element_counts": [
+      640,
+      1126,
+      2152,
+      3950,
+      7492,
+      640,
+      1126,
+      2152,
+      3950,
+      7492,
+      1911,
+      3825
+    ],
+    "solve_record_hashes": [
+      "2b276c4424e49bb9",
+      "ef29422390a4ba7d",
+      "888536d768e0fba1"
+    ],
+    "cache_root": "C:\\Users\\Aaryan Sharif\\Documents\\== Academia ==\\Projects\\Microwave Cavity Resonator Design\\refs\\gate_runs\\20260710T083340Z_live_comsol\\solves",
+    "notes": "\u00a75a Booth wall-loss study (faithful branch, 5-level ladder x 2 arms) records under C:\\Users\\Aaryan Sharif\\Documents\\== Academia ==\\Projects\\Microwave Cavity Resonator Design\\refs\\gate_runs\\20260710T083340Z_live_comsol\\solves; raw empty-cavity eigenspectrum persisted to C:\\Users\\Aaryan Sharif\\Documents\\== Academia ==\\Projects\\Microwave Cavity Resonator Design\\refs\\gate_runs\\20260710T083340Z_live_comsol\\solves\\empty_cavity_te011.npz; PEC+lossy \u00a71 SolveRecord 888536d768e0fba1 persisted under C:\\Users\\Aaryan Sharif\\Documents\\== Academia ==\\Projects\\Microwave Cavity Resonator Design\\refs\\gate_runs\\20260710T083340Z_live_comsol\\solves; live COMSOL provider; no stochastic stage in the \u00a75 gate"
+  }
+}

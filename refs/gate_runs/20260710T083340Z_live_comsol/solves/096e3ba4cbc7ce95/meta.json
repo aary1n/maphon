@@ -1,0 +1,137 @@
+{
+  "comsol_version": "6.0",
+  "created_at_utc": "2026-07-10T08:34:15+00:00",
+  "diagnostics": [
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 2.6048380104085747e-20,
+      "f_imag_hz": 7961.604587790673,
+      "f_real_hz": 68.60795186970786
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 1.1272494969279125e-19,
+      "f_imag_hz": 7044.730167968463,
+      "f_real_hz": 410.77464790352354
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 4.088016454623708e-19,
+      "f_imag_hz": 5530.22719245127,
+      "f_real_hz": 2135.278180389004
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 5.1451033367448554e-20,
+      "f_imag_hz": 346.46349724685064,
+      "f_real_hz": 2467.60153199731
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 5.511408581893762e-20,
+      "f_imag_hz": 56.56287835893073,
+      "f_real_hz": 5824.021543595307
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 1.2981367833905512e-19,
+      "f_imag_hz": 449.01926350440823,
+      "f_real_hz": 7172.714113718429
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 1.5034818630866858e-19,
+      "f_imag_hz": 336.4069985570756,
+      "f_real_hz": 7657.337091741571
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 1.486391299135267e-20,
+      "f_imag_hz": 60.380142038896196,
+      "f_real_hz": 7865.122362149908
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 4.573556047573175e-14,
+      "f_imag_hz": 100016.962582129,
+      "f_real_hz": 57600.13376884785
+    },
+    {
+      "axis_hz_antinode_ratio": 0.6702083522463881,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 1.0,
+      "f_imag_hz": 103882.54765310127,
+      "f_real_hz": 1450413575.1143878
+    },
+    {
+      "axis_hz_antinode_ratio": 0.102961029994844,
+      "axis_hz_sign_changes": 3,
+      "azimuthal_e_energy_fraction": 3.618795553414292e-27,
+      "f_imag_hz": 137934.47004991997,
+      "f_real_hz": 2642697448.493164
+    },
+    {
+      "axis_hz_antinode_ratio": 0.2871384120681522,
+      "axis_hz_sign_changes": 1,
+      "azimuthal_e_energy_fraction": 1.0,
+      "f_imag_hz": 152598.92823974317,
+      "f_real_hz": 2772226164.6301827
+    },
+    {
+      "axis_hz_antinode_ratio": 0.41732703790049364,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 1.0,
+      "f_imag_hz": 162058.27795247792,
+      "f_real_hz": 2837631339.2107854
+    }
+  ],
+  "fingerprint": {
+    "geometry": {
+      "box_height_m": 0.01842,
+      "box_radius_m": 0.01228,
+      "dielectric_height_m": null,
+      "dielectric_minor_radius_m": 0.002456,
+      "dielectric_radius_m": 0.00614,
+      "shape": "torus"
+    },
+    "grid": {
+      "n_r": 201,
+      "n_z": 301
+    },
+    "materials": {
+      "copper_mu_r": 1.0,
+      "copper_sigma": 60000000.0,
+      "sto_epsilon_r_real": 316.3,
+      "sto_mu_r": 1.0,
+      "sto_sigma": 0.0,
+      "sto_tan_delta": 0.00010539930445779323,
+      "wall_pec": false
+    },
+    "mesh": {
+      "air_max_h_m": 0.002,
+      "curved_dielectric_boundary": true,
+      "dielectric_max_h_m": 0.0005
+    },
+    "schema_version": 1,
+    "study": {
+      "azimuthal_index_m": 0,
+      "n_modes": 12,
+      "search_hz": 1450000000.0,
+      "wall_bc": "impedance"
+    }
+  },
+  "interface_tag": "emw",
+  "mesh_element_count": 640,
+  "picked_index": 13,
+  "q_emw_cross_check": 6981.0262064317385,
+  "record_hash": "096e3ba4cbc7ce95"
+}

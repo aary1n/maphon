@@ -111,12 +111,13 @@ class GateRowSpec:
     blocked_on: str | None = None
 
 
-_GAP_1 = (
-    "SPEC §11 gap #1: Booth's dielectric cross-section is unpinned — "
-    "at the Booth radius the assumed a/L = 0.5 puck lands near "
-    "3.1 GHz, not 1.45 GHz. Collapses to a point-check when Booth's "
-    "published-paper .mph arrives."
-)
+# SPEC §11 gap #1 (Booth's dielectric cross-section unpinned) was the
+# blocker on the f / Booth two-point / wall-loss / F_m rows. CLOSED
+# 2026-07-10 by document recovery (refs/booth_geometry_recovery.md):
+# the recovered torus is single-sourced as provenance.GEOM_BOOTH_TE01D
+# and the rows have a live input path (LiveComsolProvider), so their
+# blocked_on is now None. Only the confinement-trend row stays blocked
+# (it needs the §7 parametric sweep, a Breeze-side scope decision).
 
 _PEC_LOSSY_RATIONALE = (
     "Same constant the §8 guard uses: "
@@ -238,7 +239,7 @@ GATE_ROWS: tuple[GateRowSpec, ...] = (
         check_text="f",
         target_text="1.45 GHz, ≥4 s.f.",
         source_text="Booth, Breeze",
-        blocked_on=_GAP_1,
+        blocked_on=None,
         checks=(
             GateCheckSpec(
                 check_id="f/f_at_booth_geometry",
@@ -267,7 +268,7 @@ GATE_ROWS: tuple[GateRowSpec, ...] = (
             "(walls on)"
         ),
         source_text="Booth Table 8 + App. A",
-        blocked_on=_GAP_1,
+        blocked_on=None,
         checks=(
             GateCheckSpec(
                 check_id="booth_two_point/q",
@@ -354,13 +355,7 @@ GATE_ROWS: tuple[GateRowSpec, ...] = (
         check_text="Wall-loss split",
         target_text="Q_diel ≈ 9–10k, wall fraction ~23–27%",
         source_text="§4",
-        blocked_on=(
-            _GAP_1
-            + " Tracked by the strict-xfail "
-            "test_booth_table_8_wall_loss_split; becomes a "
-            "point-check via run_wall_loss_study when the .mph "
-            "arrives."
-        ),
+        blocked_on=None,
         checks=(
             GateCheckSpec(
                 check_id="wall_loss_split/q_diel",
@@ -399,7 +394,7 @@ GATE_ROWS: tuple[GateRowSpec, ...] = (
         check_text="F_m",
         target_text="order 10⁷ via §3 formula",
         source_text="Breeze (STO F_m = 3.6×10⁷)",
-        blocked_on=_GAP_1,
+        blocked_on=None,
         checks=(
             GateCheckSpec(
                 check_id="f_m/order_of_magnitude",

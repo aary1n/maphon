@@ -17,11 +17,12 @@ Providers:
   - `LiveComsolProvider` — runs real solves. Importable without MPh
     (imports of the solve stack are deferred to call time); actually
     calling the live rows needs a licence and is exercised only in
-    the `requires_comsol` test tier. In this pass only the §8
-    empty-cavity TE011 anchor is wired live — the same build path as
-    tests/test_forward_model_comsol.py::TestAnalyticBenchmarkAnchor;
-    the Booth-geometry rows return `Unavailable` until SPEC §11
-    gap #1 closes.
+    the `requires_comsol` test tier. Live rows: the §8 empty-cavity
+    TE011 anchor, the §8 PEC+lossy closed check, and — since the
+    2026-07-10 geometry recovery closed SPEC §11 gap #1 — the
+    Booth-geometry rows (f / Booth two-point / F_m / wall-loss split)
+    via one §4 wall-loss study at the recovered torus. Only the
+    confinement-trend row remains Unavailable (needs the §7 sweep).
 
 Q convention note (SPEC §11 gap #4, resolved): providers hand the
 gate `ExtractionResult`s whose `q` is already f'/(2 f'') from the bare
@@ -35,9 +36,66 @@ from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
 
 from cavity.extraction import ExtractionResult, extract
+from cavity.forward_model.geometry import CavityGeometry, DielectricShape
 from cavity.forward_model.mesh import MeshConfig
 from cavity.forward_model.persistence import load_solve_record
+from cavity.provenance import (
+    BOOTH_MPH_TAN_DELTA,
+    GEOM_BOOTH_TE01D,
+    TARGET,
+    TARGETS,
+)
 from cavity.validation.wall_loss import WallLossDecomposition
+
+
+def booth_recovered_geometry(
+    minor_radius_m: float | None = None,
+) -> CavityGeometry:
+    """The recovered Booth TE01delta torus (SPEC §2, 2026-07-10;
+    refs/booth_geometry_recovery.md), built from `GEOM_BOOTH_TE01D`.
+
+    `minor_radius_m` defaults to the ratio-exact 2.456 mm (the gated
+    value); pass `GEOM_BOOTH_TE01D.printed_minor_radius_m` for the
+    printed-2.46 sensitivity solve.
+    """
+    if minor_radius_m is None:
+        minor_radius_m = GEOM_BOOTH_TE01D.torus_minor_radius_m
+    return CavityGeometry(
+        box_radius_m=GEOM_BOOTH_TE01D.box_radius_m,
+        box_height_m=GEOM_BOOTH_TE01D.box_height_m,
+        dielectric_radius_m=GEOM_BOOTH_TE01D.torus_major_radius_m,
+        dielectric_shape=DielectricShape.TORUS,
+        dielectric_minor_radius_m=minor_radius_m,
+    )
+
+
+# §5a mesh ladder base: refinement_ladder(this, n_levels=5, sqrt(2))
+# ends at 1.25e-4 / 5e-4 — the proven §2 e2e / frozen-anchor level.
+BOOTH_LADDER_BASE_MESH = MeshConfig(
+    dielectric_max_h_m=5.0e-4, air_max_h_m=2.0e-3
+)
+BOOTH_LADDER_N_LEVELS = 5
+BOOTH_STUDY_N_MODES = 12
+
+
+def booth_faithful_materials():
+    """Faithful-reproduction material branch: eps_r' = 316.3 with the
+    .mph-exact tan_delta (`BOOTH_MPH_TAN_DELTA` — ratified branch
+    choice 1). The §5a Q/wall gates are judged on THIS branch; the
+    canonical SPEC §2 branch (tan_delta = 1.1e-4) is the companion.
+
+    Returns a base `MaterialSpec`; the §4 wall_pec switch is re-derived
+    per arm by `runner.material_spec_for`.
+    """
+    from cavity.forward_model.materials import MaterialSpec
+    from cavity.provenance.constants import STOSingleCrystal
+
+    return MaterialSpec(
+        sto=STOSingleCrystal(
+            epsilon_r_real=TARGETS.booth.epsilon_r_real,
+            tan_delta=BOOTH_MPH_TAN_DELTA,
+        )
+    )
 
 
 # --- payloads ----------------------------------------------------------
@@ -297,14 +355,23 @@ class LiveComsolProvider:
         one is given (SPEC §1).
       - `pec_lossy()` — the §8 Q-from-tan_delta closed check on a
         real PEC + lossy-STO solve. Geometry-independent, so it runs
-        at the assumed a/L = 0.5 puck (gap #1 does not block it);
-        search near the Kajfez ~3.1 GHz estimate, exactly like the
-        live §2 e2e test. Runs through `run_forward_model`, so the
-        full §1 SolveRecord (raw complex eigensolution + fields)
-        lands under `solve_root`.
+        at the assumed a/L = 0.5 puck; search near the Kajfez ~3.1 GHz
+        estimate, exactly like the live §2 e2e test. Runs through
+        `run_forward_model`, so the full §1 SolveRecord (raw complex
+        eigensolution + fields) lands under `solve_root`.
+      - `booth_walls_on()` / `wall_loss_split()` — WIRED LIVE since the
+        2026-07-10 geometry recovery closed SPEC §11 gap #1
+        (refs/booth_geometry_recovery.md): ONE `run_wall_loss_study`
+        at the recovered torus (`booth_recovered_geometry`), faithful
+        material branch (`booth_faithful_materials` — ratified branch
+        choice 1), 5-level sqrt(2) ladder from `BOOTH_LADDER_BASE_MESH`
+        (finest = 1.25e-4/5e-4, the frozen-anchor level), shared by
+        both rows (run_gate fetches the Booth payload once). Sigmas
+        come from the per-arm convergence ladders; a non-asymptotic
+        ladder raises `ConvergenceError` OUT of the provider — the §5a
+        failure discipline forbids converting it to a deferred row.
 
     Not wired (returns Unavailable with the blocking reason):
-      - `booth_walls_on` / `wall_loss_split`: SPEC §11 gap #1.
       - `confinement_trend`: needs the §7 parametric sweep.
     """
 
@@ -320,6 +387,12 @@ class LiveComsolProvider:
         pec_lossy_mesh: MeshConfig | None = None,
         pec_lossy_search_hz: float = 3.1e9,
         pec_lossy_n_modes: int = 12,
+        booth_base_mesh: MeshConfig | None = None,
+        booth_n_levels: int = BOOTH_LADDER_N_LEVELS,
+        booth_refine_factor: float = 2.0**0.5,
+        booth_n_modes: int = BOOTH_STUDY_N_MODES,
+        booth_cache_root: Path | None = None,
+        save_mph_dir: Path | None = None,
     ) -> None:
         self._client = client
         self._solve_root = None if solve_root is None else Path(solve_root)
@@ -335,6 +408,18 @@ class LiveComsolProvider:
         )
         self._pec_search_hz = pec_lossy_search_hz
         self._pec_n_modes = pec_lossy_n_modes
+        self._booth_base_mesh = booth_base_mesh or BOOTH_LADDER_BASE_MESH
+        self._booth_n_levels = booth_n_levels
+        self._booth_refine_factor = booth_refine_factor
+        self._booth_n_modes = booth_n_modes
+        self._booth_cache_root = (
+            None if booth_cache_root is None else Path(booth_cache_root)
+        )
+        self._save_mph_dir = (
+            None if save_mph_dir is None else Path(save_mph_dir)
+        )
+        self._booth_study_result: Any = None  # WallLossStudyResult memo
+        self._booth_unavailable: Unavailable | None = None
         self._comsol_version: str | None = None
         self._element_counts: list[int] = []
         self._mesh_settings: dict[str, dict] = {}
@@ -488,13 +573,92 @@ class LiveComsolProvider:
             tan_delta=materials.sto.tan_delta,
         )
 
+    def _ensure_booth_study(self) -> Any:
+        """Run (or reuse) the ONE §5a wall-loss study behind both Booth
+        rows. Returns WallLossStudyResult or Unavailable.
+
+        `ConvergenceError` propagates: a non-asymptotic ladder is a §5a
+        STOP condition (failure-report path), never a deferred row.
+        """
+        if self._booth_unavailable is not None:
+            return self._booth_unavailable
+        if self._booth_study_result is not None:
+            return self._booth_study_result
+
+        # Deferred imports, same rationale as empty_cavity().
+        from cavity.forward_model.build import ComsolUnavailable
+        from cavity.forward_model.runner import run_wall_loss_study
+        from cavity.forward_model.study import EigenStudyConfig, WallBC
+
+        geom = booth_recovered_geometry()
+        study = EigenStudyConfig(
+            wall_bc=WallBC.IMPEDANCE,
+            search_hz=TARGET.f_design_hz,
+            n_modes=self._booth_n_modes,
+        )
+        cache_root = (
+            self._booth_cache_root
+            if self._booth_cache_root is not None
+            else self._solve_root
+        )
+        try:
+            result = run_wall_loss_study(
+                geom,
+                study,
+                materials=booth_faithful_materials(),
+                base_mesh=self._booth_base_mesh,
+                n_levels=self._booth_n_levels,
+                refine_factor=self._booth_refine_factor,
+                client=self._client,
+                cache_root=cache_root,
+                save_mph_dir=self._save_mph_dir,
+            )
+        except ComsolUnavailable as exc:
+            self._booth_unavailable = Unavailable(
+                f"MPh/COMSOL unavailable on this host: {exc}"
+            )
+            return self._booth_unavailable
+
+        self._booth_study_result = result
+        for arm_name, arm in (
+            ("booth_impedance", result.impedance),
+            ("booth_pec", result.pec),
+        ):
+            finest = arm.finest.record
+            self._comsol_version = finest.comsol_version
+            self._record_hashes.append(finest.record_hash)
+            self._mesh_settings[arm_name] = dict(
+                finest.fingerprint["mesh"]
+            )
+            self._element_counts.extend(
+                lvl.mesh_element_count for lvl in arm.levels
+            )
+        if cache_root is not None:
+            self._notes.append(
+                "§5a Booth wall-loss study (faithful branch, "
+                f"{self._booth_n_levels}-level ladder x 2 arms) records "
+                f"under {cache_root}"
+            )
+        return result
+
+    @property
+    def booth_study(self) -> Any:
+        """The memoised §5a WallLossStudyResult (faithful branch), or
+        None if the Booth rows have not been produced yet. The §5a
+        driver reads this to build the checkpoint manifest without
+        re-running the study."""
+        return self._booth_study_result
+
     def booth_walls_on(self) -> BoothPayload | Unavailable:
-        return Unavailable(
-            "blocked on SPEC §11 gap #1: Booth's dielectric "
-            "cross-section is unpinned — at the Booth radius the "
-            "assumed a/L = 0.5 puck lands near 3.1 GHz, not "
-            "1.45 GHz. Collapses to a point-check when Booth's "
-            "published-paper .mph arrives."
+        study = self._ensure_booth_study()
+        if isinstance(study, Unavailable):
+            return study
+        finest = study.impedance.finest
+        return BoothPayload(
+            extraction=finest.extraction,
+            epsilon_r_real=finest.record.fingerprint["materials"][
+                "sto_epsilon_r_real"
+            ],
         )
 
     def confinement_trend(self) -> ConfinementPayload | Unavailable:
@@ -505,12 +669,10 @@ class LiveComsolProvider:
         )
 
     def wall_loss_split(self) -> WallLossPayload | Unavailable:
-        return Unavailable(
-            "blocked on SPEC §11 gap #1; tracked by the strict-xfail "
-            "test_booth_table_8_wall_loss_split — becomes a "
-            "point-check via run_wall_loss_study when Booth's "
-            "published-paper .mph arrives."
-        )
+        study = self._ensure_booth_study()
+        if isinstance(study, Unavailable):
+            return study
+        return WallLossPayload(decomposition=study.decomposition)
 
     def reproducibility(self) -> ReproducibilityMetadata:
         return ReproducibilityMetadata(
@@ -533,6 +695,9 @@ class LiveComsolProvider:
 
 
 __all__ = [
+    "BOOTH_LADDER_BASE_MESH",
+    "BOOTH_LADDER_N_LEVELS",
+    "BOOTH_STUDY_N_MODES",
     "BoothPayload",
     "ConfinementPayload",
     "ConfinementPoint",
@@ -544,5 +709,7 @@ __all__ = [
     "StaticProvider",
     "Unavailable",
     "WallLossPayload",
+    "booth_faithful_materials",
+    "booth_recovered_geometry",
     "provider_from_cache",
 ]

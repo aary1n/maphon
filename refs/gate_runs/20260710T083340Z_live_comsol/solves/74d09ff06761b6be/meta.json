@@ -1,0 +1,137 @@
+{
+  "comsol_version": "6.0",
+  "created_at_utc": "2026-07-10T08:37:10+00:00",
+  "diagnostics": [
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 1,
+      "azimuthal_e_energy_fraction": 4.436451723808273e-18,
+      "f_imag_hz": 30439.342152473164,
+      "f_real_hz": 151.41128047595356
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 1,
+      "azimuthal_e_energy_fraction": 3.0452036671562527e-18,
+      "f_imag_hz": 2795.2595478898097,
+      "f_real_hz": 246.12895732611793
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 1,
+      "azimuthal_e_energy_fraction": 3.0632161104517394e-19,
+      "f_imag_hz": 35543.24032277381,
+      "f_real_hz": 338.73101738359867
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 1,
+      "azimuthal_e_energy_fraction": 1.444745863923875e-17,
+      "f_imag_hz": 20125.566137955477,
+      "f_real_hz": 1884.960945599683
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 1,
+      "azimuthal_e_energy_fraction": 1.238148148333059e-17,
+      "f_imag_hz": 24989.40643789438,
+      "f_real_hz": 2605.8259936121285
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 1,
+      "azimuthal_e_energy_fraction": 1.097652929288193e-17,
+      "f_imag_hz": 5607.662446311113,
+      "f_real_hz": 7330.928334248811
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 1,
+      "azimuthal_e_energy_fraction": 1.1561743700036723e-17,
+      "f_imag_hz": 665.5787753503581,
+      "f_real_hz": 19731.483939690606
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 1,
+      "azimuthal_e_energy_fraction": 8.168905981438684e-18,
+      "f_imag_hz": 511.9426445452324,
+      "f_real_hz": 26699.709715313063
+    },
+    {
+      "axis_hz_antinode_ratio": 1.0,
+      "axis_hz_sign_changes": 1,
+      "azimuthal_e_energy_fraction": 2.776572503012857e-18,
+      "f_imag_hz": 58.65796006965945,
+      "f_real_hz": 29287.363702252605
+    },
+    {
+      "axis_hz_antinode_ratio": 0.6912731711424883,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 1.0,
+      "f_imag_hz": 103828.32128189103,
+      "f_real_hz": 1448975016.6748872
+    },
+    {
+      "axis_hz_antinode_ratio": 0.02192130601376036,
+      "axis_hz_sign_changes": 16,
+      "azimuthal_e_energy_fraction": 9.144907569793083e-26,
+      "f_imag_hz": 137716.1558080449,
+      "f_real_hz": 2638492262.456314
+    },
+    {
+      "axis_hz_antinode_ratio": 0.30532216735223655,
+      "axis_hz_sign_changes": 1,
+      "azimuthal_e_energy_fraction": 1.0,
+      "f_imag_hz": 152392.2151136787,
+      "f_real_hz": 2768025968.74442
+    },
+    {
+      "axis_hz_antinode_ratio": 0.4417927014137258,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 1.0,
+      "f_imag_hz": 161870.58392172132,
+      "f_real_hz": 2833563361.2905583
+    }
+  ],
+  "fingerprint": {
+    "geometry": {
+      "box_height_m": 0.01842,
+      "box_radius_m": 0.01228,
+      "dielectric_height_m": null,
+      "dielectric_minor_radius_m": 0.00246,
+      "dielectric_radius_m": 0.00614,
+      "shape": "torus"
+    },
+    "grid": {
+      "n_r": 201,
+      "n_z": 301
+    },
+    "materials": {
+      "copper_mu_r": 1.0,
+      "copper_sigma": 60000000.0,
+      "sto_epsilon_r_real": 316.3,
+      "sto_mu_r": 1.0,
+      "sto_sigma": 0.0,
+      "sto_tan_delta": 0.00010539930445779323,
+      "wall_pec": false
+    },
+    "mesh": {
+      "air_max_h_m": 0.0004999999999999999,
+      "curved_dielectric_boundary": true,
+      "dielectric_max_h_m": 0.00012499999999999998
+    },
+    "schema_version": 1,
+    "study": {
+      "azimuthal_index_m": 0,
+      "n_modes": 12,
+      "search_hz": 1450000000.0,
+      "wall_bc": "impedance"
+    }
+  },
+  "interface_tag": "emw",
+  "mesh_element_count": 7484,
+  "picked_index": 12,
+  "q_emw_cross_check": 6977.7446017881775,
+  "record_hash": "74d09ff06761b6be"
+}

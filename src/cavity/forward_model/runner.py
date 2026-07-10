@@ -106,12 +106,18 @@ def run_forward_model(
     client: Any = None,
     cache_root: Path | None = None,
     force_resolve: bool = False,
+    save_mph_dir: Path | None = None,
 ) -> ForwardModelResult:
     """Solve one configuration (or load it from the §1 cache) and extract.
 
     With `cache_root` set, a matching parameter hash short-circuits the
     COMSOL solve entirely — extraction re-runs from the persisted raw
     fields, which is the SPEC §1 re-derivation path.
+
+    With `save_mph_dir` set, a live solve saves the raw solved model as
+    `<save_mph_dir>/<record_hash>.mph` before the COMSOL model is
+    removed (§5a archive requirement). A cache hit saves nothing — the
+    model was never built.
     """
     if materials is None:
         materials = material_spec_for(study)
@@ -139,6 +145,10 @@ def run_forward_model(
             grid_spec=grid_spec,
             criteria=criteria,
         )
+        if save_mph_dir is not None:
+            save_mph_dir = Path(save_mph_dir)
+            save_mph_dir.mkdir(parents=True, exist_ok=True)
+            built.model.save(str(save_mph_dir / f"{record_hash}.mph"))
     finally:
         try:
             built.client.remove(built.model)
@@ -164,6 +174,7 @@ class ConvergenceLevelResult:
     complex_eigenfrequency_hz: complex
     mesh_element_count: int
     from_cache: bool
+    record_hash: str = ""
 
 
 @dataclass(frozen=True)
@@ -198,6 +209,7 @@ def run_convergence_study(
     client: Any = None,
     cache_root: Path | None = None,
     force_resolve: bool = False,
+    save_mph_dir: Path | None = None,
 ) -> ConvergenceStudyResult:
     """Solve the same configuration over a coarse->fine mesh ladder.
 
@@ -205,10 +217,13 @@ def run_convergence_study(
     (mode ordering is not stable across meshes). The ladder must land
     in the asymptotic regime — `assess_convergence` raises otherwise
     and no sigma is emitted, per SPEC §2.
+
+    `save_mph_dir` applies to the FINEST level only (the §5a archive
+    keeps one raw .mph per gated arm, not the whole ladder).
     """
     ladder = refinement_ladder(base_mesh, n_levels, refine_factor)
     results: list[ForwardModelResult] = []
-    for mesh_cfg in ladder:
+    for i, mesh_cfg in enumerate(ladder):
         results.append(
             run_forward_model(
                 geom,
@@ -220,6 +235,9 @@ def run_convergence_study(
                 client=client,
                 cache_root=cache_root,
                 force_resolve=force_resolve,
+                save_mph_dir=(
+                    save_mph_dir if i == len(ladder) - 1 else None
+                ),
             )
         )
 
@@ -232,6 +250,7 @@ def run_convergence_study(
             complex_eigenfrequency_hz=r.record.complex_eigenfrequency_hz,
             mesh_element_count=r.record.mesh_element_count,
             from_cache=r.from_cache,
+            record_hash=r.record.record_hash,
         )
         for mesh_cfg, r in zip(ladder, results)
     )
@@ -262,13 +281,17 @@ def run_wall_loss_study(
     client: Any = None,
     cache_root: Path | None = None,
     force_resolve: bool = False,
+    save_mph_dir: Path | None = None,
 ) -> WallLossStudyResult:
     """SPEC §4: same geometry, Impedance + PEC solves, existing
     `decompose_wall_loss` interface, sigmas from the two convergence
     ladders (never fabricated).
 
     `study.wall_bc` is ignored as a switch — both variants are derived
-    from it so search frequency / mode count stay shared.
+    from it so search frequency / mode count stay shared. A custom
+    `materials` base propagates into BOTH arms (each arm re-derives
+    only the wall_pec switch via `material_spec_for`); `save_mph_dir`
+    reaches each arm's finest level.
     """
     common = dict(
         materials=None,
@@ -280,6 +303,7 @@ def run_wall_loss_study(
         client=client,
         cache_root=cache_root,
         force_resolve=force_resolve,
+        save_mph_dir=save_mph_dir,
     )
     impedance_study = replace(study, wall_bc=WallBC.IMPEDANCE)
     pec_study = replace(study, wall_bc=WallBC.PEC)

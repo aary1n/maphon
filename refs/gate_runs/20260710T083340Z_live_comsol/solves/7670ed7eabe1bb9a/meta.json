@@ -1,0 +1,102 @@
+{
+  "comsol_version": "6.0",
+  "created_at_utc": "2026-07-10T08:36:56+00:00",
+  "diagnostics": [
+    {
+      "axis_hz_antinode_ratio": 0.7260370962957007,
+      "axis_hz_sign_changes": 29,
+      "azimuthal_e_energy_fraction": 7.275051686774129e-17,
+      "f_imag_hz": 29806.732534715735,
+      "f_real_hz": 3132.7404078396403
+    },
+    {
+      "axis_hz_antinode_ratio": 0.7260246170664355,
+      "axis_hz_sign_changes": 29,
+      "azimuthal_e_energy_fraction": 4.691754401877429e-18,
+      "f_imag_hz": 9318.58653563746,
+      "f_real_hz": 9347.5172091331
+    },
+    {
+      "axis_hz_antinode_ratio": 0.726034444140385,
+      "axis_hz_sign_changes": 29,
+      "azimuthal_e_energy_fraction": 9.04740641278977e-17,
+      "f_imag_hz": 1930.123069404219,
+      "f_real_hz": 34832.8272331236
+    },
+    {
+      "axis_hz_antinode_ratio": 0.726035544631468,
+      "axis_hz_sign_changes": 29,
+      "azimuthal_e_energy_fraction": 6.975745601177216e-13,
+      "f_imag_hz": 277871.90986599325,
+      "f_real_hz": 41833.388332554845
+    },
+    {
+      "axis_hz_antinode_ratio": 0.6900253616698455,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 1.0,
+      "f_imag_hz": 79573.53402426546,
+      "f_real_hz": 1450409884.8032892
+    },
+    {
+      "axis_hz_antinode_ratio": 0.029173481592391838,
+      "axis_hz_sign_changes": 17,
+      "azimuthal_e_energy_fraction": 3.2030826974017106e-26,
+      "f_imag_hz": 143852.69256039942,
+      "f_real_hz": 2642682890.4301667
+    },
+    {
+      "axis_hz_antinode_ratio": 0.3042239142437115,
+      "axis_hz_sign_changes": 1,
+      "azimuthal_e_energy_fraction": 1.0,
+      "f_imag_hz": 151918.65664072847,
+      "f_real_hz": 2772102607.6937056
+    },
+    {
+      "axis_hz_antinode_ratio": 0.43992463014610866,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 1.0,
+      "f_imag_hz": 155670.61510022552,
+      "f_real_hz": 2837509729.687979
+    }
+  ],
+  "fingerprint": {
+    "geometry": {
+      "box_height_m": 0.01842,
+      "box_radius_m": 0.01228,
+      "dielectric_height_m": null,
+      "dielectric_minor_radius_m": 0.002456,
+      "dielectric_radius_m": 0.00614,
+      "shape": "torus"
+    },
+    "grid": {
+      "n_r": 201,
+      "n_z": 301
+    },
+    "materials": {
+      "copper_mu_r": 1.0,
+      "copper_sigma": 60000000.0,
+      "sto_epsilon_r_real": 316.3,
+      "sto_mu_r": 1.0,
+      "sto_sigma": 0.0,
+      "sto_tan_delta": 0.00011,
+      "wall_pec": true
+    },
+    "mesh": {
+      "air_max_h_m": 0.0004999999999999999,
+      "curved_dielectric_boundary": true,
+      "dielectric_max_h_m": 0.00012499999999999998
+    },
+    "schema_version": 1,
+    "study": {
+      "azimuthal_index_m": 0,
+      "n_modes": 12,
+      "search_hz": 1450000000.0,
+      "wall_bc": "pec"
+    }
+  },
+  "interface_tag": "emw",
+  "mesh_element_count": 7492,
+  "picked_index": 8,
+  "q_emw_cross_check": 9113.64502399124,
+  "record_hash": "7670ed7eabe1bb9a"
+}

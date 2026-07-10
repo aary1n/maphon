@@ -51,7 +51,15 @@ class STOSingleCrystal:
 
 @dataclass(frozen=True)
 class Copper:
-    """Cavity wall material. Drives the Impedance BC surface resistance."""
+    """Cavity wall material. Drives the Impedance BC surface resistance.
+
+    `sigma = 6.0e7 S/m` is the SPEC §2/§6 committed value. Booth-primary
+    corroboration (recorded 2026-07-10, §5a pass): Booth's thesis
+    (MEng_thesis-01865045.pdf) Table 3 prints copper electrical
+    conductivity 6.00E+07 S/m — the identical value, from the primary
+    the anchors are judged against. Value untouched by the
+    corroboration.
+    """
 
     sigma: float = 6.0e7
     mu_r: float = 1.0
@@ -84,11 +92,27 @@ class Crystal:
 
 @dataclass(frozen=True)
 class NominalGeometry:
-    """Booth Appendix A, STO TE01delta resonator.
+    """Booth Appendix A, STO TE01delta resonator — SUPERSEDED READING
+    for the Booth point (2026-07-10; fields untouched).
 
-    `dielectric_height_m` is UNPINNED in Booth (gap #1, SPEC §11). Either
-    sweep it or load Booth's .mph when supervisor delivers it; the §4
-    wall-loss split closes the gap empirically.
+    This dataclass encodes the original SPEC §2 parenthetical reading:
+    "box width 12.28 mm (-> box radius 6.14 mm)", dielectric radius
+    2.46 mm with the second dimension unpinned (gap #1, SPEC §11). The
+    2026-07-10 document recovery (refs/booth_geometry_recovery.md)
+    REFUTES that reading at the Booth point: Booth's "Resonator Width"
+    is the axisymmetric r-EXTENT (box radius), proven by the exact
+    correspondence of the supervisor .mph (refs/comsol/booth/) with
+    App. A's ANAPOLE row, and Table 4 fixes the construction ratios
+    (Box Width x, Box Height 1.5x, dielectric cross-section radius x/5)
+    — so App. A's 2.46 mm is the torus MINOR radius (x/5, ratio-exact
+    2.456 mm), not the major radius. Use `BoothTE01DeltaGeometry` /
+    `GEOM_BOOTH_TE01D` for the Booth point.
+
+    Fields are deliberately untouched: the §8 empty-cavity anchor and
+    the PEC + lossy convention check were solved and frozen at these
+    dimensions (refs/gate_runs/20260706T211615Z_live_comsol), and those
+    checks are geometry-independent in what they assert. New Booth-point
+    work must not consume this class.
     """
 
     box_width_m: float = 12.28e-3
@@ -96,6 +120,53 @@ class NominalGeometry:
     box_height_m: float = 18.42e-3
     dielectric_radius_m: float = 2.46e-3
     dielectric_height_m: float | None = None
+
+
+@dataclass(frozen=True)
+class BoothTE01DeltaGeometry:
+    """Booth's STO TE01delta resonator, RECOVERED geometry (SPEC §2,
+    §5a pass 2026-07-10; full derivation refs/booth_geometry_recovery.md).
+
+    GRADE: document recovery from primary sources in hand, closed by
+    in-repo cross-checks — not a solve output. Provenance chain:
+
+    - Booth thesis (MEng_thesis-01865045.pdf) Appendix A (p. 29), STO
+      TE01delta row: Resonator Width 12.28 mm / Resonator Height
+      18.42 mm / Dielectric Radius 2.46 mm.
+    - "Resonator Width" = the axisymmetric r-EXTENT (box radius), NOT a
+      diameter: proven by the supervisor .mph
+      (refs/comsol/booth/2D Resonator Lossy.mph), whose cavity
+      r in [0, 22.36] mm, z half-height 16.77 mm, circle centre
+      r = 11.18 mm, radius 4.472 mm reproduce App. A's ANAPOLE row
+      (22.36 / 33.54 / 4.472) verbatim with width read as r-extent,
+      and whose Q = 9581.37 matches Table 8's anapole 9.58E+03 to
+      3 s.f. (refs/comsol/README.md, corrected this pass).
+    - Table 4 (p. 15) fixes the construction ratios: Box Width x, Box
+      Height (3/2)x, Dielectric (cross-section) Radius x/5;
+      "Resonator dimensions are always adjusted in a proportionate
+      manner, ensuring set ratios are maintained." So App. A's printed
+      2.46 is the 3-s.f. print of the ratio value x/5 = 2.456 mm (the
+      anapole row prints its ratio value 4.472 = 22.36/5 at 4 s.f.).
+    - Torus form is Booth's own statement ("the toroidal resonator",
+      p. 13; "torus-shaped dielectric ring", p. 16) — the puck reading
+      retires at the Booth point.
+    - The torus MAJOR radius (centre distance) is untabulated — the one
+      free DOF — pinned at the radial midpoint x/2 by the .mph
+      (11.18 = 22.36/2), with p. 17 confirming the ring-to-axis
+      distance was never optimised.
+
+    `torus_minor_radius_m` = 2.456e-3 is the RATIO-EXACT value the §5a
+    gates are judged at (ratified branch choice 3);
+    `printed_minor_radius_m` = 2.46e-3 is App. A's 3-s.f. print, used
+    only for the one finest-mesh walls-on sensitivity solve recorded as
+    a diagnostic alongside the gate.
+    """
+
+    box_radius_m: float = 12.28e-3
+    box_height_m: float = 18.42e-3
+    torus_minor_radius_m: float = 2.456e-3
+    torus_major_radius_m: float = 6.14e-3
+    printed_minor_radius_m: float = 2.46e-3
 
 
 @dataclass(frozen=True)
@@ -194,6 +265,28 @@ class ValidationTargets:
 # the cross-paper comparison, but the resulting tan_delta upper bound
 # (2.3e-4) carries that assumption.
 DELOAD_K: float = 0.2
+
+
+BOOTH_MPH_TAN_DELTA: float = 0.0333378 / 316.3
+"""Booth's ACTUAL model tan_delta — the faithful-reproduction branch
+(§5a pass, 2026-07-10; ratified branch choice 1).
+
+Source: the supervisor-supplied Booth-tradition reference file
+refs/comsol/booth/2D Resonator Lossy.mph, material node: SrTiO3 entered
+as eps_r = 316.3 - j*0.0333378, i.e. tan_delta = 0.0333378/316.3
+= 1.05400e-4 (in-repo, inspectable). Corroboration: this is the
+UNROUNDED Debye scaling of Booth Table 1's tan_delta = 1.6e-3 at
+22 GHz down to 1.45 GHz (1.6e-3 * 1.45/22 = 1.0545e-4 — the same
+arithmetic whose 2-s.f. round is Table 2's printed 1.1e-4).
+
+Role: the §5a Q and wall-loss gates are judged on THIS branch — a
+like-for-like reproduction of Booth's 6,980 cannot stack a ~4.4%
+tan_delta delta (a ~3% Q lever) against a ±1% window. The CANONICAL
+SPEC §2 value stays `STOSingleCrystal.tan_delta` = 1.1e-4 (unchanged):
+that is the model Phase 2 runs, solved as the companion branch and
+feeding the margin report. SPEC §6's account ("Booth 6,980 = same
+tan_delta [1.1e-4]") receives a dated correction this pass.
+"""
 
 
 @dataclass(frozen=True)
@@ -900,6 +993,7 @@ STO = STOSingleCrystal()
 COPPER = Copper()
 CRYSTAL = Crystal()
 GEOM = NominalGeometry()
+GEOM_BOOTH_TE01D = BoothTE01DeltaGeometry()
 TARGET = TargetMode()
 TOL = TolRanges()
 EXTRACTION_TOL = ExtractionTolerances()
