@@ -456,12 +456,16 @@ def test_a11_report_status_notes_and_byte_pin():
     report = build_report()
     # REQ 1: the D8 common-ΔT wording, verbatim from the single source
     assert COMMON_DELTA_T_NOTE in report
-    # REQ 2: the cross-build composite line
-    assert "CROSS-BUILD COMPOSITE" in report
-    assert "NEITHER build's number" in report
+    # REQ 2: the re-based own-model Q0 / composed-kappa attribution.
+    assert "OWN-MODEL Q0, COMPOSED kappa_c" in report
+    assert "superseding the cross-build composite" in report
     # R5: the §5a own-model gate line
-    assert "phase1_complete: false" in report
+    assert "`phase1_complete` remains false" in report
     assert "§5a" in report
+    assert "Q0 = 6764.5852" in report
+    assert "Q_L = Q0/(1 + k) = 5637.15" in report
+    assert "kappa_c = f/Q_L = 257.222 kHz" in report
+    assert "**ΔT_max = 0.6030 K**" in report
     # the committed report is exactly what the generator produces
     committed = (
         Path(__file__).resolve().parents[1]

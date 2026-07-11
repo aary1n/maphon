@@ -2,10 +2,8 @@
 
 Every row's pass AND fail branch is exercised here on synthetic
 inputs; the live tier (tests/test_gate_comsol.py, requires_comsol)
-runs the identical code path on real solves. The Booth Table 8
-numerical gate itself stays strict-xfail in test_wall_loss_gate.py —
-nothing here weakens it: a synthetic pass of the wall-loss row is a
-check of the JUDGMENT, not of the physics.
+runs the identical code path on real solves. A synthetic pass of the
+wall-loss row is a check of the JUDGMENT, not of the archived physics.
 """
 
 from __future__ import annotations
@@ -14,6 +12,9 @@ import pytest
 
 from cavity.extraction import ExtractionResult
 from cavity.provenance import (
+    BOOTH_IMPLIED_F_M,
+    BOOTH_IMPLIED_V_MODE_M3,
+    BOOTH_TABLE8_REVOLUTION_FACTOR,
     EXTRACTION_TOL,
     GATE_ROWS,
     GEOM,
@@ -22,6 +23,7 @@ from cavity.provenance import (
     TARGETS,
 )
 from cavity.provenance.gate_targets import BOOTH_TWO_POINT_REL_TOL
+from cavity.extraction import magnetic_purcell_factor
 from cavity.validation import (
     BoothPayload,
     CheckStatus,
@@ -99,9 +101,9 @@ def pec_lossy_payload(rel_error: float = 1.0e-3) -> PecLossyPayload:
 
 def booth_payload(
     q: float = 6_980.0,
-    v_mode_global_m3: float = 0.409e-6,
+    v_mode_global_m3: float = BOOTH_IMPLIED_V_MODE_M3,
     f_hz: float = 1.4502e9,
-    f_m_global: float = 3.4e7,
+    f_m_global: float = BOOTH_IMPLIED_F_M,
     epsilon_r_real: float | None = TARGETS.booth.epsilon_r_real,
 ) -> BoothPayload:
     return BoothPayload(
@@ -180,8 +182,15 @@ class TestGateConfig:
         assert by_id["wall_loss_split"].target_text == (
             "Q_diel ≈ 9–10k, wall fraction ~23–27%"
         )
-        assert by_id["f_m"].target_text == "order 10⁷ via §3 formula"
+        assert by_id["f_m"].target_text == (
+            "±1% consistency vs BOOTH_IMPLIED_F_M at the Booth point "
+            "(order 10⁷ re-scoped to the confinement endpoint — "
+            "finding 2026-07-11)"
+        )
         assert by_id["confinement_trend"].source_text == "Breeze Table 1"
+
+    def test_eleven_checks_in_rebased_config(self):
+        assert sum(len(row.checks) for row in GATE_ROWS) == 11
 
     def test_windows_reference_constants_not_retyped(self):
         checks = {
@@ -200,7 +209,22 @@ class TestGateConfig:
             TARGETS.booth.q_factor * (1 - BOOTH_TWO_POINT_REL_TOL)
         )
         assert checks["booth_two_point/v_mode"].target_value == (
-            TARGETS.booth.v_mode_m3
+            BOOTH_IMPLIED_V_MODE_M3
+        )
+        assert checks["booth_two_point/v_mode"].window.lo == pytest.approx(
+            BOOTH_IMPLIED_V_MODE_M3 * (1 - BOOTH_TWO_POINT_REL_TOL)
+        )
+        assert checks["booth_two_point/v_mode"].window.hi == pytest.approx(
+            BOOTH_IMPLIED_V_MODE_M3 * (1 + BOOTH_TWO_POINT_REL_TOL)
+        )
+        assert checks["f_m/booth_consistency"].target_value == (
+            BOOTH_IMPLIED_F_M
+        )
+        assert checks["f_m/booth_consistency"].window.lo == pytest.approx(
+            BOOTH_IMPLIED_F_M * (1 - BOOTH_TWO_POINT_REL_TOL)
+        )
+        assert checks["f_m/booth_consistency"].window.hi == pytest.approx(
+            BOOTH_IMPLIED_F_M * (1 + BOOTH_TWO_POINT_REL_TOL)
         )
         assert checks["wall_loss_split/q_diel"].window.lo == (
             TARGETS.q_diel_lo
@@ -399,7 +423,7 @@ class TestBoothTwoPointRow:
             "f/f_at_booth_geometry",
             "booth_two_point/q",
             "booth_two_point/v_mode",
-            "f_m/order_of_magnitude",
+            "f_m/booth_consistency",
         ):
             check = check_by_name(report, name)
             assert check.status is CheckStatus.FAIL
@@ -480,6 +504,34 @@ class TestConfinementTrendRow:
             is CheckStatus.FAIL
         )
 
+    def test_endpoint_f_m_order_uses_section_3_formula(self):
+        passing = run_gate(
+            StaticProvider(
+                confinement_payload=confinement_payload(
+                    (0.409e-6, 6_980.0),
+                    (0.30e-6, 8_500.0),
+                    (0.2e-6, 10_000.0),
+                )
+            )
+        )
+        failing = run_gate(
+            StaticProvider(
+                confinement_payload=confinement_payload(
+                    (0.409e-6, 6_980.0),
+                    (0.30e-6, 8_500.0),
+                    (0.05e-6, 10_000.0),
+                )
+            )
+        )
+        check = check_by_name(passing, "confinement_trend/f_m_order")
+        assert check.measured == pytest.approx(
+            magnetic_purcell_factor(10_000.0, 0.2e-6, TARGET.f_design_hz)
+        )
+        assert check.status is CheckStatus.PASS
+        assert check_by_name(
+            failing, "confinement_trend/f_m_order"
+        ).status is CheckStatus.FAIL
+
 
 class TestWallLossRow:
     def test_pass_inside_section_4_windows(self):
@@ -522,22 +574,28 @@ class TestWallLossRow:
 
 
 class TestFmRow:
-    def test_order_1e7_passes(self):
+    def test_booth_implied_f_m_passes(self):
         report = run_gate(
-            StaticProvider(booth_payload=booth_payload(f_m_global=3.4e7))
+            StaticProvider(
+                booth_payload=booth_payload(f_m_global=BOOTH_IMPLIED_F_M)
+            )
         )
         assert (
-            check_by_name(report, "f_m/order_of_magnitude").status
+            check_by_name(report, "f_m/booth_consistency").status
             is CheckStatus.PASS
         )
 
-    @pytest.mark.parametrize("f_m", [5.0e6, 2.0e8])
-    def test_wrong_order_fails(self, f_m):
+    @pytest.mark.parametrize("factor", [0.98, 1.02])
+    def test_outside_booth_consistency_window_fails(self, factor):
         report = run_gate(
-            StaticProvider(booth_payload=booth_payload(f_m_global=f_m))
+            StaticProvider(
+                booth_payload=booth_payload(
+                    f_m_global=BOOTH_IMPLIED_F_M * factor
+                )
+            )
         )
         assert (
-            check_by_name(report, "f_m/order_of_magnitude").status
+            check_by_name(report, "f_m/booth_consistency").status
             is CheckStatus.FAIL
         )
 
@@ -580,7 +638,7 @@ class TestWindowEdges:
     @pytest.mark.parametrize("side", [+1, -1])
     def test_booth_v_mode_edge(self, side):
         tol = BOOTH_TWO_POINT_REL_TOL
-        target = TARGETS.booth.v_mode_m3
+        target = BOOTH_IMPLIED_V_MODE_M3
         inside = run_gate(
             StaticProvider(
                 booth_payload=booth_payload(
@@ -686,24 +744,25 @@ class TestWindowEdges:
             is CheckStatus.PASS
         )
 
-    @pytest.mark.parametrize(
-        "f_m, expected_margin",
-        [
-            (1.01e7, +1.0 / 450.0),  # just inside the lower edge
-            (0.99e7, -1.0 / 450.0),  # just outside the lower edge
-            (1.01e8, -1.0 / 45.0),  # just outside the upper edge
-        ],
-    )
-    def test_f_m_edges(self, f_m, expected_margin):
-        report = run_gate(
-            StaticProvider(booth_payload=booth_payload(f_m_global=f_m))
+    @pytest.mark.parametrize("side", [+1, -1])
+    def test_f_m_edges(self, side):
+        target = BOOTH_IMPLIED_F_M
+        tol = BOOTH_TWO_POINT_REL_TOL
+        expected_margin = 0.1
+        inside_f_m = target * (1 + side * 0.9 * tol)
+        outside_f_m = target * (1 + side * 1.1 * tol)
+        inside = run_gate(
+            StaticProvider(booth_payload=booth_payload(f_m_global=inside_f_m))
         )
-        check = check_by_name(report, "f_m/order_of_magnitude")
-        expected_status = (
-            CheckStatus.PASS if expected_margin > 0 else CheckStatus.FAIL
+        outside = run_gate(
+            StaticProvider(booth_payload=booth_payload(f_m_global=outside_f_m))
         )
-        assert check.status is expected_status
-        assert check.margin == pytest.approx(expected_margin, rel=1e-6)
+        c_in = check_by_name(inside, "f_m/booth_consistency")
+        c_out = check_by_name(outside, "f_m/booth_consistency")
+        assert c_in.status is CheckStatus.PASS
+        assert c_in.margin == pytest.approx(expected_margin, rel=1e-6)
+        assert c_out.status is CheckStatus.FAIL
+        assert c_out.margin == pytest.approx(-expected_margin, rel=1e-6)
 
     # -- confinement structural fails (distinct from the endpoint
     # -- window edge above: the row must fail for the structural
@@ -742,9 +801,11 @@ class TestWindowEdges:
         assert row.status is CheckStatus.FAIL
         mono = check_by_name(report, "confinement_trend/monotonic")
         endpoint = check_by_name(report, "confinement_trend/endpoint_q")
+        f_m = check_by_name(report, "confinement_trend/f_m_order")
         assert mono.status is CheckStatus.FAIL
         assert mono.measured < 0.0  # the negative Q increment
         assert endpoint.status is CheckStatus.PASS
+        assert f_m.status is CheckStatus.PASS
 
 
 class TestAggregation:
@@ -765,6 +826,21 @@ class TestAggregation:
         # The shared Booth payload still passes f and F_m on their
         # own windows — a Q miss must not contaminate other rows.
         assert rows_by_id(report)["f"].status is CheckStatus.PASS
+
+
+def test_booth_implied_constants_match_section_3_and_revolution_factor():
+    assert BOOTH_IMPLIED_F_M == pytest.approx(
+        magnetic_purcell_factor(
+            TARGETS.booth.q_factor,
+            BOOTH_IMPLIED_V_MODE_M3,
+            TARGETS.booth.f_hz,
+        ),
+        rel=1e-12,
+    )
+    assert BOOTH_IMPLIED_V_MODE_M3 == pytest.approx(
+        TARGETS.booth.v_mode_m3 / BOOTH_TABLE8_REVOLUTION_FACTOR,
+        rel=1e-12,
+    )
 
 
 class TestProviders:

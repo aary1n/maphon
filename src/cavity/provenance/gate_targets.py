@@ -22,6 +22,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from cavity.provenance.constants import (
+    BOOTH_IMPLIED_F_M,
+    BOOTH_IMPLIED_V_MODE_M3,
     EXTRACTION_TOL,
     TARGET,
     TARGETS,
@@ -38,8 +40,12 @@ F_ROW_HALF_WIDTH_HZ: float = 0.5e6
 figure, i.e. round-to-4-s.f. must give 1.450 GHz."""
 
 BOOTH_TWO_POINT_REL_TOL: float = 0.01
-"""±1% on Booth Table 8 Q and V_mode. Provisional until the first live
-converged solve calibrates the actual mesh scatter."""
+"""±1% on the Booth Table 8 anchors (Q, V_mode, implied F_m).
+UNCHANGED by the 2026-07-11 V_mode re-base: the re-base re-derived the
+V window's BASIS (the anchor it centres on — BOOTH_IMPLIED_V_MODE_M3
+instead of the 225/360-corrupted print), never this tolerance (§11
+item 8's reserved path). Provisional until live converged solves
+calibrate the actual mesh scatter."""
 
 CONFINEMENT_ENDPOINT_Q_LO: float = 9_000.0
 CONFINEMENT_ENDPOINT_Q_HI: float = 10_500.0
@@ -155,6 +161,19 @@ _BOOTH_RATIONALE = (
     "both)."
 )
 
+_BOOTH_V_RATIONALE = (
+    "±1% (BOOTH_TWO_POINT_REL_TOL — UNCHANGED) about "
+    "BOOTH_IMPLIED_V_MODE_M3, the Table 8 print corrected for the "
+    "225/360 partial-revolution factor read from Booth's own results "
+    "tree (SPEC §5a finding 2026-07-11; "
+    "BOOTH_TABLE8_REVOLUTION_FACTOR carries the full rung, incl. "
+    "written-confirmation-PENDING). This is §11 item 8's reserved "
+    "path — the window's BASIS re-derived from her actual definition, "
+    "never a tolerance widening. V_mode is judged on the GLOBAL-max "
+    "variant (the standard definition); the local variant is recorded "
+    "in inputs for diagnosis (SPEC §3 requires both)."
+)
+
 _CONFINEMENT_RATIONALE = (
     "Endpoint window [9,000, 10,500] brackets 'toward ~10,000' across "
     "the §6 tan_delta band (dielectric ceiling 1/tan_delta = 10,000 "
@@ -177,11 +196,32 @@ _WALL_LOSS_RATIONALE = (
 )
 
 _F_M_RATIONALE = (
-    "'order 10^7' read as floor(log10(F_m)) == 7, i.e. F_m in "
-    "[1e7, 1e8]. Judged on the global-max V_mode variant (the "
-    "conservative, smaller-F_m choice); the formula's own "
+    "±1% (BOOTH_TWO_POINT_REL_TOL) consistency against "
+    "BOOTH_IMPLIED_F_M — the §3 formula at Booth's printed Q, the "
+    "corrected BOOTH_IMPLIED_V_MODE_M3 and f = 1.45 GHz (~7.16e6, "
+    "order 10^6.85). Re-scoped 2026-07-11 (SPEC §5a finding): the old "
+    "[1e7, 1e8) order window at the Booth point was satisfiable ONLY "
+    "through the x1.6-inflated V_mode print (0.409 => 1.15e7) — with "
+    "the true V no faithful model can land order 10^7 there — and an "
+    "order-of-magnitude window becoming a 1% consistency check is a "
+    "TIGHTENING, not a loosening. The order-10^7 physics window moves "
+    "to the confinement endpoint where its Breeze anchor lives "
+    "(confinement_trend/f_m_order — DEFERRED with that row, not "
+    "deleted, not weakened). Judged on the global-max V_mode variant "
+    "(the conservative, smaller-F_m choice); the formula's own "
     "3.3-3.6e7 self-consistency anchor on Breeze inputs is gated "
     "separately by F_M_BENCHMARK in the §3 extraction tests."
+)
+
+_F_M_CONFINEMENT_RATIONALE = (
+    "'order 10^7' read as floor(log10(F_m)) == 7, i.e. F_m in "
+    "[1e7, 1e8] — judged at the tightest sampled confinement point, "
+    "where the source anchor actually lives (Breeze Table 1: "
+    "F_m = 3.6e7 AT V = 0.2 cm^3, not at Booth's 0.65 cm^3 point). "
+    "Re-scoped here from the Booth point 2026-07-11 (SPEC §5a "
+    "finding; see f_m/booth_consistency): the window itself is "
+    "carried VERBATIM. Deferred with the row until the §7 sweep "
+    "exists."
 )
 
 GATE_ROWS: tuple[GateRowSpec, ...] = (
@@ -292,17 +332,19 @@ GATE_ROWS: tuple[GateRowSpec, ...] = (
                     "extracted V_mode (global-max variant), m^3"
                 ),
                 window=GateWindow(
-                    lo=TARGETS.booth.v_mode_m3
+                    lo=BOOTH_IMPLIED_V_MODE_M3
                     * (1.0 - BOOTH_TWO_POINT_REL_TOL),
-                    hi=TARGETS.booth.v_mode_m3
+                    hi=BOOTH_IMPLIED_V_MODE_M3
                     * (1.0 + BOOTH_TWO_POINT_REL_TOL),
                 ),
-                target_value=TARGETS.booth.v_mode_m3,
+                target_value=BOOTH_IMPLIED_V_MODE_M3,
                 provenance=(
-                    "TARGETS.booth (Booth 2018 Table 8 + Appendix A; "
+                    "BOOTH_IMPLIED_V_MODE_M3 (Booth 2018 Table 8 print "
+                    "0.409 cm^3 corrected x360/225 — SPEC §5a finding "
+                    "2026-07-11, BOOTH_TABLE8_REVOLUTION_FACTOR; "
                     "eps_r = 316.3)"
                 ),
-                tolerance_rationale=_BOOTH_RATIONALE,
+                tolerance_rationale=_BOOTH_V_RATIONALE,
             ),
         ),
     ),
@@ -348,6 +390,22 @@ GATE_ROWS: tuple[GateRowSpec, ...] = (
                 ),
                 tolerance_rationale=_CONFINEMENT_RATIONALE,
             ),
+            GateCheckSpec(
+                check_id="confinement_trend/f_m_order",
+                description=(
+                    "F_m (§3 formula) at the tightest sampled "
+                    "confinement point"
+                ),
+                window=GateWindow(lo=F_M_ORDER_LO, hi=F_M_ORDER_HI),
+                target_value=TARGETS.breeze.f_m,
+                provenance=(
+                    "TARGETS.breeze.f_m (Breeze 2017 Table 1, STO "
+                    "row: F_m = 3.6e7 at V = 0.2 cm^3); re-scoped "
+                    "here from the Booth point per the SPEC §5a "
+                    "finding 2026-07-11"
+                ),
+                tolerance_rationale=_F_M_CONFINEMENT_RATIONALE,
+            ),
         ),
     ),
     GateRowSpec(
@@ -392,22 +450,32 @@ GATE_ROWS: tuple[GateRowSpec, ...] = (
     GateRowSpec(
         row_id="f_m",
         check_text="F_m",
-        target_text="order 10⁷ via §3 formula",
+        target_text=(
+            "±1% consistency vs BOOTH_IMPLIED_F_M at the Booth point "
+            "(order 10⁷ re-scoped to the confinement endpoint — "
+            "finding 2026-07-11)"
+        ),
         source_text="Breeze (STO F_m = 3.6×10⁷)",
         blocked_on=None,
         checks=(
             GateCheckSpec(
-                check_id="f_m/order_of_magnitude",
+                check_id="f_m/booth_consistency",
                 description=(
                     "F_m (global-max V_mode variant) via the SPEC §3 "
-                    "formula"
+                    "formula, vs the Booth-implied anchor"
                 ),
-                window=GateWindow(lo=F_M_ORDER_LO, hi=F_M_ORDER_HI),
-                target_value=TARGETS.breeze.f_m,
+                window=GateWindow(
+                    lo=BOOTH_IMPLIED_F_M
+                    * (1.0 - BOOTH_TWO_POINT_REL_TOL),
+                    hi=BOOTH_IMPLIED_F_M
+                    * (1.0 + BOOTH_TWO_POINT_REL_TOL),
+                ),
+                target_value=BOOTH_IMPLIED_F_M,
                 provenance=(
-                    "TARGETS.breeze.f_m (Breeze 2017 Table 1); "
-                    "SPEC §3 formula; F_M_BENCHMARK gates the "
-                    "formula itself in the §3 tests"
+                    "BOOTH_IMPLIED_F_M (§3 formula at Booth's printed "
+                    "Q = 6,980, BOOTH_IMPLIED_V_MODE_M3, f = 1.45 GHz "
+                    "— SPEC §5a finding 2026-07-11); F_M_BENCHMARK "
+                    "gates the formula itself in the §3 tests"
                 ),
                 tolerance_rationale=_F_M_RATIONALE,
             ),

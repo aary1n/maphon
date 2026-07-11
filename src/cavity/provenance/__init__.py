@@ -14,7 +14,10 @@ without touching graded provenance.
 """
 
 from cavity.provenance.constants import (
+    BOOTH_IMPLIED_F_M,
+    BOOTH_IMPLIED_V_MODE_M3,
     BOOTH_MPH_TAN_DELTA,
+    BOOTH_TABLE8_REVOLUTION_FACTOR,
     COPPER,
     CRYSTAL,
     C_LIGHT,
@@ -53,7 +56,10 @@ __all__ = [
     "GateCheckSpec",
     "GateRowSpec",
     "GateWindow",
+    "BOOTH_IMPLIED_F_M",
+    "BOOTH_IMPLIED_V_MODE_M3",
     "BOOTH_MPH_TAN_DELTA",
+    "BOOTH_TABLE8_REVOLUTION_FACTOR",
     "BoothTE01DeltaGeometry",
     "GEOM_BOOTH_TE01D",
     "COPPER",

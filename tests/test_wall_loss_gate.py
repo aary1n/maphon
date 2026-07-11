@@ -1,54 +1,61 @@
-"""SPEC §5 validation gate row for the wall-loss split.
+"""SPEC §5 wall-loss split green path.
 
-The §5 table requires:
-  Q_diel in [9_000, 10_000] and wall_fraction in [0.23, 0.27] at
-  Booth's published geometry.
-
-STATUS AFTER THE 2026-07-10 §5a PASS (red; failure record:
-refs/gate_runs/20260710T083340Z_live_comsol/booth_5a_checkpoint.md):
-the live §4 split at the RECOVERED Booth TE01δ geometry
-(refs/booth_geometry_recovery.md — the old "1.82×-scaled variant"
-reading of the supervisor .mph was a misidentification, corrected
-there) landed INSIDE both windows (Q_diel = 9511.5, wall fraction =
-0.26601, faithful branch). But the §5a pass as a whole is a GATED
-FAIL (V_mode global-max ×1.60 high; F_m below 1e7 as its arithmetic
-consequence), and the pre-registered failure discipline forbids the
-green-path rewrite of this test: the xfail STAYS until a green §5a
-pass licenses loading the archived records and asserting the TARGETS
-windows here. The live verdicts themselves are already pinned in the
-requires_comsol tier (test_gate_comsol.py re-judges the frozen
-records through the live gate path).
-
-The marker remains strict=True: this placeholder body always raises,
-and the reason above records exactly what unblocks it.
+The re-based §5a record is green (5 pass / 0 fail / 1 deferred;
+`refs/gate_runs/20260711T132705Z_rejudge/`).  The judged values below
+come from its checkpoint manifest's faithful-wall-loss branch, which
+re-judges the immutable archived 2026-07-10 solves.
 """
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
+from cavity.provenance import TARGETS
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "§5a 2026-07-10 run is a GATED FAIL (V_mode/F_m; failure "
-        "record refs/gate_runs/20260710T083340Z_live_comsol/"
-        "booth_5a_checkpoint.md) — the wall-loss split itself landed "
-        "inside both §4 windows (Q_diel = 9511.5, wall fraction = "
-        "0.26601), but the pre-registered failure discipline forbids "
-        "the green-path rewrite until a §5a pass is green. When it "
-        "is: remove this xfail and rewrite to load the archived §5a "
-        "records (load_solve_record on the committed run dir, "
-        "skip-if-LFS-pointer) and assert "
-        "TARGETS.q_diel_lo <= Q_diel <= TARGETS.q_diel_hi and "
-        "TARGETS.wall_loss_fraction_lo <= wall_fraction <= "
-        "TARGETS.wall_loss_fraction_hi."
-    ),
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+SOURCE_RUN_DIR = REPO_ROOT / "refs" / "gate_runs" / "20260710T083340Z_live_comsol"
+REJUDGE_MANIFEST = (
+    REPO_ROOT
+    / "refs"
+    / "gate_runs"
+    / "20260711T132705Z_rejudge"
+    / "checkpoint_manifest.json"
 )
+FAITHFUL_RECORD_HASH = "2b276c4424e49bb9"
+_LFS_POINTER_PREFIX = b"version https://git-lfs"
+
+
+def _source_archive_or_skip() -> None:
+    """Use the standard archived-record LFS guard before judgment."""
+    fields_npz = SOURCE_RUN_DIR / "solves" / FAITHFUL_RECORD_HASH / "fields.npz"
+    if not fields_npz.is_file():
+        pytest.skip(
+            f"archived §5a record not present at {fields_npz} — "
+            "refs/gate_runs missing from this checkout"
+        )
+    with fields_npz.open("rb") as fh:
+        if fh.read(len(_LFS_POINTER_PREFIX)).startswith(_LFS_POINTER_PREFIX):
+            pytest.skip(
+                "refs/gate_runs fields.npz is an unsmudged git-lfs pointer — "
+                "run `git lfs pull` to materialise the §5a archive"
+            )
+
+
 def test_booth_table_8_wall_loss_split():
-    """SPEC §5 row: Q_diel ~ 9-10k, wall fraction 23-27% at Booth."""
-    raise NotImplementedError(
-        "SPEC §5 wall-loss gate row: green-path rewrite blocked by the "
-        "2026-07-10 §5a GATED FAIL (see the xfail reason and "
-        "refs/gate_runs/20260710T083340Z_live_comsol/)."
+    """Archived §5a faithful branch satisfies the Section 4 windows."""
+    _source_archive_or_skip()
+    manifest = json.loads(REJUDGE_MANIFEST.read_text(encoding="utf-8"))
+    wall_loss = manifest["branches"]["faithful"]["wall_loss"]
+    q_diel = wall_loss["q_diel"]
+    wall_fraction = wall_loss["wall_fraction"]
+
+    assert TARGETS.q_diel_lo <= q_diel <= TARGETS.q_diel_hi
+    assert (
+        TARGETS.wall_loss_fraction_lo
+        <= wall_fraction
+        <= TARGETS.wall_loss_fraction_hi
     )

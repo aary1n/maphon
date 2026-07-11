@@ -19,6 +19,7 @@ from cavity.validation.report_5a import (
     CHECKPOINT_FILENAME,
     MANIFEST_FILENAME,
     MANIFEST_SCHEMA_VERSION,
+    render_from_run_dir,
     render_checkpoint_markdown,
 )
 
@@ -28,6 +29,7 @@ RUN_5A_DIR = (
     / "gate_runs"
     / "20260710T083340Z_live_comsol"
 )
+REJUDGE_RUN_DIR = RUN_5A_DIR.parent / "20260711T132705Z_rejudge"
 
 
 def _manifest() -> dict:
@@ -59,3 +61,20 @@ def test_checkpoint_record_regenerates_byte_identical():
         encoding="utf-8"
     )
     assert committed == render_checkpoint_markdown(manifest)
+
+
+def test_rejudged_checkpoint_record_regenerates_byte_identical():
+    committed = (REJUDGE_RUN_DIR / CHECKPOINT_FILENAME).read_text(
+        encoding="utf-8"
+    )
+    assert committed == render_from_run_dir(REJUDGE_RUN_DIR)
+
+
+def test_rejudged_manifest_records_archive_judgment():
+    manifest = json.loads(
+        (REJUDGE_RUN_DIR / MANIFEST_FILENAME).read_text(encoding="utf-8")
+    )
+    assert manifest["judgment"]["mode"] == "rejudged_from_archive"
+    assert manifest["judgment"]["source_run_dir"] == RUN_5A_DIR.name
+    assert (manifest["gate"]["n_pass"], manifest["gate"]["n_fail"], manifest["gate"]["n_deferred"]) == (5, 0, 1)
+    assert manifest["gate"]["phase1_complete"] is False

@@ -84,6 +84,7 @@ class TestReportArtifact:
         assert data["provider_kind"] == "synthetic"
         assert data["phase1_complete"] is True
         assert tuple(r["row_id"] for r in data["rows"]) == ROW_IDS
+        assert sum(len(row["checks"]) for row in data["rows"]) == 11
         for row in data["rows"]:
             assert row["status"] in {
                 "pass",
@@ -105,7 +106,18 @@ class TestReportArtifact:
         assert by_id["booth_two_point"]["source"] == (
             "Booth Table 8 + App. A"
         )
-        assert by_id["f_m"]["target"] == "order 10⁷ via §3 formula"
+        assert by_id["f_m"]["target"] == (
+            "±1% consistency vs BOOTH_IMPLIED_F_M at the Booth point "
+            "(order 10⁷ re-scoped to the confinement endpoint — "
+            "finding 2026-07-11)"
+        )
+        checks = {
+            check["name"]: check
+            for row in data["rows"]
+            for check in row["checks"]
+        }
+        assert "f_m/booth_consistency" in checks
+        assert "confinement_trend/f_m_order" in checks
 
     def test_deferred_report_statuses_serialise(self, tmp_path):
         report = run_gate(StaticProvider())

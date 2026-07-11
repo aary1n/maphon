@@ -23,6 +23,7 @@ benchmark resolve to a single physical constant.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 
@@ -1050,3 +1051,82 @@ TARGETS = ValidationTargets(
         kind="measured_loaded",
     ),
 )
+
+
+BOOTH_TABLE8_REVOLUTION_FACTOR: float = 225.0 / 360.0
+"""Booth Table 8's mode-volume normalisation factor — her printed
+V_mode values are this fraction of the true full-revolution integral
+(SPEC §5a finding 2026-07-11, the V_mode forensic pass).
+
+Mechanism, read from the supervisor-supplied Booth-tradition file
+refs/comsol/booth/2D Resonator Lossy.mph (a readable zip; dmodel.xml
+results tree, in-repo, inspectable): the result node "Mode Volume
+Numerator" (op IntVolume, expression emw.normH*emw.normH, unit m*A^2)
+evaluates on dataset rev1 = Revolution 2D at COMSOL's DEFAULT partial
+revolution (start angle -90, revolution angle 225 — set verbatim in the
+file's creation actions and never changed), while the "Mode volume
+Denominator" (op MaxVolume, same expression) is revolution-angle
+INVARIANT. Numerator scaled by 225/360, denominator not => printed
+V_mode = 0.625 x true.
+
+Grade / rung (the derived anchors below inherit it):
+- mechanism CONFIRMED in the ANAPOLE model's node wiring (the one .mph
+  in hand);
+- the TE01delta row inherits it by UNIFORM-WORKFLOW INFERENCE (same
+  results tradition per Table 8 row) plus the quantitative closure:
+  own-model V_mode 0.65578 cm^3 x 0.625 = 0.40986 ~ the printed 0.409,
+  i.e. own vs Booth-implied true V agrees to +0.21%;
+- Booth-side WRITTEN CONFIRMATION PENDING (findings note drafted,
+  docs/booth_vmode_findings_note.md; the discrimination ask against the
+  numerically degenerate r <= x/2 truncation alias is the 225-degree
+  recollection question).
+
+Table 8 is internally consistent per row (printed Q / printed V
+reproduces the printed Q/V column, all eight rows), so her Q/V values
+inherit the same x1.6; the factor is uniform across the table and her
+comparative conclusions survive intact. A maximum does not scale with
+the revolved angle, and f/Q/wall-split are revolution-invariant ratios
+— which is exactly why only the V_mode row (and F_m through it) failed
+the 2026-07-10 §5a run."""
+
+
+BOOTH_IMPLIED_V_MODE_M3: float = (
+    TARGETS.booth.v_mode_m3 / BOOTH_TABLE8_REVOLUTION_FACTOR
+)
+"""Booth-implied TRUE (full-revolution) V_mode at her TE01delta point:
+the Table 8 print corrected by BOOTH_TABLE8_REVOLUTION_FACTOR
+(0.409e-6 / 0.625 = 6.544e-7 m^3). The print itself
+(TARGETS.booth.v_mode_m3) is UNTOUCHED — provenance keeps prints as
+printed; this is the derived comparison anchor the re-based
+booth_two_point/v_mode window is built from (gate_targets.py, §11
+item 8's reserved path: window-BASIS re-derivation from her actual
+definition, never a tolerance widening). Inherits the revolution
+factor's grade: anapole-.mph mechanism + uniform-workflow inference +
+0.21% quantitative closure; Booth-side written confirmation PENDING.
+Print precision: 0.409 is a 3-s.f. print, so the implied value carries
+~±0.1% half-ULP — an order below the ±1% window."""
+
+
+BOOTH_IMPLIED_F_M: float = (
+    (3.0 / (2.0 * math.pi) ** 2)
+    * (C_LIGHT / TARGETS.booth.f_hz) ** 3
+    * TARGETS.booth.q_factor
+    / BOOTH_IMPLIED_V_MODE_M3
+)
+"""Booth-implied F_m at her TE01delta point: the SPEC §3 magnetic
+Purcell formula F_m = (3/(2 pi)^2) * lambda^3 * (Q/V) evaluated at the
+printed Q = 6,980, the corrected BOOTH_IMPLIED_V_MODE_M3 and the
+printed f = 1.45 GHz. ~7.16e6 — order 10^6.85: with the true V, NO
+faithful model can satisfy the old [1e7, 1e8) order window at the
+Booth point (it was only ever satisfiable through the x1.6-inflated
+print, 0.409 => 1.15e7). The Booth-point F_m gate row is therefore a
+±1% CONSISTENCY check against this anchor — a TIGHTENING of an
+order-of-magnitude window to 1% — and the order-10^7 physics window
+moves to the confinement endpoint where its Breeze anchor lives
+(gate_targets.py). Inherits BOOTH_IMPLIED_V_MODE_M3's grade.
+
+Fork guard: this inline arithmetic MUST equal
+cavity.extraction.purcell.magnetic_purcell_factor(6980,
+BOOTH_IMPLIED_V_MODE_M3, 1.45e9) — asserted in
+tests/test_validation_gate.py (the inline form exists only because
+provenance cannot import extraction without a cycle)."""

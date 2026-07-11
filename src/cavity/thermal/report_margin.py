@@ -6,17 +6,26 @@ Deterministic output (fixed pass date, fixed formatting) so the
 committed report is pinned byte-for-byte in
 tests/test_thermal_detuning.py — the report_3a.py precedent, text-only.
 
-Provenance of every input:
-- Q0 = `TARGETS.booth.q_factor`, k = `DELOAD_K`, f = `TARGET.f_design_hz`
-  (single-sourced §6 constants);
-- p_e read from the committed frozen §8 gate export bundle
-  (`refs/exports/...` — record hash cited in the report), NOT a fresh
-  literal;
+Provenance of every input (RE-BASED 2026-07-11 — the §5a re-judgment
+is GREEN, `refs/gate_runs/20260711T132705Z_rejudge/`, so the
+pre-registered own-model rebase is licensed):
+- Q0 = the OWN-MODEL canonical-branch walls-on finest Q0 read from the
+  re-based §5a checkpoint manifest (record hash cited in the report) —
+  the SPEC §2 model Phase 2 runs. Branch attribution (amendment
+  wording, carried verbatim): gate-passage is established on the
+  FAITHFUL branch; the canonical Q0 has NOT itself passed the Booth
+  window (branch delta -3.10% as measured).
+- k = `DELOAD_K`, f = `TARGET.f_design_hz` (single-sourced §6
+  constants); kappa_c stays COMPOSED (own-model Q0 x Breeze's k = 0.2
+  — Booth states no coupling; SPEC §11 item 3);
+- p_e = the own-model walls-on canonical p_e from the same manifest —
+  retires the 3.14 GHz PEC-anchor placeholder this report previously
+  carried;
 - C0 rows are SPEC-cited planning values (revision note: "Breeze's
   build runs C ~ 190") — deliberately NOT graduated into
   `provenance/constants.py`: no measured C0 exists (the provenance
-  table's ingredients are N assumed, g_s derived, kappa_s fitted), and
-  the constant slot belongs to the §5a own-model checkpoint.
+  table's ingredients are N assumed, g_s derived, kappa_s fitted); the
+  §5a checkpoint delivers only the kappa_c/Q arm of "Booth's own C0".
 
 Usage:  python -m cavity.thermal.report_margin [--out thermal/reports]
 """
@@ -32,7 +41,6 @@ from cavity.provenance.constants import (
     DF_CAVITY_DT,
     DF_SPIN_DT,
     TARGET,
-    TARGETS,
 )
 from cavity.provenance.constants import cavity_df_dt_hz_per_k
 from cavity.thermal.broadening import resonance_linewidth_hz
@@ -45,7 +53,7 @@ from cavity.thermal.detuning import (
     q_loaded,
 )
 
-PASS_DATE = "2026-07-09"
+PASS_DATE = "2026-07-11"
 
 # SPEC revision-note planning values ("Breeze's build runs C ~ 190");
 # 50 / 500 bracket the sqrt(C0 - 1) insensitivity. Never measured — see
@@ -54,29 +62,53 @@ PLANNING_C0_ROWS = (50.0, 190.0, 500.0)
 PLANNING_C0 = 190.0
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-GATE_BUNDLE_META = (
+# The re-based §5a record (GREEN, 5/0/1 — SPEC §5a finding 2026-07-11);
+# its manifest carries the own-model canonical-branch numbers verbatim
+# from the archived solves.
+REJUDGE_RUN_DIR = "20260711T132705Z_rejudge"
+REJUDGE_MANIFEST = (
     _REPO_ROOT
     / "refs"
-    / "exports"
-    / "20260709T160320Z_gate_888536d768e0fba1"
-    / "export_meta.json"
+    / "gate_runs"
+    / REJUDGE_RUN_DIR
+    / "checkpoint_manifest.json"
 )
 
 
-def _gate_p_e() -> tuple[float, str]:
-    """(p_e, record_hash) from the committed frozen gate export bundle."""
-    with GATE_BUNDLE_META.open(encoding="utf-8") as fh:
-        meta = json.load(fh)
-    return float(meta["summary"]["p_e"]), str(meta["summary"]["record_hash"])
+def own_model_point() -> dict:
+    """Own-model canonical-branch numbers from the re-based §5a record.
+
+    Returns q0_canonical, q0_faithful (for the branch-attribution
+    line), p_e (walls-on canonical), the canonical record hash, and
+    the gate tallies — all read from the committed manifest, never
+    re-typed."""
+    with REJUDGE_MANIFEST.open(encoding="utf-8") as fh:
+        manifest = json.load(fh)
+    can = manifest["branches"]["canonical"]["arms"]["impedance"]["finest"]
+    fai = manifest["branches"]["faithful"]["arms"]["impedance"]["finest"]
+    gate = manifest["gate"]
+    return {
+        "q0_canonical": float(can["q"]),
+        "q0_faithful": float(fai["q"]),
+        "p_e": float(can["p_e"]),
+        "record_hash": str(can["record_hash"]),
+        "n_pass": gate["n_pass"],
+        "n_fail": gate["n_fail"],
+        "n_deferred": gate["n_deferred"],
+        "phase1_complete": gate["phase1_complete"],
+    }
 
 
 def build_report() -> str:
     """The full markdown report as a deterministic string."""
     f_hz = TARGET.f_design_hz
     t_base = DF_CAVITY_DT.t_window_lo_k  # 293 K — the operating baseline
-    p_e, record_hash = _gate_p_e()
+    own = own_model_point()
+    p_e, record_hash = own["p_e"], own["record_hash"]
+    q0 = own["q0_canonical"]
+    branch_delta_pct = (own["q0_canonical"] / own["q0_faithful"] - 1.0) * 100.0
 
-    q_l = q_loaded(TARGETS.booth.q_factor)
+    q_l = q_loaded(q0)
     kappa_c = resonance_linewidth_hz(f_hz, q_l)
 
     rows = []
@@ -115,18 +147,31 @@ def build_report() -> str:
         "## Status notes",
         "",
         f"- {Q_MARGIN_RUNG}.",
-        "- CROSS-BUILD COMPOSITE: this point composes Booth's Q0 = "
-        f"{TARGETS.booth.q_factor:g} (Booth Table 8) with Breeze's "
-        f"de-loading k = {DELOAD_K:g} (Breeze 2017; Wu's coupling "
-        "unstated, SPEC §11 item 3). The resulting "
-        f"Δf_max ≈ {df_max_headline / 1e6:.2f} MHz is NEITHER build's "
-        "number — it is a planning composite and must not be quoted as "
-        "Booth's or Breeze's margin.",
-        "- §5a GATE (R5): no own-model C0/kappa_c exists — the §5 gate "
-        "is not passed (frozen gate report: `phase1_complete: false`; "
-        "the only frozen solve is the §8 PEC convention-check anchor). "
-        "The §5a checkpoint run supersedes every number here before any "
-        "§7.T4 statement becomes a claim.",
+        "- OWN-MODEL Q0, COMPOSED kappa_c (re-based 2026-07-11, "
+        "superseding the cross-build composite): Q0 = "
+        f"{q0:.2f} is the OWN-MODEL canonical-branch walls-on finest "
+        "value from the re-based §5a record "
+        f"(`refs/gate_runs/{REJUDGE_RUN_DIR}/`, record hash "
+        f"`{record_hash}`) — the SPEC §2 model Phase 2 runs. BRANCH "
+        "ATTRIBUTION (amendment wording): gate-passage is established "
+        "on the FAITHFUL branch (tan_delta = BOOTH_MPH_TAN_DELTA, Q0 = "
+        f"{own['q0_faithful']:.2f}, +0.02% vs Booth's 6,980); the "
+        "canonical Q0 has NOT itself passed the Booth window (branch "
+        f"delta {branch_delta_pct:+.2f}% as measured). kappa_c stays "
+        f"COMPOSED: own-model Q0 x Breeze's k = {DELOAD_K:g} (Breeze "
+        "2017; Booth p. 8 uses unloaded Q throughout and states no "
+        "coupling; Wu's coupling unstated, SPEC §11 item 3) — the "
+        "resulting Δf_max ≈ "
+        f"{df_max_headline / 1e6:.2f} MHz is NOT fully own-model and "
+        "must not be quoted as a measured margin.",
+        "- §5a GATE (R5): the §5a benchmark is PASSED as re-based "
+        f"2026-07-11 ({own['n_pass']} pass / {own['n_fail']} fail / "
+        f"{own['n_deferred']} deferred — SPEC §5a finding: V window "
+        "re-based on the 225/360-corrected Booth print, F_m tightened "
+        "to ±1% consistency; tolerances unchanged). `phase1_complete` "
+        f"remains {str(own['phase1_complete']).lower()} on the "
+        "deferred confinement row — §5a benchmark PASS is NOT phase "
+        "completion, and Phase 2 claim levels still gate on §7.T5.",
         "- LAYER-A BOUNDARY: the joint C0/kappa_c dependence on the "
         "geometry DOFs (the §7.T4 headline requirement, SPEC §11 "
         "item 9) is NOT derived here — these are the per-draw maps and "
@@ -138,16 +183,17 @@ def build_report() -> str:
         "",
         f"- f = {f_hz / 1e9:.2f} GHz (`TARGET.f_design_hz`); "
         f"T_base = {t_base:g} K (§6T window floor).",
-        f"- Q0 = {TARGETS.booth.q_factor:g} -> Q_L = Q0/(1 + k) = "
-        f"{q_l:.2f}.",
+        f"- Q0 = {q0:.4f} (OWN-MODEL, canonical branch — Booth Table "
+        "8's 6,980 is now the comparison anchor, not the input) -> "
+        f"Q_L = Q0/(1 + k) = {q_l:.2f}.",
         f"- kappa_c = f/Q_L = {kappa_c / 1e3:.3f} kHz — CYCLIC-Hz FWHM "
         "linewidth, never the angular 2*pi*f/Q_L (the provenance "
         "table's verified W20 angular-\"Hz\" trap; guarded in anchor "
         "A6).",
-        f"- p_e = {p_e!r} from the frozen §8 gate export bundle "
-        f"(record hash `{record_hash}`) — a PEC anchor-solve value "
-        "(3.14 GHz, a/L = 0.5 puck), the pre-Phase-1b placeholder for "
-        "Booth-geometry p_e; it moves these numbers by ~0.2%.",
+        f"- p_e = {p_e!r} — OWN-MODEL walls-on canonical value at the "
+        "Booth point from the re-based §5a record (record hash "
+        f"`{record_hash}`); retires the 3.14 GHz PEC-anchor "
+        "placeholder this report previously carried.",
         "",
         "## Δf_max = (kappa_c/2)·sqrt(C0 − 1)",
         "",

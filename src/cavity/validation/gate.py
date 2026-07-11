@@ -6,11 +6,16 @@ is referenced from `cavity.provenance.constants`, never re-typed):
 
   - Analytic benchmark passes      empty-cavity TE011 < 0.1% error
   - f                              1.45 GHz, >=4 s.f.
-  - Booth two-point                Q ~ 6,980, V_mode ~ 0.409 cm^3
+  - Booth two-point                Q ~ 6,980; V_mode vs the corrected
+                                   Booth-implied anchor (finding
+                                   2026-07-11: the print carries a
+                                   225/360 partial-revolution factor)
   - Confinement trend              tightening toward 0.2 raises Q
-                                   toward ~10,000
+                                   toward ~10,000; order-1e7 F_m
+                                   judged HERE (its Breeze anchor)
   - Wall-loss split                Q_diel 9-10k, wall fraction 23-27%
-  - F_m                            order 1e7 via the §3 formula
+  - F_m                            ±1% consistency vs BOOTH_IMPLIED_F_M
+                                   at the Booth point
 
 Design: the gate CONSUMES payloads from a `SolveProvider`
 (`validation.providers`) and never solves anything itself. A payload
@@ -35,9 +40,12 @@ import math
 from dataclasses import dataclass
 from enum import Enum
 
-from cavity.extraction import assert_pec_lossy_q_consistency
+from cavity.extraction import (
+    assert_pec_lossy_q_consistency,
+    magnetic_purcell_factor,
+)
 from cavity.forward_model.persistence import utc_timestamp
-from cavity.provenance import EXTRACTION_TOL, TARGETS
+from cavity.provenance import EXTRACTION_TOL, TARGET, TARGETS
 from cavity.provenance.gate_targets import (
     CONFINEMENT_ENDPOINT_V_MODE_MAX_M3,
     CONFINEMENT_MIN_POINTS,
@@ -438,6 +446,7 @@ def _eval_confinement_row(
 
     mono_spec = _spec(row, "confinement_trend/monotonic")
     end_spec = _spec(row, "confinement_trend/endpoint_q")
+    fm_spec = _spec(row, "confinement_trend/f_m_order")
 
     # Loose -> tight confinement (descending V_mode).
     pts = sorted(payload.points, key=lambda p: -p.v_mode_m3)
@@ -463,7 +472,7 @@ def _eval_confinement_row(
                 inputs=inputs,
                 notes=note,
             )
-            for spec in (mono_spec, end_spec)
+            for spec in (mono_spec, end_spec, fm_spec)
         )
         return _row(row, checks)
 
@@ -504,7 +513,34 @@ def _eval_confinement_row(
         inputs={**inputs, "endpoint_v_mode_m3": endpoint.v_mode_m3},
         notes=notes,
     )
-    return _row(row, (mono_check, end_check))
+
+    # order-1e7 F_m judged at the confinement endpoint — its Breeze
+    # anchor lives at V ~ 0.2 cm^3, not at Booth's ~0.65 cm^3 point
+    # (re-scoped 2026-07-11; the Booth point carries the tighter ±1%
+    # f_m/booth_consistency check instead).
+    endpoint_f_m = magnetic_purcell_factor(
+        endpoint.q, endpoint.v_mode_m3, TARGET.f_design_hz
+    )
+    fm_status, fm_margin = evaluate_window(endpoint_f_m, fm_spec.window)
+    fm_check = _result(
+        fm_spec,
+        row,
+        measured=endpoint_f_m,
+        status=fm_status,
+        margin=fm_margin,
+        inputs={
+            **inputs,
+            "endpoint_v_mode_m3": endpoint.v_mode_m3,
+            "endpoint_q": endpoint.q,
+            "f_hz": TARGET.f_design_hz,
+        },
+        notes=(
+            "F_m via the §3 formula at the tightest sampled point; "
+            "f = TARGET.f_design_hz (the §5 trend row holds the "
+            "1.45 GHz design point by construction)."
+        ),
+    )
+    return _row(row, (mono_check, end_check, fm_check))
 
 
 def _eval_wall_loss_row(
@@ -561,8 +597,14 @@ def _eval_wall_loss_row(
 
 
 def _eval_f_m_row(payload: BoothPayload | Unavailable) -> GateRowResult:
+    # Booth-point F_m = ±1% consistency vs BOOTH_IMPLIED_F_M (finding
+    # 2026-07-11): the old [1e7, 1e8) order window here was satisfiable
+    # only through the x1.6-inflated V_mode print, and replacing an
+    # order-of-magnitude window with a 1% consistency check is a
+    # TIGHTENING — the order-1e7 physics window now lives at the
+    # confinement endpoint (its Breeze anchor), deferred with that row.
     row = _row_spec("f_m")
-    spec = _spec(row, "f_m/order_of_magnitude")
+    spec = _spec(row, "f_m/booth_consistency")
     if isinstance(payload, Unavailable):
         return _deferred_row(row, payload.reason)
     ext = payload.extraction
@@ -582,6 +624,8 @@ def _eval_f_m_row(payload: BoothPayload | Unavailable) -> GateRowResult:
                     "f_hz": ext.f_hz,
                 },
                 notes=(
+                    "±1% consistency vs the Booth-implied F_m anchor "
+                    "(§3 formula at printed Q, corrected V, 1.45 GHz); "
                     "judged on the global-max V_mode variant (the "
                     "conservative, smaller-F_m choice); local "
                     "variant recorded for diagnosis."

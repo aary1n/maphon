@@ -250,11 +250,18 @@ def build_manifest(
     run_dir_name: str,
     comsol_version: str | None,
     repo_root: Path,
+    judgment: dict | None = None,
 ) -> dict:
     """Assemble the checkpoint manifest (see module docstring).
 
     `gate` is the verdict summary dict (`gate_dict_from_report` on the
     live path, `gate_dict_from_json` on the rebuild path).
+
+    `judgment` (re-judgment passes only, 2026-07-11+): mode /
+    source_run_dir / source_git_commit / basis of a re-judgment over an
+    archived run. Its PRESENCE is what the renderer branches on — the
+    2026-07-10 manifest has no such key, so the committed byte-pin on
+    that record is untouched by every judgment-conditional below.
     """
     git_commit, git_dirty = _git_state(repo_root)
     sens = _finest_summary(sensitivity)
@@ -306,6 +313,8 @@ def build_manifest(
             "f_design_hz": TARGET.f_design_hz,
         },
     }
+    if judgment is not None:
+        manifest["judgment"] = judgment
     return manifest
 
 
@@ -376,6 +385,10 @@ def render_checkpoint_markdown(manifest: dict) -> str:
     can_pec = can["arms"]["pec"]["finest"]
     sens = manifest["sensitivity_printed_minor"]
     prov = manifest["provenance"]
+    # Presence of the judgment block = a re-judgment record (2026-07-11
+    # V_mode re-base onward). The 2026-07-10 manifest has no such key,
+    # so every branch below leaves its committed byte-pin untouched.
+    judgment = manifest.get("judgment")
 
     gated_green = gate["n_fail"] == 0
     status_word = (
@@ -410,17 +423,40 @@ def render_checkpoint_markdown(manifest: dict) -> str:
             f"{_verdict_word(c['status'])} |"
         )
 
+    if judgment is not None:
+        status_para = (
+            f"**Status: {status_word}.** RE-JUDGMENT (no new solve) of "
+            f"the archived `{judgment['source_run_dir']}` §5a solves "
+            "under the re-based §5 windows: the booth_two_point/v_mode "
+            "window's BASIS re-derived from Booth's actual V_mode "
+            "definition (the 225/360 partial-revolution factor — SPEC "
+            "§5a finding 2026-07-11, §11 item 8's reserved path) and "
+            "the F_m row tightened to ±1% consistency vs "
+            "BOOTH_IMPLIED_F_M; tolerances UNCHANGED "
+            "(`gate_targets.py`). Every solve record cites the source "
+            "archive, which is immutable. Gate record: "
+            "`gate_report.json` in this directory; regenerate this "
+            "file with `render_checkpoint_markdown("
+            "checkpoint_manifest.json)` (byte-pinned in "
+            "tests/test_report_5a.py)."
+        )
+    else:
+        status_para = (
+            f"**Status: {status_word}.** Live lossy-wall COMSOL solve "
+            "at the recovered Booth TE01δ geometry "
+            "(refs/booth_geometry_recovery.md), "
+            "judged by the committed §5 windows (`gate_targets.py`) — "
+            "no new tolerances. Gate record: `gate_report.json` in "
+            "this directory; regenerate this file with "
+            "`render_checkpoint_markdown(checkpoint_manifest.json)` "
+            "(byte-pinned in tests/test_report_5a.py)."
+        )
+
     lines: list[str] = [
         f"# SPEC §5a checkpoint — own-model solve at Booth's TE01δ point "
         f"({manifest['pass_date']})",
         "",
-        f"**Status: {status_word}.** Live lossy-wall COMSOL solve at the "
-        "recovered Booth TE01δ geometry (refs/booth_geometry_recovery.md), "
-        "judged by the committed §5 windows (`gate_targets.py`) — no new "
-        "tolerances. Gate record: `gate_report.json` in this directory; "
-        "regenerate this file with "
-        "`render_checkpoint_markdown(checkpoint_manifest.json)` "
-        "(byte-pinned in tests/test_report_5a.py).",
+        status_para,
         "",
         "## Geometry (gated)",
         "",
@@ -454,16 +490,38 @@ def render_checkpoint_markdown(manifest: dict) -> str:
         _crit("wall_loss_split/q_diel", "Q_diel (PEC arm)", "{:.4f}"),
         _crit("wall_loss_split/wall_fraction", "Wall-loss fraction",
               "{:.6f}"),
-        _crit("f_m/order_of_magnitude", "F_m", "{:.4e}"),
+        _crit(
+            "f_m/booth_consistency"
+            if "f_m/booth_consistency" in by_name
+            else "f_m/order_of_magnitude",
+            "F_m",
+            "{:.4e}",
+        ),
         "",
         f"Material identity: solved at eps_r' = "
         f"{fai['epsilon_r_real']:g} = TARGETS.booth pairing (checked by "
         "the gate's BoothPayload mismatch guard on every Booth-anchored "
         "row).",
-        f"Gate windows referenced: ±{F_ROW_HALF_WIDTH_HZ / 1e6:g} MHz on "
-        f"f; ±{BOOTH_TWO_POINT_REL_TOL:.0%} on Q and V_mode "
-        "(BOOTH_TWO_POINT_REL_TOL); TARGETS.q_diel/wall_fraction; "
-        "F_m in [1e7, 1e8).",
+        (
+            f"Gate windows referenced: ±{F_ROW_HALF_WIDTH_HZ / 1e6:g} "
+            f"MHz on f; ±{BOOTH_TWO_POINT_REL_TOL:.0%} on Q "
+            "(BOOTH_TWO_POINT_REL_TOL); "
+            f"±{BOOTH_TWO_POINT_REL_TOL:.0%} on V_mode about "
+            "BOOTH_IMPLIED_V_MODE_M3 (the 225/360-corrected Table 8 "
+            "print — window basis re-derived, tolerance unchanged); "
+            "TARGETS.q_diel/wall_fraction; "
+            f"F_m ±{BOOTH_TWO_POINT_REL_TOL:.0%} vs BOOTH_IMPLIED_F_M "
+            "(order-10^7 re-scoped to the confinement endpoint, "
+            "deferred)."
+        )
+        if judgment is not None
+        else (
+            f"Gate windows referenced: ±{F_ROW_HALF_WIDTH_HZ / 1e6:g} "
+            "MHz on "
+            f"f; ±{BOOTH_TWO_POINT_REL_TOL:.0%} on Q and V_mode "
+            "(BOOTH_TWO_POINT_REL_TOL); TARGETS.q_diel/wall_fraction; "
+            "F_m in [1e7, 1e8)."
+        ),
         f"Gate tallies: n_pass = {gate['n_pass']}, n_fail = "
         f"{gate['n_fail']}, n_deferred = {gate['n_deferred']} "
         "(confinement trend stays deferred — Breeze-side §7 sweep, out "
@@ -726,8 +784,17 @@ def render_checkpoint_markdown(manifest: dict) -> str:
         "own-model outputs are conditional on them |",
         "| df_cavity/dT, df_spin/dT | LITERATURE/DERIVED §6T | "
         "untouched (read-only this pass) |",
-        "| Booth 6980 / 0.409 cm³ | LITERATURE anchors | comparison "
-        "targets only |",
+        (
+            "| Booth 6980 print / V_mode print 0.409 cm³ re-based to "
+            "the implied 0.6544 cm³ (×360/225 — finding 2026-07-11) | "
+            "LITERATURE anchors | comparison targets only; Booth-side "
+            "written confirmation of the 225° mechanism PENDING |"
+        )
+        if judgment is not None
+        else (
+            "| Booth 6980 / 0.409 cm³ | LITERATURE anchors | comparison "
+            "targets only |"
+        ),
         "",
         "## Layer A inheritance",
         "",
@@ -741,16 +808,38 @@ def render_checkpoint_markdown(manifest: dict) -> str:
         "",
         "## §1 reproducibility",
         "",
-        f"- git commit at solve time: `{prov['git_commit']}` "
-        f"(dirty: {str(prov['git_dirty']).lower()} — the §5a pass "
-        "solves before its own commit by construction; the archive "
-        "commit is the citation).",
-        f"- COMSOL version: {prov['comsol_version']}.",
-        f"- Gate report created: {gate['created_at_utc']}.",
-        "- All §1 SolveRecords under `solves/`; finest gated-arm raw "
-        ".mph + sensitivity .mph under `mph/` (LFS).",
-        "",
     ]
+    if judgment is not None:
+        lines += [
+            f"- git commit at re-judgment time: `{prov['git_commit']}` "
+            f"(dirty: {str(prov['git_dirty']).lower()} — the "
+            "re-judgment runs before its own commit by construction; "
+            "this record's commit is the citation).",
+            f"- Source archive: "
+            f"`refs/gate_runs/{judgment['source_run_dir']}/` "
+            f"(solve-time commit `{judgment['source_git_commit']}`) — "
+            "IMMUTABLE; no new solve occurred.",
+            f"- Re-base basis: {judgment['basis']}",
+            f"- COMSOL version (of the archived solves): "
+            f"{prov['comsol_version']}.",
+            f"- Gate report created: {gate['created_at_utc']}.",
+            "- All §1 SolveRecords under the source archive's "
+            "`solves/`; raw .mph under its `mph/` (LFS). No solve "
+            "artifacts in this directory.",
+            "",
+        ]
+    else:
+        lines += [
+            f"- git commit at solve time: `{prov['git_commit']}` "
+            f"(dirty: {str(prov['git_dirty']).lower()} — the §5a pass "
+            "solves before its own commit by construction; the archive "
+            "commit is the citation).",
+            f"- COMSOL version: {prov['comsol_version']}.",
+            f"- Gate report created: {gate['created_at_utc']}.",
+            "- All §1 SolveRecords under `solves/`; finest gated-arm raw "
+            ".mph + sensitivity .mph under `mph/` (LFS).",
+            "",
+        ]
     return "\n".join(lines)
 
 
