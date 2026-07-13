@@ -96,14 +96,18 @@ nothing here changes shape. Any Δf_spin produced meanwhile inherits
 UNRATIFIED-w_s status doubly (placeholder now, unratified projection
 after Phase 1b) — rung strings below mirror `cavity.export.writer`.
 
-§7.T4 budget maps and the inversion-consistency amendment (2026-07-09)
+§7.T4 budget maps and the inversion-consistency amendment (2026-07-13)
 ======================================================================
-Δf_max(C0, kappa_c) = (kappa_c/2) * sqrt(C0 - 1), from the Lorentzian
-roll-off C(Δ) = C0 / (1 + (2Δ/kappa_c)^2). UNIT CONVENTION, pinned
-against the provenance table's verified W20 angular-"Hz" trap:
-kappa_c here is the CYCLIC-Hz FWHM linewidth f/Q_L
-(`broadening.resonance_linewidth_hz`), NEVER the angular 2*pi*f/Q_L —
-feeding rad/s inflates Δf_max by 2*pi (anchor A6).
+Δf_max(C0, kappa_c, kappa_s) = ((kappa_c + kappa_s)/2) *
+sqrt(C0 - 1), the general pulled-oscillator law re-derived 2026-07-13.
+The kappa_s -> 0 limit reproduces the superseded committed law. UNIT
+CONVENTION, pinned against the provenance table's verified W20
+angular-"Hz" trap: both kappa_c and kappa_s here are CYCLIC-Hz FWHM
+linewidths; kappa_c = f/Q_L (`broadening.resonance_linewidth_hz`),
+NEVER the angular 2*pi*f/Q_L. The planning composition (own-model Q0 x
+DELOAD_K -> kappa_c) is single-sourced via
+`report_margin.own_model_point()` (ratified amendment B: one kappa_c,
+one f).
 
 `delta_t_max_k` inverts the TRUE differential map
 D(u) = f*(u^p_e - 1) + s*tau*(u^2 - 1), u = sqrt(1 + ΔT/tau),
@@ -390,20 +394,55 @@ def q_loaded(q_unloaded: float, coupling_k: float | None = None) -> float:
     return q_unloaded / (1.0 + coupling_k)
 
 
-def delta_f_max_hz(c0: float, kappa_c_hz: float) -> float:
-    """Δf_max = (kappa_c/2)*sqrt(C0 - 1) — Lorentzian threshold budget.
+def delta_f_max_hz(
+    c0: float, kappa_c_hz: float, kappa_s_hz: float
+) -> float:
+    """General pulled-oscillator threshold budget.
 
-    kappa_c is the CYCLIC-Hz FWHM linewidth f/Q_L
-    (`broadening.resonance_linewidth_hz`), never angular rad/s (the W20
-    trap — module docstring; anchor A6). C0 <= 1 returns 0.0: a
-    below-threshold draw has no thermal margin (the retargeted Layer C
-    convention — no thresholding step, the margin is just zero).
+    The law is Δf_max = ((kappa_c + kappa_s)/2)*sqrt(C0 - 1), from the
+    threshold condition C0 = 1 + 4*Delta^2/(kappa_c+kappa_s)^2 with
+    pulled frequency omega = (kappa_c*omega_s + kappa_s*omega_c) /
+    (kappa_c+kappa_s). ``kappa_s_hz = 0.0`` is the explicit
+    kappa_s -> 0 branch reproducing the superseded committed law (SPEC
+    §7.T4, re-derived 2026-07-13).
+
+    BOTH linewidths are CYCLIC-Hz FWHM. W20's angular
+    "kappa_s = 1.1 MHz" must never be fed here (provenance table trap
+    1; anchor A6 sibling). C0 is the imported resonant cooperativity
+    4G^2/(kappa_c*kappa_s); it is NOT recomputed from kappa_s (planning
+    convention). C0 <= 1 returns 0.0: a below-threshold draw has no
+    thermal margin.
     """
     if not kappa_c_hz > 0:
         raise ValueError("kappa_c must be positive (cyclic Hz, f/Q_L)")
+    if kappa_s_hz < 0:
+        raise ValueError("kappa_s must be non-negative")
     if c0 <= 1.0:
         return 0.0
-    return 0.5 * kappa_c_hz * math.sqrt(c0 - 1.0)
+    return 0.5 * (kappa_c_hz + kappa_s_hz) * math.sqrt(c0 - 1.0)
+
+
+def q_margin_exponent(
+    c0: float, kappa_c_hz: float, kappa_s_hz: float
+) -> float:
+    """Napkin-scaling exponent E = d ln Δf_max / d ln Q_L.
+
+    Under kappa_c = f/Q_L and C0 = c*Q_L, with G and kappa_s fixed,
+    E = -kappa_c/(kappa_c+kappa_s) + C0/(2*(C0-1)). For C0 >> 1,
+    E -> -1/2 when kappa_c >> kappa_s and E -> +1/2 when
+    kappa_c << kappa_s; near threshold E -> +infinity. Turnovers obey
+    Q_L^2 - (f/kappa_s)*Q_L + 2*(f/kappa_s)/c = 0 and exist iff C0
+    evaluated at kappa_c = kappa_s is >= 8 (SPEC §7.T4, 2026-07-13).
+    """
+    if not kappa_c_hz > 0:
+        raise ValueError("kappa_c must be positive (cyclic Hz, f/Q_L)")
+    if kappa_s_hz < 0:
+        raise ValueError("kappa_s must be non-negative")
+    if c0 <= 1.0:
+        raise ValueError("q-margin exponent requires C0 > 1")
+    return -kappa_c_hz / (kappa_c_hz + kappa_s_hz) + c0 / (
+        2.0 * (c0 - 1.0)
+    )
 
 
 def differential_detuning_hz(

@@ -403,7 +403,14 @@ def render_checkpoint_markdown(manifest: dict) -> str:
     q_l = q_loaded(q0_can)
     f_hz = prov["f_design_hz"]
     kappa_c = resonance_linewidth_hz(f_hz, q_l)
-    df_max = delta_f_max_hz(PLANNING_C0, kappa_c)
+    # Archived §5a records are byte-immutable historical documents: they
+    # print the kappa_s -> 0 formula in-text ("(kappa_c/2)*sqrt(C0 - 1)"),
+    # so this renderer reproduces the record-time law by EXPLICIT branch
+    # (kappa_s_hz=0.0), never by a compatibility default (2026-07-13,
+    # steady-crossing-linewidths pass). The general two-linewidth law
+    # (SPEC §7.T4, re-derived 2026-07-13) applies from the NEXT minted
+    # §5a record onward, with its own record-format note.
+    df_max = delta_f_max_hz(PLANNING_C0, kappa_c, kappa_s_hz=0.0)
     dt_max = delta_t_max_k(
         df_max, 293.0, f_hz=f_hz, p_e=can_imp["p_e"]
     )

@@ -26,11 +26,20 @@ composition into `layered`'s Robin `h_top` (h_eff = h_conv + h_rad).
 maser-cylinder ΔT(r,z) field composed with a probe measure into
 Δf_spin + inhomogeneous width (the §7.T2 output-3 maser instance,
 via `broadening` unchanged) and the integrated Curie-Weiss cavity
-arm into Δf_cavity, plus the §7.T4 budget maps
-Δf_max = (κc/2)√(C0−1) and the closed-form ΔT_max / P_max inversions.
+arm into Δf_cavity, plus the §7.T4 budget maps — the two-linewidth
+threshold law Δf_max = ((κc+κs)/2)√(C0−1) (re-derived 2026-07-13;
+the previously committed (κc/2)√(C0−1) is its κs → 0 limit), the
+Q-margin exponent `q_margin_exponent`, and the closed-form
+ΔT_max / P_max inversions (unchanged — they consume Δf_max as an
+input). κs is the graded static planning branch
+(`provenance.KAPPA_S`); the κs(ΔT) feedback via `broadening` is the
+flagged follow-on, not implemented.
 Probe weight is a uniform-over-crystal placeholder pending Phase 1b
 w_s co-registration; both arms compose under the common-ΔT planning
 convention (D8, §11 item-10 bundle). Planning point committed at
-thermal/reports/q_margin_planning_point.md (`report_margin`).
+thermal/reports/q_margin_planning_point.md (`report_margin`); the
+§7.T4 turnover map — Δf_max and its Q_L-exponent at fixed G and κs,
+with the sign-inversion finding at the operating point — at
+thermal/reports/q_margin_turnover.md (`report_turnover`).
 All physical constants come from `cavity.provenance.constants` (§6T).
 """

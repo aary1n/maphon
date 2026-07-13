@@ -1,4 +1,4 @@
-"""SPEC §7.T5(b)/§7.T4 — detuning-integration anchors A1-A11 (§8 discipline).
+"""SPEC §7.T5(b)/§7.T4 — detuning-integration anchors A1-A14 (§8 discipline).
 
 Anchor map (plan of record, amendment branch (b) applied to A2/A4):
 
@@ -10,17 +10,22 @@ C3  linear-limit consistency: pure-CW slope identity vs the committed
 A4  budget round-trip against the TRUE u^p_e map after one Newton step
     (<1e-9 relative), plus the quadratic-seed deviation pin
     f*p_e*(p_e-1)/2*(u-1)^2 (~ppm of f at the 30 K envelope).
-A5  1/sqrt(Q) asymptotic exponent under C0 = c*Q_L, kappa_c = f/Q_L;
-    positive exponent near threshold.
-A6  kappa_c cyclic-Hz unit-trap guard + planning-point hand values.
+A5  general two-linewidth Q-margin exponent under C0 = c*Q_L,
+    kappa_c = f/Q_L: closed form vs numerics and both asymptotes.
+A6  one-Q0/one-f report composition; cyclic-Hz kappa_c/kappa_s traps;
+    planning-point, linewidth-band, temperature-band, and exponent pins.
 A7  wiring identity: uniform probe mean == volume_average_k.
 A8  1-D parabolic slab moments (mean Θ/3, rms Θ/sqrt(45)) — exact.
 A9  Beer-Lambert 1-D moments vs the hand-derived closed-form profile.
-A10 envelope-discrepancy pins (integrated vs point-slope vs
-    first-order integral) — the §6T caveat made quantitative.
+A10 envelope-discrepancy pins plus O(4 K) inversion-nonlinearity ratios.
 A11 flag propagation: DifferentialDetuning cannot exist unflagged;
     report carries the D8/composite/§5a status notes; committed report
     is byte-pinned to the generator.
+A12 exact regression continuity: the superseded committed law is the
+    kappa_s -> 0 member of the general law.
+A13 symmetric-linewidth point: kappa_c = kappa_s doubles that member.
+A14 closed-form turnover roots, no-crossing branch, and deterministic
+    turnover-report content; its later-phase committed file is byte-pinned.
 """
 
 from __future__ import annotations
@@ -38,9 +43,9 @@ from cavity.provenance.constants import (
     DELOAD_K,
     DF_CAVITY_DT,
     DF_SPIN_DT,
+    KAPPA_S,
     STO,
     TARGET,
-    TARGETS,
     cavity_df_dt_hz_per_k,
 )
 from cavity.thermal.broadening import resonance_linewidth_hz
@@ -63,9 +68,15 @@ from cavity.thermal.detuning import (
     differential_detuning_hz,
     p_max_w,
     q_loaded,
+    q_margin_exponent,
     uniform_probe_measure,
 )
-from cavity.thermal.report_margin import PLANNING_C0, build_report
+from cavity.thermal.report_margin import (
+    PLANNING_C0,
+    build_report,
+    own_model_point,
+)
+from cavity.thermal.report_turnover import build_report as build_turnover_report
 
 from tests._gate_record_fixture import GATE_P_E
 
@@ -168,7 +179,7 @@ def test_c3_small_delta_t_limit_is_pure_cw_slope():
 def test_a4_round_trip_exact_against_true_map():
     # from sub-Hz budgets to the full 30 K envelope scale
     envelope_df = differential_detuning_hz(30.0, T_BASE, p_e=GATE_P_E)
-    for df in (1e3, 1e5, 1.7e6, envelope_df):
+    for df in (1e3, 1e5, 1.7e6, 11.39e6, envelope_df):
         dt_max = delta_t_max_k(df, T_BASE, p_e=GATE_P_E)
         back = differential_detuning_hz(dt_max, T_BASE, p_e=GATE_P_E)
         assert back == pytest.approx(df, rel=1e-9)
@@ -214,43 +225,100 @@ def test_a4_sign_convention_guards():
         delta_t_max_k(-1.0, T_BASE)
 
 
-# --- A5: 1/sqrt(Q) asymptotic exponent --------------------------------------
+# --- A5: general two-linewidth Q-margin exponent ----------------------------
 
 
-def _log_slope(q_l: float, c_per_q: float) -> float:
+def _log_slope(q_l: float, c_per_q: float, kappa_s_hz: float) -> float:
     eps = 1e-4
-    hi = delta_f_max_hz(c_per_q * q_l * (1 + eps), F_HZ / (q_l * (1 + eps)))
-    lo = delta_f_max_hz(c_per_q * q_l / (1 + eps), F_HZ * (1 + eps) / q_l)
+    hi = delta_f_max_hz(
+        c_per_q * q_l * (1 + eps),
+        F_HZ / (q_l * (1 + eps)),
+        kappa_s_hz,
+    )
+    lo = delta_f_max_hz(
+        c_per_q * q_l / (1 + eps),
+        F_HZ * (1 + eps) / q_l,
+        kappa_s_hz,
+    )
     return (math.log(hi) - math.log(lo)) / (2.0 * math.log(1 + eps))
 
 
-def test_a5_inverse_sqrt_q_asymptote_and_threshold_departure():
-    # napkin assumptions: C0 = c*Q_L, kappa_c = f/Q_L, all else fixed
-    assert _log_slope(1e6, 1.0) == pytest.approx(-0.5, abs=1e-4)
-    # near threshold the exponent is POSITIVE (more Q helps there):
-    # d ln Δf_max / d ln Q = -1 + cQ/(2(cQ - 1)) = +0.5 at cQ = 1.5
-    assert _log_slope(1.5, 1.0) == pytest.approx(0.5, abs=1e-3)
+def test_a5_limit_branch_retains_committed_pins():
+    # These old committed pins are never deleted: they are exactly the
+    # kappa_s -> 0 limit of the general two-linewidth law.
+    assert _log_slope(1e6, 1.0, 0.0) == pytest.approx(-0.5, abs=1e-4)
+    assert _log_slope(1.5, 1.0, 0.0) == pytest.approx(+0.5, abs=1e-3)
 
 
-# --- A6: planning-point hand values + unit-trap guard ------------------------
+def test_a5_closed_form_matches_numerical_log_slope():
+    # kappa_c >> kappa_s, kappa_c ~ kappa_s, kappa_c << kappa_s
+    cases = (
+        (100.0, 0.02, 1.0e3),
+        (F_HZ / KAPPA_S.kappa_s_hz, 0.03, KAPPA_S.kappa_s_hz),
+        (1.0e6, 1.0, KAPPA_S.kappa_s_hz),
+    )
+    for q_l, c_per_q, kappa_s in cases:
+        assert q_margin_exponent(
+            c_per_q * q_l, F_HZ / q_l, kappa_s
+        ) == pytest.approx(_log_slope(q_l, c_per_q, kappa_s), abs=1e-3)
+
+
+def test_a5_two_linewidth_exponent_limits():
+    c0 = 1.0e6
+    q_l = 100.0
+    kappa_c = F_HZ / q_l
+    kappa_s = kappa_c / 1.0e4
+    assert kappa_c / kappa_s >= 1.0e4
+    assert q_margin_exponent(c0, kappa_c, kappa_s) == pytest.approx(
+        -0.5, abs=1e-3
+    )
+
+    q_l = 1.0e6
+    kappa_c = F_HZ / q_l
+    kappa_s = kappa_c * 1.0e4
+    assert kappa_c / kappa_s <= 1.0e-4
+    assert q_margin_exponent(c0, kappa_c, kappa_s) == pytest.approx(
+        +0.5, abs=1e-3
+    )
+
+
+def test_a5_q_margin_exponent_domain():
+    with pytest.raises(ValueError, match="exponent"):
+        q_margin_exponent(1.0, 1.0e5, 0.0)
+    with pytest.raises(ValueError, match="exponent"):
+        q_margin_exponent(0.5, 1.0e5, KAPPA_S.kappa_s_hz)
+    with pytest.raises(ValueError, match="cyclic"):
+        q_margin_exponent(190.0, 0.0, KAPPA_S.kappa_s_hz)
+    with pytest.raises(ValueError, match="non-negative"):
+        q_margin_exponent(190.0, 1.0e5, -1.0)
+
+
+# --- A6: report-composed planning point + unit traps -------------------------
 
 
 def test_a6_kappa_c_cyclic_hz_and_planning_point():
-    q_l = q_loaded(TARGETS.booth.q_factor)
-    assert q_l == pytest.approx(
-        TARGETS.booth.q_factor / (1.0 + DELOAD_K), rel=1e-14
-    )
+    own = own_model_point()
+    q0 = own["q0_canonical"]
+    p_e = own["p_e"]
+    q_l = q_loaded(q0)
+    assert q_l == pytest.approx(q0 / (1.0 + DELOAD_K), rel=1e-14)
     kappa_c = resonance_linewidth_hz(F_HZ, q_l)
-    # hand value: 1.45e9 * 1.2 / 6980 = 249.284 kHz CYCLIC. The W20
-    # angular-"Hz" trap (provenance table, trap 1) would give 2*pi*f/Q_L
-    # ≈ 1.566e6 rad/s — the tolerance would catch it by a factor 2*pi.
-    assert kappa_c == pytest.approx(249.284e3, rel=1e-4)
-    df_max = delta_f_max_hz(PLANNING_C0, kappa_c)
-    assert df_max == pytest.approx(1.7135e6, rel=1e-3)  # hand: 1.7135 MHz
-    # ΔT_max at the planning point (adopted map, gate p_e, 293 K base)
-    dt_max = delta_t_max_k(df_max, T_BASE, p_e=GATE_P_E)
-    assert dt_max == pytest.approx(0.5840, rel=1e-3)
-    # band endpoints via the §6T coefficient bands (linear, sub-K regime)
+    kappa_s = KAPPA_S.kappa_s_hz
+    # Angular-kappa_c trap: kappa_c is f/Q_L in CYCLIC Hz, never
+    # 2*pi*f/Q_L (provenance table trap 1; anchor A6).
+    assert kappa_c == pytest.approx(257.222e3, rel=1e-4)
+
+    df_max = delta_f_max_hz(PLANNING_C0, kappa_c, kappa_s)
+    assert df_max == pytest.approx(11.3915e6, rel=1e-3)
+    # Angular-kappa_s trap sibling: W20's angular value inflates the
+    # planning margin by ~5.46x and must never enter this cyclic-Hz API.
+    assert delta_f_max_hz(
+        PLANNING_C0, kappa_c, 2.0 * math.pi * kappa_s
+    ) > 4.0 * df_max
+
+    dt_max = delta_t_max_k(df_max, T_BASE, p_e=p_e)
+    assert dt_max == pytest.approx(3.8969, rel=1e-3)
+    # Band endpoints via the §6T coefficient bands (linear arithmetic).
     lo = df_max / (
         DF_CAVITY_DT.df_dt_band_hi_hz_per_k
         + abs(DF_SPIN_DT.df_dt_band_lo_hz_per_k)
@@ -259,15 +327,79 @@ def test_a6_kappa_c_cyclic_hz_and_planning_point():
         DF_CAVITY_DT.df_dt_band_lo_hz_per_k
         + abs(DF_SPIN_DT.df_dt_band_hi_hz_per_k)
     )
-    assert lo == pytest.approx(0.567, rel=2e-3)
-    assert hi == pytest.approx(0.725, rel=2e-3)
+    assert lo == pytest.approx(3.772, rel=2e-3)
+    assert hi == pytest.approx(4.819, rel=2e-3)
+
+    assert delta_f_max_hz(
+        PLANNING_C0, kappa_c, KAPPA_S.kappa_s_band_lo_hz
+    ) == pytest.approx(5.5487e6, rel=1e-3)
+    assert delta_f_max_hz(
+        PLANNING_C0, kappa_c, KAPPA_S.kappa_s_band_hi_hz
+    ) == pytest.approx(13.7974e6, rel=1e-3)
+    assert q_margin_exponent(
+        PLANNING_C0, kappa_c, kappa_s
+    ) == pytest.approx(0.34743, abs=5e-4)
 
 
 def test_a6_delta_f_max_domain():
-    assert delta_f_max_hz(1.0, 1e5) == 0.0  # at threshold: zero margin
-    assert delta_f_max_hz(0.5, 1e5) == 0.0  # below threshold: zero, no gate
+    assert delta_f_max_hz(1.0, 1e5, 0.0) == 0.0
+    assert delta_f_max_hz(0.5, 1e5, 1.4e6) == 0.0
     with pytest.raises(ValueError, match="cyclic"):
-        delta_f_max_hz(190.0, 0.0)
+        delta_f_max_hz(190.0, 0.0, 0.0)
+    with pytest.raises(ValueError, match="non-negative"):
+        delta_f_max_hz(190.0, 1.0e5, -1.0)
+
+
+# --- A12 / A13: exact law-family regression anchors -------------------------
+
+
+def test_a12_kappa_s_zero_exactly_reproduces_committed_law():
+    for c0 in (1.5, 50.0, 190.0, 500.0):
+        for kappa_c in (1.0e4, 249.284e3, 1.0e6):
+            assert delta_f_max_hz(c0, kappa_c, 0.0) == pytest.approx(
+                0.5 * kappa_c * math.sqrt(c0 - 1.0), rel=1e-15
+            )
+
+
+def test_a13_symmetric_linewidth_point_doubles_limit_branch():
+    kappa = 3.0e5
+    for c0 in (1.5, 50.0, 190.0, 500.0):
+        symmetric = delta_f_max_hz(c0, kappa, kappa)
+        assert symmetric == pytest.approx(
+            kappa * math.sqrt(c0 - 1.0), rel=1e-15
+        )
+        assert symmetric == pytest.approx(
+            2.0 * delta_f_max_hz(c0, kappa, 0.0), rel=1e-15
+        )
+
+
+# --- A14: turnover roots and no-crossing branch -----------------------------
+
+
+def test_a14_closed_form_turnovers_and_no_crossing_branch():
+    kappa_s = KAPPA_S.kappa_s_hz
+    a = F_HZ / kappa_s
+    c_per_q = 0.03
+    discriminant = math.sqrt(a * a - 8.0 * a / c_per_q)
+    q_minus = 0.5 * (a - discriminant)
+    q_plus = 0.5 * (a + discriminant)
+    for q_l in (q_minus, q_plus):
+        assert q_margin_exponent(
+            c_per_q * q_l, F_HZ / q_l, kappa_s
+        ) == pytest.approx(0.0, abs=1e-9)
+
+    c_large = 1.0e6
+    discriminant = math.sqrt(a * a - 8.0 * a / c_large)
+    q_plus_large = 0.5 * (a + discriminant)
+    assert q_plus_large == pytest.approx(a, rel=1e-4)
+
+    c_no_crossing = 0.005
+    assert c_no_crossing * a < 8.0
+    threshold_q = 1.0 / c_no_crossing
+    for q_l in np.geomspace(threshold_q * (1.0 + 1e-6), 1.0e6, 64):
+        assert q_margin_exponent(
+            c_no_crossing * q_l, F_HZ / q_l, kappa_s
+        ) > 0.0
 
 
 # --- A7: wiring identity vs volume_average_k ---------------------------------
@@ -382,6 +514,30 @@ def test_a10_envelope_form_discrepancies_pinned():
     assert 0.945 < integrated / slope_293 < 0.965  # ~ -4.6% (local slope)
 
 
+def test_a10_planning_scale_nonlinearity_ratios_pinned():
+    own = own_model_point()
+    p_e = own["p_e"]
+    q_l = q_loaded(own["q0_canonical"])
+    kappa_c = resonance_linewidth_hz(F_HZ, q_l)
+    df_max = delta_f_max_hz(
+        PLANNING_C0, kappa_c, KAPPA_S.kappa_s_hz
+    )
+    dt_true = delta_t_max_k(df_max, T_BASE, p_e=p_e)
+    dt_lin_pure_cw = df_max / (
+        F_HZ * p_e / (2.0 * TAU) + abs(DF_SPIN_DT.df_dt_hz_per_k)
+    )
+    dt_committed = df_max / (
+        cavity_df_dt_hz_per_k(T_BASE) * p_e
+        + abs(DF_SPIN_DT.df_dt_hz_per_k)
+    )
+    # Hand meaning: true inversion versus the pure-CW tangent isolates
+    # the O(4 K) inversion nonlinearity.
+    assert dt_true / dt_lin_pure_cw == pytest.approx(1.003659, rel=3e-3)
+    # Hand meaning: this ratio also folds in the documented eps_r mixing
+    # between the pure-CW truth map and the committed point function.
+    assert dt_true / dt_committed == pytest.approx(1.021885, rel=3e-3)
+
+
 # --- p_max linearity identity -------------------------------------------------
 
 
@@ -459,13 +615,26 @@ def test_a11_report_status_notes_and_byte_pin():
     # REQ 2: the re-based own-model Q0 / composed-kappa attribution.
     assert "OWN-MODEL Q0, COMPOSED kappa_c" in report
     assert "superseding the cross-build composite" in report
+    # REQ 3 (2026-07-13): the two-linewidth law, kappa_s rung, and
+    # C0-import/amendment-C convention notes, verbatim markers
+    assert "TWO-LINEWIDTH LAW (re-derived 2026-07-13" in report
+    assert "NOT a controlled comparison" in report
+    assert "C0-IMPORT CONVENTION" in report
+    assert "OVERSTATED under the import convention" in report
     # R5: the §5a own-model gate line
     assert "`phase1_complete` remains false" in report
     assert "§5a" in report
-    assert "Q0 = 6764.5852" in report
-    assert "Q_L = Q0/(1 + k) = 5637.15" in report
-    assert "kappa_c = f/Q_L = 257.222 kHz" in report
-    assert "**ΔT_max = 0.6030 K**" in report
+    own = own_model_point()
+    q_l = q_loaded(own["q0_canonical"])
+    kappa_c = resonance_linewidth_hz(F_HZ, q_l)
+    df_max = delta_f_max_hz(
+        PLANNING_C0, kappa_c, KAPPA_S.kappa_s_hz
+    )
+    dt_max = delta_t_max_k(df_max, T_BASE, p_e=own["p_e"])
+    assert f"Q0 = {own['q0_canonical']:.4f}" in report
+    assert f"Q_L = Q0/(1 + k) = {q_l:.2f}" in report
+    assert f"kappa_c = f/Q_L = {kappa_c/1e3:.3f} kHz" in report
+    assert f"**ΔT_max = {dt_max:.4f} K**" in report
     # the committed report is exactly what the generator produces
     committed = (
         Path(__file__).resolve().parents[1]
@@ -474,3 +643,30 @@ def test_a11_report_status_notes_and_byte_pin():
         / "q_margin_planning_point.md"
     )
     assert committed.read_text(encoding="utf-8") == report
+
+
+def test_a14_turnover_report_content():
+    report = build_turnover_report()
+    own = own_model_point()
+    q_l = q_loaded(own["q0_canonical"])
+    kappa_s = KAPPA_S.kappa_s_hz
+    kappa_c = resonance_linewidth_hz(F_HZ, q_l)
+    c_per_q = PLANNING_C0 / q_l
+    a = F_HZ / kappa_s
+    discriminant = math.sqrt(a * a - 8.0 * a / c_per_q)
+    q_minus = 0.5 * (a - discriminant)
+    q_plus = 0.5 * (a + discriminant)
+    exponent = q_margin_exponent(PLANNING_C0, kappa_c, kappa_s)
+    assert f"E = {exponent:+.4f}" in report
+    assert f"Q_- = {q_minus:.4g}" in report
+    assert f"Q_+ = {q_plus:.4g}" in report
+
+
+def test_a14_turnover_report_byte_pin():
+    committed = (
+        Path(__file__).resolve().parents[1]
+        / "thermal"
+        / "reports"
+        / "q_margin_turnover.md"
+    )
+    assert committed.read_text(encoding="utf-8") == build_turnover_report()

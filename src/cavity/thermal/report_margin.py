@@ -1,4 +1,4 @@
-"""SPEC §7.T4 — Q-margin planning-point report (2026-07-09).
+"""SPEC §7.T4 — Q-margin planning-point report (2026-07-13).
 
 Renders `thermal/reports/q_margin_planning_point.md`: the single labeled
 numeric instance of the §7.T4 budget maps (`cavity.thermal.detuning`).
@@ -40,6 +40,7 @@ from cavity.provenance.constants import (
     DELOAD_K,
     DF_CAVITY_DT,
     DF_SPIN_DT,
+    KAPPA_S,
     TARGET,
 )
 from cavity.provenance.constants import cavity_df_dt_hz_per_k
@@ -53,7 +54,7 @@ from cavity.thermal.detuning import (
     q_loaded,
 )
 
-PASS_DATE = "2026-07-11"
+PASS_DATE = "2026-07-13"
 
 # SPEC revision-note planning values ("Breeze's build runs C ~ 190");
 # 50 / 500 bracket the sqrt(C0 - 1) insensitivity. Never measured — see
@@ -110,13 +111,20 @@ def build_report() -> str:
 
     q_l = q_loaded(q0)
     kappa_c = resonance_linewidth_hz(f_hz, q_l)
+    kappa_s = KAPPA_S.kappa_s_hz
 
     rows = []
     for c0 in PLANNING_C0_ROWS:
-        df_max = delta_f_max_hz(c0, kappa_c)
+        df_max = delta_f_max_hz(c0, kappa_c, kappa_s)
         rows.append(f"| {c0:g} | {df_max / 1e6:.4f} |")
 
-    df_max_headline = delta_f_max_hz(PLANNING_C0, kappa_c)
+    df_max_headline = delta_f_max_hz(PLANNING_C0, kappa_c, kappa_s)
+    df_lo = delta_f_max_hz(
+        PLANNING_C0, kappa_c, KAPPA_S.kappa_s_band_lo_hz
+    )
+    df_hi = delta_f_max_hz(
+        PLANNING_C0, kappa_c, KAPPA_S.kappa_s_band_hi_hz
+    )
     dt_max = delta_t_max_k(df_max_headline, t_base, f_hz=f_hz, p_e=p_e)
 
     # band: linear arithmetic across the two §6T coefficient bands
@@ -129,6 +137,15 @@ def build_report() -> str:
     )
     dt_max_hi = df_max_headline / diff_lo
     dt_max_lo = df_max_headline / diff_hi
+    ratio = dt_max / (
+        df_max_headline
+        / (
+            f_hz
+            * p_e
+            / (2.0 * (t_base - DF_CAVITY_DT.curie_weiss_t0_k))
+            + abs(DF_SPIN_DT.df_dt_hz_per_k)
+        )
+    )
 
     # committed-point-slope companion (the ≤2% mixing branch, anchor C3)
     diff_committed = cavity_df_dt_hz_per_k(t_base) * p_e + abs(
@@ -147,6 +164,19 @@ def build_report() -> str:
         "## Status notes",
         "",
         f"- {Q_MARGIN_RUNG}.",
+        "- TWO-LINEWIDTH LAW (re-derived 2026-07-13, the "
+        "steady-crossing-linewidths pass): Δf_max = "
+        "((kappa_c + kappa_s)/2)·sqrt(C0 − 1) — the linearised two-mode "
+        "threshold with frequency pulling (oscillation at the "
+        "linewidth-weighted mean); the previously committed "
+        "(kappa_c/2)·sqrt(C0 − 1) is its kappa_s -> 0 limit and "
+        "understated the margin x6.4 here. At this operating point "
+        "kappa_c/kappa_s ≈ 0.18 — the far side of the "
+        "kappa_c ≈ kappa_s turnover — so the §7.T4 1/sqrt(Q) hypothesis "
+        "INVERTS SIGN: the Q-margin exponent is ≈ +0.35, not −1/2 "
+        "(`thermal/reports/q_margin_turnover.md`). FINDING UNRATIFIED — "
+        "needs Oxborrow before headline use (findings note drafted, "
+        "not sent).",
         "- OWN-MODEL Q0, COMPOSED kappa_c (re-based 2026-07-11, "
         "superseding the cross-build composite): Q0 = "
         f"{q0:.2f} is the OWN-MODEL canonical-branch walls-on finest "
@@ -164,6 +194,29 @@ def build_report() -> str:
         "resulting Δf_max ≈ "
         f"{df_max_headline / 1e6:.2f} MHz is NOT fully own-model and "
         "must not be quoted as a measured margin.",
+        f"- kappa_s rung: the graded STATIC planning branch (`KAPPA_S`, "
+        "provenance/constants.py) — Cowley-Semple linewidth table "
+        "(scraped thread, 2026-06-26), 0.1% Pc-d14:PTP-d14 branch "
+        f"choice; band [{KAPPA_S.kappa_s_band_lo_hz/1e6:.3f}, "
+        f"{KAPPA_S.kappa_s_band_hi_hz/1e6:.3f}] MHz spans the Pc:PTP "
+        "host rows only. Caveats carried: best-per-host at differing "
+        "MW/laser powers — NOT a controlled comparison; the ODMR FWHM "
+        "folds homogeneous + inhomogeneous + power broadening into one "
+        "number (the single-packet mapping is a threshold-model "
+        "assumption); the maser crystal itself (0.053% protonated) "
+        "matches no table row. kappa_s is temperature-dependent in "
+        "reality — the kappa_s(ΔT) feedback via "
+        "`cavity.thermal.broadening` is the flagged follow-on, NOT "
+        "implemented.",
+        "- C0-IMPORT CONVENTION: C0 = 190 is imported as the resonant "
+        "cooperativity and NOT recomputed from kappa_s (no G^2 exists — "
+        "Phase 1b). Direction of bias (ratified amendment C): sweeping "
+        "kappa_s at fixed imported C0 holds G^2/kappa_c fixed; at fixed "
+        "G the growth is ~sqrt(kappa_s), so the kappa_s-hi edge of the "
+        "Δf_max band below is OVERSTATED under the import convention — "
+        "the band is not convention-independent. At fixed imported C0, "
+        "SMALLER kappa_s is the conservative side (the superseded "
+        "kappa_s -> 0 law was the maximally conservative member).",
         "- §5a GATE (R5): the §5a benchmark is PASSED as re-based "
         f"2026-07-11 ({own['n_pass']} pass / {own['n_fail']} fail / "
         f"{own['n_deferred']} deferred — SPEC §5a finding: V window "
@@ -190,12 +243,16 @@ def build_report() -> str:
         "linewidth, never the angular 2*pi*f/Q_L (the provenance "
         "table's verified W20 angular-\"Hz\" trap; guarded in anchor "
         "A6).",
+        f"- kappa_s = {kappa_s/1e6:.3f} MHz - spin-line FWHM, CYCLIC Hz "
+        "(`KAPPA_S`; Cowley-Semple linewidth table, 0.1% d14 branch; "
+        f"band [{KAPPA_S.kappa_s_band_lo_hz/1e6:.3f}, "
+        f"{KAPPA_S.kappa_s_band_hi_hz/1e6:.3f}] MHz).",
         f"- p_e = {p_e!r} — OWN-MODEL walls-on canonical value at the "
         "Booth point from the re-based §5a record (record hash "
         f"`{record_hash}`); retires the 3.14 GHz PEC-anchor "
         "placeholder this report previously carried.",
         "",
-        "## Δf_max = (kappa_c/2)·sqrt(C0 − 1)",
+        "## Δf_max = ((kappa_c + kappa_s)/2)·sqrt(C0 − 1)",
         "",
         "| C0 (planning) | Δf_max (MHz) |",
         "|---|---|",
@@ -206,23 +263,30 @@ def build_report() -> str:
         "(provenance table: N assumed, g_s derived, kappa_s fitted). "
         "The sqrt(C0 − 1) insensitivity is the point of the bracket "
         "rows: x10 in C0 moves Δf_max by ~x3.2.",
+        f"- kappa_s band on Δf_max at C0 = {PLANNING_C0:g}: "
+        f"[{df_lo/1e6:.4f}, {df_hi/1e6:.4f}] MHz (linear in kappa_s).",
         "",
         f"## ΔT_max at C0 = {PLANNING_C0:g}",
         "",
         f"- Adopted map (integrated-CW cavity arm + linear spin arm, "
         f"common-ΔT convention D8): **ΔT_max = {dt_max:.4f} K**.",
-        f"- Band across the §6T coefficient bands (linear arithmetic — "
-        f"the sub-K regime): [{dt_max_lo:.3f}, {dt_max_hi:.3f}] K.",
+        f"- Band across the §6T coefficient bands (linear arithmetic, "
+        f"at point-kappa_s): [{dt_max_lo:.3f}, {dt_max_hi:.3f}] K.",
+        f"- Combined kappa_s x coefficient outer envelope: "
+        f"[{df_lo/diff_hi:.3f}, {df_hi/diff_lo:.3f}] K "
+        "(kappa_s-lo x coefficient-hi ... kappa_s-hi x "
+        "coefficient-lo).",
         f"- Committed-point-slope companion "
         f"(`cavity_df_dt_hz_per_k({t_base:g})`·p_e + |df_spin/dT|): "
         f"{dt_max_committed:.4f} K — the documented <=2% eps_r-mixing "
         "branch between the self-consistent-CW map and the canonical-"
         "eps_r point function (detuning.py docstring; anchor C3).",
-        "- Nonlinearity at this scale is negligible (<0.1%): the "
-        "integrated form earns its keep across the ruled 30 K envelope "
-        "(anchor A10: +0.7% vs the 300 K point slope x 30, +6.6% vs "
-        "the first-order integral of the committed slope, -4.6% vs the "
-        "293 K slope x 30), not at the sub-K budget point.",
+        "- Linear band arithmetic retained as the band convention; the "
+        "true-inversion vs pure-CW-linear discrepancy at this O(4 K) "
+        f"scale is {(ratio-1)*100:.2f}% (was <0.1% in the superseded "
+        "sub-K regime), invisible against the kappa_s-band and "
+        "coefficient-band systematics. Envelope-scale context unchanged "
+        "(anchor A10).",
         "- Reproduces the revision-note margin story (\"order ~0.5 K "
         "kills it\") through committed functions instead of "
         "Wu-coefficient arithmetic.",
