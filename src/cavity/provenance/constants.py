@@ -522,6 +522,84 @@ class SpinFreqTempCoefficient:
 
 
 @dataclass(frozen=True)
+class SpinResonanceLinewidth:
+    """SPEC §6T / §7.T4 — kappa_s, the spin-line FWHM entering the
+    two-linewidth threshold law (graded 2026-07-13, the
+    steady-crossing-linewidths pass).
+
+    UNIT CONVENTION — CYCLIC-Hz FWHM, the same convention as the
+    committed kappa_c = f/Q_L. The two-mode threshold relation
+    Delta_f_max = ((kappa_c + kappa_s)/2)*sqrt(C0 - 1) is homogeneous of
+    degree 1 in (Delta, kappa_c, kappa_s) and C0 = 4G^2/(kappa_c*kappa_s)
+    is invariant under uniform 2*pi rescaling, so the angular derivation
+    transfers verbatim. Cross-pin: FWHM-cyclic kappa_s = 1/(pi*T2) —
+    O12's own convention (its fitted Delta_f ≡ 1/(pi*T2) ≈ 860 kHz).
+    W20's "kappa_s = 1.1 MHz" is ANGULAR (provenance table, unit trap 1)
+    and rate-vs-FWHM murky besides — NEVER feed it here (anchor A6's
+    kappa_s 2*pi-trap sibling guards the planning point).
+
+    SOURCE — the Cowley-Semple linewidth table (SPEC §11 item 5;
+    "linewidths" thread 2026-06-26, Glasgow/MIT/Imperial; scraped-thread
+    depth, raw table = the existing Angus raw-data rider, now
+    LOAD-BEARING): 1.75 MHz (0.1% Pc:PTP) · 1.4 MHz (0.1% d14) ·
+    0.55 MHz (0.01% d14) · [7 MHz picene · 1.8 MHz NAP — DIFFERENT
+    HOSTS, excluded from the band]. SPEC's own caveat carries verbatim:
+    "Best-per-host at differing MW/laser powers — not a controlled
+    comparison."
+
+    VALUE AND BAND — the point is a BRANCH CHOICE, not a best estimate
+    (the DF_SPIN_DT convention):
+
+    - `kappa_s_hz` = 1.4e6: the 0.1% Pc-d14:PTP-d14 branch — the
+      deuterated-sample branch the Phase-2 calibration chain lives on
+      (same samples as the nu(I) series), interior to the band. Stated
+      against it: the maser crystal itself is 0.053% PROTONATED
+      (Breeze 2017; `Crystal`) — it matches no table row, and no
+      kappa_s measurement of that crystal exists (the provenance
+      table's "sample-specific — not importable" warning on the
+      T2/kappa_s row carries verbatim).
+    - `kappa_s_band_lo_hz` = 0.55e6, `kappa_s_band_hi_hz` = 1.75e6:
+      the Pc:PTP-host rows across concentration and deuteration.
+
+    DIRECTION OF CONSERVATISM: at fixed imported C0 (the planning
+    convention — C0 = 190 is imported, never recomputed from G^2),
+    smaller kappa_s ⇒ smaller Delta_f_max, so the 0.55 MHz edge is the
+    conservative side, and the committed kappa_s -> 0 law was the
+    maximally conservative member of the family. Band-direction bias
+    (ratified amendment C): sweeping kappa_s at fixed imported C0
+    holds G^2/kappa_c fixed; at fixed G the growth is ~sqrt(kappa_s),
+    so the kappa_s-hi edge of the Delta_f_max band is OVERSTATED under
+    the import convention — the band is not convention-independent.
+
+    Caveats carried:
+
+    - SINGLE-HOMOGENEOUS-PACKET MAPPING: the measured ODMR FWHM folds
+      homogeneous 2/T2, inhomogeneous, and MW/laser power broadening
+      into one number; treating it as the effective Lorentzian FWHM of
+      one spin packet is an assumption of the threshold model, not a
+      property of the data. O12's "few MHz" inhomogeneous width is NOT
+      additionally stacked on top.
+    - TEMPERATURE DEPENDENCE: kappa_s is T-dependent in reality — the
+      §7.T2 output-3 broadening machinery (`cavity.thermal.broadening`)
+      computes exactly the thermally-added inhomogeneous width. This
+      constant is the STATIC, T-independent planning branch; the
+      kappa_s(Delta_T) feedback loop (broadening output -> kappa_s ->
+      threshold) is the identified follow-on pass, NOT implemented.
+    - Ensemble context (context only, never band-setting): Yang 2000
+      FID 0.7 MHz (0.01% protonated), O12 fitted 860 kHz +/- 20%,
+      W20's adopted 1.1e6 s^-1 (angular). The table values sit
+      consistent with the concentration trend of that lineage.
+    - Attribution: the table is Angus Cowley-Semple's, shared in-thread
+      — same early-brokering guard as the ODMR dataset (SPEC §11
+      item 5 riders).
+    """
+
+    kappa_s_hz: float = 1.4e6
+    kappa_s_band_lo_hz: float = 0.55e6
+    kappa_s_band_hi_hz: float = 1.75e6
+
+
+@dataclass(frozen=True)
 class CavityFreqTempCoefficient:
     """SPEC §6T — df_cavity/dT of the STO TE01δ mode near room temperature.
 
@@ -1001,6 +1079,7 @@ EXTRACTION_TOL = ExtractionTolerances()
 F_M_BENCHMARK = FMBenchmarkRange()
 WALL_LOSS_THRESHOLDS = WallLossThresholds()
 DF_SPIN_DT = SpinFreqTempCoefficient()
+KAPPA_S = SpinResonanceLinewidth()
 DF_CAVITY_DT = CavityFreqTempCoefficient()
 K_PTP = PTerphenylThermalConductivity()
 WAX = ParaffinWaxThermal()
