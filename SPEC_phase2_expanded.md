@@ -61,7 +61,7 @@ Therefore the surrogate is over **(θ, p_tune) jointly** — for f at minimum, i
 1. `f̂(θ, p)` over p ∈ [p_min, p_max] (surrogate).
 2. **Tuning-feasible** ⇔ ∃ p with f̂(θ,p) = f_spin (= 1.4493 GHz). Record required tuning range; if it exceeds [p_min, p_max] → **fails metric-1**.
 3. If feasible: p* = root. Evaluate `Ĉ₀(θ, p*)` and `κ̂c(θ, p*)` (and Q̂, V̂_mode, F̂_m at p*).
-4. **Thermal budget** (§7.3b): Δf_max = (κ̂c/2)·√(Ĉ₀ − 1) → ΔT_max via Layer B → P_max.
+4. **Thermal budget** (§7.3b): Δf_max = ((κ̂c + κs)/2)·√(Ĉ₀ − 1) (two-linewidth law — SPEC §7.T4 re-derivation 2026-07-13; κs per draw = the graded static planning branch `provenance.KAPPA_S`) → ΔT_max via Layer B → P_max.
 
 **Aggregate:**
 - **Tuning yield** `Y_tune = P(feasible)` — metric-1, unchanged, still a real gate on the build.
@@ -70,7 +70,7 @@ Therefore the surrogate is over **(θ, p_tune) jointly** — for f at minimum, i
 - *Note:* `Y_C = P(C₀ > 1 | feasible)` is retained only as a sanity check and is ≈ 1 (trivial at C ~ 190). It is **not** the deliverable.
 - **Optional thermal yield** `Y_thermal = P(ΔT_max > ΔT_op | feasible)` — the fraction whose margin exceeds the *expected operating heating* ΔT_op. Meaningful **iff** ΔT_op is grounded in the real pump model (SPEC.md §6T / §11) — do not invent it. If ΔT_op is available this parallels the old yield but is now thermally substantive.
 
-**Convention guard (single-source from provenance):** κc / C use the **loaded** cavity linewidth; F_m uses **unloaded** Q. Never mix. Δf_max carries κc (loaded) — apply the loaded/unloaded split consistently per draw.
+**Convention guard (single-source from provenance):** κc / C use the **loaded** cavity linewidth; F_m uses **unloaded** Q. Never mix. Δf_max carries κc (loaded) — apply the loaded/unloaded split consistently per draw. Δf_max additionally carries κs (cyclic-Hz FWHM, `provenance.KAPPA_S`; the 2π trap is guarded in anchor A6) under the 2026-07-13 two-linewidth law.
 
 **Simplification permitted *iff measured*:** if ∂C₀/∂p_tune and ∂κc/∂p_tune over the tuning range are small (measure in Phase 1b, SPEC.md §5b), decouple — evaluate C₀/κc at nominal and treat tuning as a pure frequency question, composing the budget once per θ. Do **not** assume; measure the plate-sensitivity first and state it.
 
@@ -83,7 +83,7 @@ The thermal layer sits **on top of** the EM surrogate; it is not itself surrogat
 - **What is surrogated:** the EM outputs C₀(θ, p) and κc(θ, p) (and f, V_mode) — the expensive COMSOL quantities.
 - **What is closed-form:** the thermal submodel (SPEC.md §7T) is already cheap analytic; do **not** spend COMSOL solves or a surrogate on it. It supplies the ΔT → Δf coefficient (via df/dT, SPEC.md §6T), weighted by the gain-region H the spins see.
 - **Composition, per draw:**
-  1. Δf_max = (κ̂c/2)·√(Ĉ₀ − 1) — max cavity–spin detuning before the Lorentzian cooperativity roll-off C(Δ) = C₀/(1 + (2Δ/κc)²) crosses 1.
+  1. Δf_max = ((κ̂c + κs)/2)·√(Ĉ₀ − 1) — max cavity–spin detuning before the pulled-oscillator threshold C₀ = 1 + 4Δ²/(κc+κs)² is crossed (SPEC §7.T4 re-derivation 2026-07-13; the old cavity-only Lorentzian roll-off C(Δ) = C₀/(1 + (2Δ/κc)²) is the κs → 0 limit; κs per draw = `provenance.KAPPA_S`, static planning branch).
   2. ΔT_max = Δf_max / |df_cavity/dT − df_spin/dT| — the *differential* detuning is what breaks resonance (cavity moves faster than spins).
   3. P_max = ΔT_max / (dΔT/dP_pump) — pump-power budget, from Layer B's ΔT(P_pump).
 
@@ -161,7 +161,7 @@ Three views; report all three — they answer different questions.
 - First-order S_i and total-effect S_Ti for the budget outputs (Δf_max, ΔT_max) and the FOMs (f, C₀, κc), from PCE coefficients (analytic — free). *Hypothesis (then test):* εr + dimensions dominate f; tanδ + confinement (V_mode-driving geometry) dominate C₀ and κc, hence the thermal margin. Note the composition means a parameter can enter the margin through both C₀ and κc — total-effect indices capture that; first-order alone may mislead.
 
 **Q-vs-margin scaling — the scientific hook (SPEC.md §7.T4).**
-- Distinct from a tolerance curve: test whether **higher-Q builds have *less* thermal margin** (Δf_max ∝ 1/√Q from κc ∝ 1/Q and C₀ ∝ Q). Two parts:
+- Distinct from a tolerance curve: test the Q-dependence of the thermal margin. *(Re-based 2026-07-13, SPEC §7.T4: the "higher-Q ⇒ less margin" 1/√Q form is the κc ≫ κs limit; at the operating point κc/κs ≈ 0.18 the derived exponent is ≈ +0.35 — higher-Q builds have MORE margin there, with the turnover near κc ≈ κs. The regression below now tests the derived turnover map, not the bare −1/2.)* Two parts:
   - *Empirical (free):* regress sampled ΔT_max (and Δf_max) against sampled Q across the population — does it anti-correlate?
   - *Derived (required before claiming):* get the *joint* dependence of C₀ and κc on the geometry DOFs from the surrogate — do **not** assume C₀ ∝ Q with N, g_s, κ_s fixed; those may carry their own geometry/Q dependence that breaks the clean scaling. Confirm the trend survives in ΔT space (folds in df/dT), not only Δf space.
 - If it survives, this is the sharpest claim in the deliverable (§7.8, output 2).
