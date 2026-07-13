@@ -24,7 +24,7 @@ from cavity.figures import f3_delta_t_map as f3
 from cavity.figures import f4_cavity_arm_envelope as f4
 from cavity.figures import f5_margin_waterfall as f5
 from cavity.figures import f6_singh_axis_map as f6
-from cavity.provenance.constants import DF_SPIN_DT
+from cavity.provenance.constants import DF_SPIN_DT, KAPPA_S
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ONEPAGER = REPO_ROOT / "docs" / "supervisor_onepager_2026-07.md"
@@ -152,19 +152,32 @@ def test_f5_data_pins():
     assert data["q0"] == pytest.approx(6764.5852, abs=1e-3)
     assert data["q_l"] == pytest.approx(5637.1543628606305, rel=1e-12)
     assert data["kappa_c_hz"] == pytest.approx(257221.9788, rel=1e-6)
-    assert data["df_max_hz"] == pytest.approx(1768108.7824, abs=1e-4)
-    assert data["dt_max_k"] == pytest.approx(0.6030, abs=1e-4)
+    assert data["kappa_s_hz"] == KAPPA_S.kappa_s_hz
+    assert data["kappa_s_band_hz"] == (
+        KAPPA_S.kappa_s_band_lo_hz,
+        KAPPA_S.kappa_s_band_hi_hz,
+    )
+    assert data["df_max_hz"] == pytest.approx(11391517.7418, abs=1e-3)
+    df_band_lo, df_band_hi = data["df_max_band_hz"]
+    assert df_band_lo == pytest.approx(5548733.7307, abs=1e-2)
+    assert df_band_hi == pytest.approx(13797369.9816, abs=1e-2)
+    assert data["dt_max_k"] == pytest.approx(3.896861, abs=1e-4)
     band_lo, band_hi = data["dt_max_band_k"]
-    assert band_lo == pytest.approx(0.585, abs=5e-4)
-    assert band_hi == pytest.approx(0.748, abs=5e-4)
+    assert band_lo == pytest.approx(3.77203, abs=5e-4)
+    assert band_hi == pytest.approx(4.81875, abs=5e-4)
+    envelope_lo, envelope_hi = data["dt_max_envelope_k"]
+    assert envelope_lo == pytest.approx(1.83733, abs=5e-4)
+    assert envelope_hi == pytest.approx(5.83645, abs=5e-4)
     assert data["p_e"] == 0.9974999896719232
     assert data["p_e_record_hash"] == "823e67969516bcf2"
 
     report = MARGIN_REPORT.read_text(encoding="utf-8")
-    assert "**ΔT_max = 0.6030 K**" in report
-    assert "[0.585, 0.748] K" in report
+    assert "**ΔT_max = 3.8969 K**" in report
+    assert "[3.772, 4.819] K" in report
     assert "kappa_c = f/Q_L = 257.222 kHz" in report
-    assert "| 190 | 1.7681 |" in report
+    assert "| 190 | 11.3915 |" in report
+    assert "[5.5487, 13.7974] MHz" in report
+    assert "[1.837, 5.836] K" in report
     assert f"p_e = {data['p_e']!r}" in report
 
 
@@ -206,6 +219,9 @@ CAPTION_FLAGS = {
         "COMPOSED",
         "UNRATIFIED-w_s",
         "planning point, not a claim",
+        "not a controlled comparison",
+        "the sign of the committed 1/√Q hypothesis inverts",
+        "combined κs × coefficient envelope ≈ 1.8–5.8 K",
     ),
     "f6_singh_axis_map": (
         "UNRESOLVED", "branch choice, not a best estimate",
