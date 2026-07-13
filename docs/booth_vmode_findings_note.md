@@ -42,7 +42,7 @@ Q/V values scale by ×1.6.
 
 **One question to confirm the mechanism** (it discriminates the partial-revolution
 reading against a numerically similar alternative we ruled out for lack of any trace in
-the file): **does the results setup match your/Ellie's recollection — the mode-volume
+the file): **does the results setup match your/Kalea's recollection — the mode-volume
 integration evaluated on a Revolution-2D dataset at the default 225°?**
 
 On my side I have re-based the validation gate's V_mode window onto the corrected value
