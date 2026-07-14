@@ -1,0 +1,16 @@
+# Source: Cowley-Semple email 2026-07-14, resonance_frequency_vs_laser_power_for_both_samples.png
+# Method: pixel-centroid extraction, axis calibration from tick marks
+# Validation: recovered powers match legend values to <0.02 mW; all f values on 0.1 MHz grid
+# Grade: graph-digitized-provisional; superseded_by_raw_data=True
+# Error model: +/-0.05 MHz per point (0.1 MHz plot quantization)
+sample,power_mW,f_peak_MHz
+d14,3.81,1449.7
+d14,6.06,1449.4
+d14,10.16,1449.1
+d14,14.39,1448.6
+h14,3.81,1449.1
+h14,6.06,1449.1
+h14,8.05,1449.0
+h14,10.16,1448.8
+h14,12.33,1448.5
+h14,14.39,1448.4
