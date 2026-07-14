@@ -1,0 +1,42 @@
+{
+  "workstream": "layer-b-calibration/observable-a",
+  "dataset": "cowley_semple_2026-07-14 (digitized)",
+  "provenance": "graph-digitized-provisional; superseded_by_raw_data=True",
+  "df_dt_source": "provenance.DF_SPIN_DT (raw-data re-grade 2026-07-07): point -109 kHz/K, band [-120, -64] kHz/K. Prompt band '-50 to -108 kHz/K' overruled as stale (ratification condition 3, 2026-07-14).",
+  "samples": {
+    "d14": {
+      "sample": "d14",
+      "slope_hz_per_w": 99964347.63051164,
+      "slope_sigma_hz_per_w": 6184950.715178468,
+      "eta_r_point_k_per_w": 917.1041067019416,
+      "eta_r_band_lo_k_per_w": 781.4949742944431,
+      "eta_r_band_hi_k_per_w": 1658.582786651408,
+      "heating_at_max_power_k": 13.19712809544094,
+      "feasible_sweep_fraction": 0.9794871794871794,
+      "eta_abs_at_nominal_config": 0.16803155941594253,
+      "deuteration_caveat": "deuteration-transfer caveat: df/dT measured on protonated Pc:PTP, applied to Pc-d14:PTP-d14 (assumed transferable, unverified; SPEC 6T)"
+    },
+    "h14": {
+      "sample": "h14",
+      "slope_hz_per_w": 74456389.58430976,
+      "slope_sigma_hz_per_w": 5666395.122729505,
+      "eta_r_point_k_per_w": 683.0861429753189,
+      "eta_r_band_lo_k_per_w": 573.2499538465021,
+      "eta_r_band_hi_k_per_w": 1251.9185110474884,
+      "heating_at_max_power_k": 9.829609597414839,
+      "feasible_sweep_fraction": 0.9948717948717949,
+      "eta_abs_at_nominal_config": 0.15999314352468666,
+      "deuteration_caveat": "clean: protonated sample matches the protonated Singh crystal"
+    }
+  },
+  "t4_ratio_test": {
+    "verdict": "geometry-sufficient",
+    "measured_ratio_d14_over_h14": 1.342589241683795,
+    "measured_sigma": 0.13168220460403532
+  },
+  "units": {
+    "slope": "Hz/W (trace-labelled power; measurement plane = open Angus ask)",
+    "eta_r": "K/W (eta_abs x R_int; feasible dT/dP of labelled power)",
+    "heating_at_max_power": "K (probe-inferred dT at the trace maximum, eta_abs-free)"
+  }
+}
