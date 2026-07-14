@@ -76,6 +76,15 @@ outputs/
 # The npz is LFS-routed via .gitattributes; these are citation targets,
 # re-derivable from refs/gate_runs records but frozen for the handoff.
 !refs/exports/**
+# AND calibration/data/: the Cowley-Semple raw archive (email + attachments,
+# MANIFEST.sha256-pinned, read-only forever) and its derived artifacts.
+# Load-bearing provenance, not re-derivable — same rationale as refs/
+# above. The generic `data/` rule above silently excluded this until
+# 2026-07-14 (commit 7f44606's "archive" message predates actual tracking).
+# Both the directory AND its contents must be negated: git does not descend
+# into an excluded directory, so `!calibration/data/**` alone is inert.
+!calibration/data/
+!calibration/data/**
 
 # --- Jupyter ---------------------------------------------------------------
 .ipynb_checkpoints/

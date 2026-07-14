@@ -1,0 +1,20 @@
+7f89a9b5b83eba52b73bbc54ddc91512e47d51053909e07119d2d519861a6d52  images/angus drawing of excitation path.png
+e792eeadd1cbd2158163415898b98cfd650dc51474e7957e1bc36d30e1bb9ce0  images/d14 in some bracket.png
+65fee8dda6737935158ae3453e21a5e005151c0713a4117e91637fd8caad1a1a  images/d14 measured at 1.12mm.png
+9185966e1f464a26bd941ec69de010cb4e21c021b71f043d349097747435f4f2  images/d14 pcptp.png
+7f8a5c7d9cef2ba336d3090a6fc51c80653c49efb6c9ccff936464c677a11880  images/d14 picture 1.png
+608b0e6c5c54c11ad59c3ad60a76e4054f815269834236140bf9219f045ed7d6  images/h14 in some bracket.png
+c7375ce2c606e9d0a91924655de67f5d109322d41d21c090cae3f04c80faa61f  images/h14 measured at 1.79mm.png
+0e883f70d607fc7088de534e324f4ab5e228ce776db757dd41a3b1bdadc6c590  images/h14 pcptp.png
+79488f37966af0e8f2ff72e80e2297c47477cbc8b11393b5d56926dfd22edae9  images/h14 picture 1.png
+3c1da69b2dbf9e25c460bda7d462de193d9a0062bc35c54c79aa8105b3ffe234  images/resonance frequency vs laser power for both samples.png
+53c48843e19b85733949fa746f8ecaf0abda1e83f818ffde92a0218fcb699839  thermal.eml
+ff856929da9d9853cbf37cfab0fb20471eecf15766b51809c56b41f7a7f7904c  thermal.md
+# ERRATA 2026-07-14 (single re-mint, pre-freeze; ratified Finding-1 ruling (a)):
+# the thermal.md line above originally pinned 98cd3c369ecb19b889264220d8f0d5518f5b5531fdac80d54c748e095dfdc194,
+# which matches no line-ending variant of the archived file. Token-level
+# comparison of thermal.md against thermal.eml (which PASSES its pin) found
+# zero body-content divergence - render-level drift only (header block +
+# residual CSS fragment). Re-minted to the as-archived hash. Record:
+# calibration/reports/integrity_finding1_2026-07-14.md. The archive is
+# read-only from the commit introducing this note onward.
