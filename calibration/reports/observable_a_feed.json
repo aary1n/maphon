@@ -14,7 +14,11 @@
       "heating_at_max_power_k": 13.19712809544094,
       "feasible_sweep_fraction": 0.9794871794871794,
       "eta_abs_at_nominal_config": 0.16803155941594253,
-      "deuteration_caveat": "deuteration-transfer caveat: df/dT measured on protonated Pc:PTP, applied to Pc-d14:PTP-d14 (assumed transferable, unverified; SPEC 6T)"
+      "deuteration_caveat": "deuteration-transfer caveat: df/dT measured on protonated Pc:PTP, applied to Pc-d14:PTP-d14 (assumed transferable, unverified; SPEC 6T)",
+      "heating_at_max_power_band_k": [
+        11.987391353358856,
+        22.476358787547852
+      ]
     },
     "h14": {
       "sample": "h14",
@@ -26,17 +30,49 @@
       "heating_at_max_power_k": 9.829609597414839,
       "feasible_sweep_fraction": 0.9948717948717949,
       "eta_abs_at_nominal_config": 0.15999314352468666,
-      "deuteration_caveat": "clean: protonated sample matches the protonated Singh crystal"
+      "deuteration_caveat": "clean: protonated sample matches the protonated Singh crystal",
+      "heating_at_max_power_band_k": [
+        8.928562050985144,
+        16.741053845597147
+      ]
     }
   },
   "t4_ratio_test": {
     "verdict": "geometry-sufficient",
     "measured_ratio_d14_over_h14": 1.342589241683795,
-    "measured_sigma": 0.13168220460403532
+    "measured_sigma": 0.13168220460403532,
+    "model_ratio_band": [
+      0.5837504780379333,
+      2.3289428003156276
+    ],
+    "fraction_within_2sigma": 0.5388034188034188,
+    "discriminating_power": "low: the model band [0.584, 2.329] brackets the measured ratio from BOTH sides; the 'geometry-sufficient' verdict holds under the pre-fixed three-way criterion but the dataset has low discriminating power - an intrinsic deuteration effect is NOT REQUIRED and NOT EXCLUDED",
+    "eta_abs_cancellation_condition": "shared-eta_abs cancellation valid only under near-total absorption (l_abs << t); fitted eta_abs_at_nominal_config = 0.168 (d14) / 0.160 (h14) is compatible with that condition ONLY IF the missing ~83-84% is upstream delivery/reflection loss, i.e. the legend powers were measured upstream of the sample (invented assumption 4; power-measurement plane = open Angus ask); if absorption is genuinely partial, eta_abs is thickness-dependent and the cancellation weakens"
+  },
+  "t3_linearity": {
+    "chi2_per_dof": {
+      "d14": 1.3865833859955277,
+      "h14": 3.668482411641879
+    },
+    "h14_step_test": {
+      "step_powers_mw": [
+        10.16,
+        12.33
+      ],
+      "observed_step_mhz": -0.2999999999999545,
+      "predicted_step_mhz": -0.16157036539795216,
+      "excess_mhz": -0.13842963460200236,
+      "sigma_step_mhz": 0.07177181563697696,
+      "z_score": -1.9287464497509965,
+      "exceeds_floor_2sigma": false,
+      "error_floor_mhz": 0.05
+    },
+    "quantization_caveat": "A 0.1 MHz-quantized plot can manufacture steps of this size \u2014 treat as provisional until raw traces land."
   },
   "units": {
     "slope": "Hz/W (trace-labelled power; measurement plane = open Angus ask)",
     "eta_r": "K/W (eta_abs x R_int; feasible dT/dP of labelled power)",
-    "heating_at_max_power": "K (probe-inferred dT at the trace maximum, eta_abs-free)"
+    "heating_at_max_power": "K (probe-inferred dT at the trace maximum, eta_abs-free)",
+    "heating_at_max_power_band": "K (point slope over the full DF_SPIN_DT band [-120, -64] kHz/K at the trace maximum; eta_abs-free)"
   }
 }

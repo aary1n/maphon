@@ -20,7 +20,7 @@ from calibration.absolute_fit import (
     run_absolute_fits,
 )
 from calibration.samples import SAMPLES
-from calibration.slope_fit import fit_all
+from calibration.slope_fit import QUANTIZATION_CAVEAT, fit_all
 from cavity.provenance.constants import DF_SPIN_DT
 
 
@@ -55,6 +55,20 @@ class TestChainAlgebra:
             assert f.heating_at_max_power_k == pytest.approx(
                 f.eta_r_point_k_per_w * p_max_w, rel=1e-12
             )
+
+    def test_heating_band_closed_form(self, feed):
+        """Band = POINT slope over the full DF_SPIN_DT band edges × P_max —
+        independent arithmetic; no slope-σ composition enters (unlike the
+        eta_r band). Point sits inside the band by band ordering."""
+        fits = fit_all()
+        for name in ("d14", "h14"):
+            f = feed.fits[name]
+            slope = abs(fits.fits[name].slope_mhz_per_mw) * 1e9
+            p_max_w = max(SAMPLES[name].powers_mw) * 1e-3
+            lo, hi = f.heating_at_max_power_band_k
+            assert lo == pytest.approx(slope / 120_000.0 * p_max_w, rel=1e-12)
+            assert hi == pytest.approx(slope / 64_000.0 * p_max_w, rel=1e-12)
+            assert lo < f.heating_at_max_power_k < hi
 
 
 class TestRatifiedDfDtArbitration:
@@ -95,9 +109,32 @@ class TestFeedPins:
         for f in feed.fits.values():
             assert f.feasible_sweep_fraction > 0.9
             assert 0.0 < f.eta_abs_at_nominal_config <= 1.0
+        # value pins — same numbers the T4-side eta_abs_at_nominal is pinned
+        # to (test_calibration_ratio_test), so report and feed cannot drift
+        assert feed.fits["d14"].eta_abs_at_nominal_config == pytest.approx(0.168, abs=5e-3)
+        assert feed.fits["h14"].eta_abs_at_nominal_config == pytest.approx(0.160, abs=5e-3)
+
+    def test_heating_band_pins(self, feed):
+        """Regression pins of the 2026-07-14 cleanup band values (independent
+        computation recorded in the ratified plan-lite)."""
+        d14_lo, d14_hi = feed.fits["d14"].heating_at_max_power_band_k
+        h14_lo, h14_hi = feed.fits["h14"].heating_at_max_power_band_k
+        assert d14_lo == pytest.approx(11.99, abs=0.1)
+        assert d14_hi == pytest.approx(22.48, abs=0.1)
+        assert h14_lo == pytest.approx(8.93, abs=0.1)
+        assert h14_hi == pytest.approx(16.74, abs=0.1)
 
     def test_t4_verdict_carried(self, feed):
         assert feed.t4_verdict == "geometry-sufficient"
+
+    def test_t4_context_carried(self, feed):
+        """Verdict context travels with the verdict: the committed T4 band,
+        fraction, and the low-discriminating-power reading."""
+        lo, hi = feed.t4_model_ratio_band
+        assert lo == pytest.approx(0.584, abs=0.02)
+        assert hi == pytest.approx(2.329, abs=0.02)
+        assert lo < feed.t4_measured_ratio < hi  # brackets from BOTH sides
+        assert feed.t4_fraction_within_2sigma == pytest.approx(0.539, abs=0.02)
 
 
 class TestDeuterationAsymmetry:
@@ -119,12 +156,55 @@ class TestOutputs:
                 "eta_r_band_lo_k_per_w",
                 "eta_r_band_hi_k_per_w",
                 "heating_at_max_power_k",
+                "heating_at_max_power_band_k",
                 "feasible_sweep_fraction",
                 "deuteration_caveat",
             ):
                 assert key in sample
         assert payload["t4_ratio_test"]["verdict"] == "geometry-sufficient"
+        for key in (
+            "model_ratio_band",
+            "fraction_within_2sigma",
+            "discriminating_power",
+            "eta_abs_cancellation_condition",
+        ):
+            assert key in payload["t4_ratio_test"]
+        assert set(payload["t3_linearity"]) == {
+            "chi2_per_dof",
+            "h14_step_test",
+            "quantization_caveat",
+        }
         assert "open Angus ask" in payload["units"]["slope"]
+        assert "heating_at_max_power_band" in payload["units"]
+
+    def test_t3_linearity_block(self, feed):
+        """Downstream consumers must see the strained h14 linear model
+        without opening the T3 report: χ²/dof, the step z-score vs the
+        ±0.05 MHz floor, and the quantization caveat, all in the feed."""
+        block = json.loads(feed.to_json())["t3_linearity"]
+        assert block["chi2_per_dof"]["d14"] == pytest.approx(1.39, abs=0.02)
+        assert block["chi2_per_dof"]["h14"] == pytest.approx(3.67, abs=0.02)
+        step = block["h14_step_test"]
+        assert step["step_powers_mw"] == [10.16, 12.33]
+        assert step["z_score"] == pytest.approx(-1.93, abs=0.02)
+        assert step["exceeds_floor_2sigma"] is False
+        assert step["error_floor_mhz"] == pytest.approx(0.05)
+        assert block["quantization_caveat"] == QUANTIZATION_CAVEAT
+
+    def test_t4_context_flags(self, feed):
+        """The verdict-context strings carry the mandated clauses and the
+        computed numbers (never hand-typed)."""
+        t4 = json.loads(feed.to_json())["t4_ratio_test"]
+        lo, hi = feed.t4_model_ratio_band
+        assert t4["model_ratio_band"] == [lo, hi]
+        assert t4["fraction_within_2sigma"] == feed.t4_fraction_within_2sigma
+        assert "NOT REQUIRED and NOT EXCLUDED" in t4["discriminating_power"]
+        assert f"[{lo:.3f}, {hi:.3f}]" in t4["discriminating_power"]
+        cancel = t4["eta_abs_cancellation_condition"]
+        assert "near-total absorption (l_abs << t)" in cancel
+        assert f"{feed.fits['d14'].eta_abs_at_nominal_config:.3f} (d14)" in cancel
+        assert "measured upstream of the sample (invented assumption 4" in cancel
+        assert "open Angus ask" in cancel
 
     def test_report_content(self, feed):
         report = render_report(feed)

@@ -157,18 +157,23 @@ def verify_manifest(
 def require_intact(
     archive_dir: Path = DEFAULT_ARCHIVE_DIR,
     manifest_name: str = MANIFEST_NAME,
-    reports_dir: Path = DEFAULT_REPORTS_DIR,
+    reports_dir: Path | None = None,
 ) -> IntegrityReport:
     """Verify, and on ANY failure write a dated report + raise.
 
     This is the gate every data-consuming calibration module calls before
     touching the archive. The report lands in `reports_dir` (default
     calibration/reports/) so the failure is a committed artifact, not a
-    scrolled-away traceback.
+    scrolled-away traceback. The default is resolved at CALL time, not
+    def time, so tests can repoint `DEFAULT_REPORTS_DIR` — a def-time
+    default silently sent synthetic-failure reports into the real
+    reports directory.
     """
     report = verify_manifest(archive_dir, manifest_name)
     if report.ok:
         return report
+    if reports_dir is None:
+        reports_dir = DEFAULT_REPORTS_DIR
     reports_dir.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out_path = reports_dir / f"integrity_failure_{stamp}.md"

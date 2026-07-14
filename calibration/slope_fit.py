@@ -52,6 +52,13 @@ REQUIRED_HEADER_FRAGMENTS = (
 )
 PROVENANCE_STAMP = "graph-digitized-provisional; superseded_by_raw_data=True"
 
+# One string, two sinks: the T3 report and the observable-a feed both carry
+# this caveat verbatim so they cannot drift apart.
+QUANTIZATION_CAVEAT = (
+    "A 0.1 MHz-quantized plot can manufacture steps "
+    "of this size — treat as provisional until raw traces land."
+)
+
 # The h14 step the task singles out (MHz step at these two trace powers).
 H14_STEP_POWERS_MW = (10.16, 12.33)
 
@@ -265,8 +272,7 @@ def render_report(results: SlopeFitResults) -> str:
         f"- verdict: the step **{'EXCEEDS' if step.exceeds_floor_2sigma else 'does NOT exceed'}** "
         "the ±0.05 MHz error floor at 2σ. The z-score neglects the step/fit "
         "correlation (approximate); the per-sample χ²/dof above is the primary "
-        "lack-of-fit statistic. A 0.1 MHz-quantized plot can manufacture steps "
-        "of this size — treat as provisional until raw traces land.",
+        f"lack-of-fit statistic. {QUANTIZATION_CAVEAT}",
         "",
     ]
     return "\n".join(lines)

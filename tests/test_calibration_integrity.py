@@ -127,6 +127,11 @@ class TestFailureModes:
         monkeypatch.setattr(integrity, "DEFAULT_REPORTS_DIR", tmp_path / "reports")
         assert main([str(archive)]) == 1
         assert "FAILED integrity" in capsys.readouterr().err
+        # the monkeypatched dir must actually receive the report: the default
+        # is resolved at call time — a def-time-bound default silently wrote
+        # synthetic failure reports into the real calibration/reports/
+        leaked = list((tmp_path / "reports").glob("integrity_failure_*.md"))
+        assert len(leaked) == 1 and "a.txt" in leaked[0].read_text(encoding="utf-8")
 
 
 class TestHashHelper:

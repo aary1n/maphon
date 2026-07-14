@@ -10,6 +10,8 @@ local licence:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 
@@ -33,6 +35,23 @@ def pytest_collection_modifyitems(
     for item in items:
         if "requires_comsol" in item.keywords:
             item.add_marker(skip)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def calibration_reports_stay_clean():
+    """Guard: a test run must not add integrity_failure_* files to the real
+    calibration/reports/. Synthetic failure-path tests write to tmp_path; a
+    leak here means a reports_dir default has regressed to the repo directory
+    (the def-time-bound default did exactly that until 2026-07-14). Deliberate
+    committed failure records predating the run are allowed through."""
+    reports_dir = Path(__file__).resolve().parent.parent / "calibration" / "reports"
+    before = {p.name for p in reports_dir.glob("integrity_failure_*.md")}
+    yield
+    leaked = {p.name for p in reports_dir.glob("integrity_failure_*.md")} - before
+    assert not leaked, (
+        "test run leaked integrity-failure reports into calibration/reports/: "
+        f"{sorted(leaked)}"
+    )
 
 
 @pytest.fixture(scope="session")

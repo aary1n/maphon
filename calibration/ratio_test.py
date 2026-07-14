@@ -46,7 +46,7 @@ from calibration.constants import RADIUS_MAPPING, SPOT, THICKNESS
 from calibration.rig_model import RigConfig, SweepResult, sweep_sample, theta_probe_k_per_w
 from calibration.samples import D14, H14, SweepGrid, default_grid
 from calibration.slope_fit import fit_all
-from cavity.provenance.constants import K_PTP
+from cavity.provenance.constants import DF_SPIN_DT, K_PTP
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
 DEFAULT_REPORT = _PACKAGE_DIR / "reports" / "ratio_test_digitized.md"
@@ -82,6 +82,11 @@ class RatioTestResult:
     comsol_trigger: bool
     glue_confound_factor: dict[float, float | None]  # h_sub_h14 -> h_sub_d14/h_sub_h14
     provenance: str
+    # per-sample eta_abs at the nominal (median-Theta) config — same arithmetic
+    # as T5's eta_abs_at_nominal_config (cross-pinned in tests); carried here so
+    # the report can state how far the sweep sits from the near-total-absorption
+    # condition the eta_abs cancellation assumes
+    eta_abs_at_nominal: dict[str, float]
 
 
 def model_ratio_grid(
@@ -158,6 +163,13 @@ def run_ratio_test(grid: SweepGrid | None = None) -> RatioTestResult:
         for h_ref in (1e2, 1e3, 1e4, 1e5)
     }
 
+    df_point = abs(DF_SPIN_DT.df_dt_hz_per_k)
+    eta_abs_at_nominal = {
+        name: (abs(fits.fits[name].slope_mhz_per_mw) * 1e9 / df_point)
+        / float(np.median(sweep.theta_k_per_w))
+        for name, sweep in (("d14", result_d14), ("h14", result_h14))
+    }
+
     return RatioTestResult(
         verdict=verdict,
         measured_ratio=measured,
@@ -170,6 +182,7 @@ def run_ratio_test(grid: SweepGrid | None = None) -> RatioTestResult:
         comsol_trigger=comsol_trigger,
         glue_confound_factor=confound,
         provenance=fits.ratio.provenance,
+        eta_abs_at_nominal=eta_abs_at_nominal,
     )
 
 
@@ -186,6 +199,10 @@ def render_report(result: RatioTestResult) -> str:
         f"({result.n_ratio_points} (shared θ, t_d14, t_h14) points)",
         f"- fraction of swept points inside measured ± 2σ: "
         f"{100 * result.fraction_within_2sigma:.1f}%",
+        "- discriminating power: LOW — the model band brackets the measured ratio",
+        "  from BOTH sides; the geometry-sufficient verdict holds under the",
+        "  pre-fixed criterion, but an intrinsic deuteration effect is",
+        "  NOT REQUIRED and NOT EXCLUDED by this dataset.",
         "",
         "Shared axes (cancel by construction): η_abs and df/dT — VALID ONLY under",
         "near-total absorption in both crystals (l_abs ≪ t; zone-refining caveat",
@@ -204,6 +221,21 @@ def render_report(result: RatioTestResult) -> str:
         if not result.comsol_trigger
         else "COMSOL contingency trigger: **FIRED** — escalate per plan.",
         "",
+        "## η_abs cancellation condition (explicit dependency)",
+        "",
+        "The η_abs cancellation above is conditioned on NEAR-TOTAL absorption",
+        "(l_abs ≪ t) in both crystals. The T5 absolute fits put η_abs at the",
+        f"nominal config at {result.eta_abs_at_nominal['d14']:.3f} (d14) / "
+        f"{result.eta_abs_at_nominal['h14']:.3f} (h14) — compatible with that",
+        "condition ONLY IF the missing "
+        f"~{100 * (1 - result.eta_abs_at_nominal['d14']):.0f}–"
+        f"{100 * (1 - result.eta_abs_at_nominal['h14']):.0f}% is upstream",
+        "delivery/reflection loss, i.e. the legend powers were measured upstream",
+        "of the sample (invented assumption 4; power-measurement plane =",
+        "open Angus ask). If absorption is genuinely partial, η_abs becomes",
+        "thickness-dependent — thickness is per-sample FREE in this sweep — and",
+        "the cancellation weakens.",
+        "",
         "## Residual confound: per-sample glue contact (does NOT cancel)",
         "",
         "φ = h_sub(d14)/h_sub(h14) required to reproduce the measured ratio at",
@@ -216,7 +248,8 @@ def render_report(result: RatioTestResult) -> str:
     lines += [
         "",
         "Interpretation: a φ of this size is an ALTERNATIVE explanation the ratio",
-        "test cannot exclude — the d14 crystal merely being glued worse than h14.",
+        "test cannot exclude — the d14 crystal merely being differently glued",
+        "(worse or better depending on the operating h_sub).",
         "",
         "## Scope of the intrinsic branch (deliberately not decomposed)",
         "",

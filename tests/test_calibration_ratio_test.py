@@ -23,6 +23,8 @@ from calibration.ratio_test import (
 )
 from calibration.rig_model import sweep_sample
 from calibration.samples import D14, H14, default_grid
+from calibration.slope_fit import fit_all
+from cavity.provenance.constants import DF_SPIN_DT
 
 
 @pytest.fixture(scope="module")
@@ -98,6 +100,22 @@ class TestRealSweepVerdict:
     def test_provenance_stamp_carried(self, result):
         assert "graph-digitized-provisional" in result.provenance
 
+    def test_eta_abs_at_nominal(self, result):
+        """In-test independent arithmetic (|slope|·1e9/|df point| ÷ median Θ)
+        plus value pins. Same formula as T5's eta_abs_at_nominal_config —
+        the feed side is pinned to the same values in
+        test_calibration_absolute_fit, so the two cannot drift apart."""
+        fits = fit_all()
+        grid = default_grid()
+        for name, sample, expected in (("d14", D14, 0.168), ("h14", H14, 0.160)):
+            theta = sweep_sample(sample, grid).theta_k_per_w
+            indep = (
+                abs(fits.fits[name].slope_mhz_per_mw) * 1e9
+                / abs(DF_SPIN_DT.df_dt_hz_per_k)
+            ) / float(np.median(theta))
+            assert result.eta_abs_at_nominal[name] == pytest.approx(indep, rel=1e-12)
+            assert result.eta_abs_at_nominal[name] == pytest.approx(expected, abs=5e-3)
+
 
 class TestGlueConfound:
     def test_factors_pinned(self, result):
@@ -146,3 +164,9 @@ class TestReport:
         assert "deliberately not decomposed" in report
         assert "licence discipline holds" in report
         assert "l_abs ≪ t" in report
+        # 2026-07-14 cleanup: verdict context + explicit cancellation dependency
+        assert "NOT REQUIRED and NOT EXCLUDED" in report
+        assert "NEAR-TOTAL absorption" in report
+        assert "open Angus ask" in report
+        assert f"{result.eta_abs_at_nominal['d14']:.3f} (d14)" in report
+        assert "worse or better depending on the operating h_sub" in report
