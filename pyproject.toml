@@ -22,7 +22,11 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+# "." exposes the root-level calibration/ package (Layer B workstream;
+# one-way dependency calibration -> cavity, enforced in
+# tests/test_calibration_import_boundary.py). Not a distributed package,
+# so it stays out of [tool.setuptools.packages.find].
+pythonpath = ["src", "."]
 addopts = "-ra"
 markers = [
     "requires_comsol: needs MPh + a local COMSOL licence; skipped unless --comsol is passed (SPEC §1: CI never assumes a licence)",
