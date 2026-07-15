@@ -162,8 +162,8 @@ engine · `cavity.thermal.layered` (`Layer`, cross-check anchors) ·
 ## Test counts
 
 Before: `558 tests collected` (verbatim: "558 tests collected in 6.84s").
-After: **646 collected** — 88 new: integrity 14 (incl. boundary guard 2), samples 13,
-rig_model 14, slope_fit 16, ratio_test 17, absolute_fit 14.
+After: **646 collected** — 88 new: integrity 14 (incl. boundary guard 2), samples 14,
+rig_model 13, slope_fit 16, ratio_test 17, absolute_fit 14.
 
 ## Assumptions (final register)
 
