@@ -476,3 +476,35 @@ quantities above stand as drafted, amended only as recorded here.
   with them, not after them.
 - **R3 — LARS deferral and the two `__init__` stub modifications APPROVED** as
   declared.
+
+---
+
+## Implementation record (2026-07-15, same day as ratification)
+
+- **Baseline verbatim:** `652 tests collected` (verified pre-implementation).
+- **After-count verbatim:** `792 tests collected` — 140 new tests across the
+  eight planned test files; full suite `771 passed, 21 skipped` (all skips are
+  the pre-existing `requires_comsol` / MPh-contract categories; zero COMSOL
+  executed).
+- **Deviation declared:** 140 new vs the ~158 estimate (−18, inside the stated
+  790–830 range at 792): the dofs/design/compose files landed slightly under
+  their per-file ranges; no planned discipline test was dropped.
+- **Deviation declared (module surface):** driver orchestration functions
+  (`run_sweep`, `run_mock_dry_run`, `load_raw_rows`, `validate_raw_row`) are
+  imported by module path (`cavity.sweep.driver`) rather than re-exported from
+  the package `__init__`, so `python -m cavity.sweep.driver` runs without
+  runpy's already-imported RuntimeWarning. Everything else re-exports as
+  planned.
+- **Verification executed:** CLI `--mock` full dry run (bundles →
+  `validate_bundle`-clean → raw rows → derived rows with convention blocks →
+  PCE fit → CV-gate report printing its κs branch → R4 projection report);
+  CLI `--comsol` refuses with exit 2 naming Q2/Q9/Q11 (d8) and Q9/Q11 (d7);
+  four-refusal walk (solve_rows / ComsolBackend / centre verification /
+  raw-row deny-list) all fire; `runs/` untouched (dry-runs to scratch);
+  working tree contains exactly the planned files.
+- **Planning-pin closure:** `planning_threshold_pins()` from committed
+  constants → gate 1 threshold 478.54 kHz (P5 = 9.5708 MHz, κs point branch;
+  lo 5.1829 / hi 11.3776 MHz sidebar), gate 2 threshold 23.975 kHz
+  (min κc = 239.750 kHz) — matching the ratified plan's ≈479 / ≈24.0 kHz and
+  re-derived independently in-test by Monte Carlo (5×10⁵ draws) plus a
+  monotonicity check backing the closed-form quantile image.
