@@ -138,7 +138,11 @@ Convergence and validity caveats
   gain-region H-weighting of §7.T2 output 1 is the consumer's job.
 - Crystal-only domain: the crystal→STO thermal path is NOT modelled; the
   side/base Robin h is exactly where a finite-conductance contact (gap
-  conductance, §7.T6-style sapphire sink) enters later.
+  conductance, §7.T6-style sapphire sink) enters later. (2026-07-16,
+  Oxborrow-verbal: the crystal–STO interface is Vaseline-mediated, not
+  an air gap — that contact, when exercised, is an EFFECTIVE
+  Vaseline-mediated thermal contact conductance, potentially carrying
+  both layer and interfacial resistance; see `provenance.Crystal`.)
 
 SPEC-silent decisions (D1–D7, taken 2026-07-07 as parameterised planning
 assumptions — flagged for Oxborrow ratification, §11 item-10 bundle;

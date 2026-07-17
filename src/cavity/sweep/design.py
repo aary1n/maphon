@@ -221,16 +221,18 @@ def materialise_dims(
     dims: list[SamplingDim] = []
     for name in sweep_dimension_names(mode):
         spec = dof_by_name(name)
-        if name == "bore_radius_m":
+        if name == "crystal_axial_offset_m":
             res = context.get("Q9")
             assert res is not None  # guaranteed by the gate above
-            lo, hi = res.payload["bore_radius_band_m"]
+            lo, hi = res.payload["crystal_axial_offset_band_m"]
             dims.append(
                 SamplingDim(
                     name=name,
                     lo=float(lo),
                     hi=float(hi),
-                    nominal=float(res.payload["bore_radius_nominal_m"]),
+                    nominal=float(
+                        res.payload["crystal_axial_offset_nominal_m"]
+                    ),
                     distribution=_geometry_kind(geometry_distribution),
                     mock=res.mock,
                     source=f"Q9 resolution ({res.provenance})",

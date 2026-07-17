@@ -4,8 +4,15 @@ The design doc's nine-row (θ, p) table as code, with its rung vocabulary
 and TODO-trace sentinels carried as first-class objects. Three rows are
 NOT numbers yet:
 
-  - row 5 (bore radius) and row 6 (bore eccentricity): Phase 1b
-    geometry, open question Q9;
+  - row 5 (crystal axial offset) and row 6 (crystal centring
+    eccentricity): Phase 1b crystal placement, open question Q9.
+    Reframed 2026-07-16 (Oxborrow-verbal): the recovered Booth
+    geometry contains a torus central opening — often termed the
+    bore — but no separately constructed or independently
+    parameterised bore; its clearance is implied by the torus major
+    and minor radii. The former "bore radius" row is therefore
+    INVALIDATED as a physical DOF (not renamed) and replaced by the
+    crystal-placement coordinate;
   - row 9 (tuning plate p_tune): no plate exists in any repo artifact,
     open question Q2;
   - additionally the Phase 1b crystal permittivity (not a DOF row, but
@@ -80,11 +87,18 @@ SENTINEL_Q2 = TodoTrace(
 SENTINEL_Q9 = TodoTrace(
     question_id="Q9",
     description=(
-        "Phase 1b bore: radius nominal + band, and the achievable "
-        "centring tolerance (eccentricity row; distinct from "
-        "TOL.machining_tol_m per the TolRanges docstring). Floor: "
-        "crystal radius 1.5 mm (provenance.CRYSTAL, Breeze 2017 "
-        "3 mm x 8 mm crystal)."
+        "Phase 1b crystal placement: axial-offset nominal + band "
+        "(crystal_axial_offset_m — the SIGNED axial displacement of "
+        "the crystal centre from the torus equatorial plane) plus the "
+        "achievable lateral centring tolerance (crystal_eccentricity_m "
+        "row; distinct from TOL.machining_tol_m per the TolRanges "
+        "docstring). Crystal DIMENSIONS are already resolved — "
+        "provenance.CRYSTAL (Breeze 2017, 3 mm x 8 mm) — so the ask "
+        "is placement + centring tolerance only. Partial resolution "
+        "on record: eccentricity nominal = CENTRED, per Oxborrow — "
+        "supervisor-confirmed (VERBAL, in-person meeting 2026-07-16); "
+        "the tolerance band is still open, so the sentinel remains "
+        "unresolved."
     ),
     routes_to="Oxborrow",
 )
@@ -260,7 +274,7 @@ LAYER_A_DOFS: tuple[DofSpec, ...] = (
         ),
     ),
     DofSpec(
-        name="bore_radius_m",
+        name="crystal_axial_offset_m",
         kind=DofKind.NOISE,
         nominal=SENTINEL_Q9,
         band=SENTINEL_Q9,
@@ -268,26 +282,37 @@ LAYER_A_DOFS: tuple[DofSpec, ...] = (
         nominal_rung=Rung.TODO_TRACE,
         band_rung=Rung.TODO_TRACE,
         provenance=(
-            "no nominal exists in any repo artifact (Phase 1b geometry "
-            "decision, Q9); floor = crystal radius "
-            f"{CRYSTAL.diameter_m / 2.0:g} m (provenance.CRYSTAL); "
-            "trunc. Gaussian once a band exists"
+            "signed axial displacement of the crystal centre from the "
+            "torus equatorial plane (coordinate fixed with the "
+            "2026-07-16 Q9 reframe; supersedes the retired 'bore "
+            "radius' row — the torus central opening is not an "
+            "independently parameterised geometry primitive, its "
+            "clearance being implied by the torus major/minor radii). "
+            "No nominal or band exists in any repo artifact (Q9); "
+            "crystal dimensions themselves are resolved via "
+            "provenance.CRYSTAL (Breeze 2017, 3 mm x 8 mm); trunc. "
+            "Gaussian once a band exists"
         ),
     ),
     DofSpec(
-        name="bore_eccentricity_m",
+        name="crystal_eccentricity_m",
         kind=DofKind.NOISE_NOT_A_SWEEP_DIM,
-        nominal=0.0,  # 0 by construction (design doc §2 row 6)
+        nominal=0.0,  # CENTRED (design doc §2 row 6)
         band=SENTINEL_Q9,
         distribution=DistributionKind.UNDEFINED_TODO_TRACE,
-        nominal_rung=Rung.PLANNING_ASSUMPTION,
+        nominal_rung=Rung.SUPERVISOR_CONFIRMED,
         band_rung=Rung.TODO_TRACE,
         provenance=(
-            "achievable centring tolerance unknown (Q9) — DISTINCT from "
-            "TOL.machining_tol_m per the TolRanges docstring, never "
-            "folded in; breaks m = 0, excluded from the axisymmetric "
-            "sweep dims; §7.4 decision ladder: first-order perturbation "
-            "estimate BEFORE the main sweep -> bounded 3-D -> drop"
+            "lateral (radial) miscentring of the crystal within the "
+            "torus central opening. Nominal 0 = CENTRED — Oxborrow "
+            "(verbal, in-person meeting 2026-07-16); rung upgraded "
+            "from planning-assumption with the numeric nominal "
+            "unchanged. Achievable centring tolerance band still "
+            "unknown (Q9) — DISTINCT from TOL.machining_tol_m per the "
+            "TolRanges docstring, never folded in; breaks m = 0, "
+            "excluded from the axisymmetric sweep dims; §7.4 decision "
+            "ladder: first-order perturbation estimate BEFORE the main "
+            "sweep -> bounded 3-D -> drop"
         ),
     ),
     DofSpec(
@@ -359,7 +384,7 @@ _NOISE_DIM_NAMES: tuple[str, ...] = (
     "box_height_m",
     "torus_minor_radius_m",
     "torus_major_radius_m",
-    "bore_radius_m",
+    "crystal_axial_offset_m",
     "epsilon_r",
     "tan_delta",
 )
@@ -373,7 +398,7 @@ def sweep_dimension_names(mode: DesignMode) -> tuple[str, ...]:
 
 
 #: Which open questions gate SOLVE-READY work per mode. Note the d = 7
-#: fallback relieves only Q2: bore radius (row 5) is one of the seven
+#: fallback relieves only Q2: crystal axial offset (row 5) is one of the seven
 #: noise dims, and rider R1 (admissible rows come from Phase 1b
 #: geometry) requires the crystal sub-domain (Q11) regardless — this is
 #: the critical-path partition of the design doc, in code.
@@ -390,13 +415,13 @@ _SENTINELS_BY_QUESTION: dict[str, TodoTrace] = {
 }
 
 #: Required payload keys per resolvable question. Q9 carries both the
-#: bore-radius row and the eccentricity centring tolerance; Q2 carries
+#: axial-offset row and the eccentricity centring tolerance; Q2 carries
 #: the plate travel; Q11 the graded crystal permittivity.
 _REQUIRED_PAYLOAD_KEYS: dict[str, tuple[str, ...]] = {
     "Q2": ("p_tune_nominal", "p_tune_min", "p_tune_max", "mechanism"),
     "Q9": (
-        "bore_radius_nominal_m",
-        "bore_radius_band_m",
+        "crystal_axial_offset_nominal_m",
+        "crystal_axial_offset_band_m",
         "centring_tolerance_m",
     ),
     "Q11": ("crystal_epsilon_r",),
@@ -532,12 +557,13 @@ def mock_resolutions() -> ResolutionContext:
     """Test-double context for pipeline-SHAPE exercise (dry-run tier).
 
     Values are arbitrary-but-plausible and carry mock=True end to end;
-    every solve-ready exit refuses them. The bore-radius mock respects
-    the crystal-radius floor; the crystal-εr mock respects the
+    every solve-ready exit refuses them. The axial-offset mock is
+    chosen FRESH for the 2026-07-16 crystal-placement coordinate
+    (axially centred, machining-scale band) — the retired bore-radius
+    mock does NOT carry over; the crystal-εr mock respects the
     published bound (both so shape tests exercise realistic branches,
     not because these numbers mean anything).
     """
-    crystal_radius_m = CRYSTAL.diameter_m / 2.0
     return ResolutionContext(
         resolutions=(
             SentinelResolution(
@@ -555,10 +581,13 @@ def mock_resolutions() -> ResolutionContext:
             SentinelResolution(
                 question_id="Q9",
                 payload={
-                    "bore_radius_nominal_m": 1.25 * crystal_radius_m,
-                    "bore_radius_band_m": (
-                        1.25 * crystal_radius_m - TOL.machining_tol_m,
-                        1.25 * crystal_radius_m + TOL.machining_tol_m,
+                    # MOCK values chosen fresh for the axial-offset
+                    # coordinate (centred, machining-scale slack); the
+                    # retired radius-derived mock does not carry over.
+                    "crystal_axial_offset_nominal_m": 0.0,
+                    "crystal_axial_offset_band_m": (
+                        -2.0 * TOL.machining_tol_m,
+                        +2.0 * TOL.machining_tol_m,
                     ),
                     "centring_tolerance_m": 2.0 * TOL.machining_tol_m,
                 },

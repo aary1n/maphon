@@ -18,8 +18,8 @@ Two implementations of one protocol:
     Q2/Q9/Q11 licence gate — while any sentinel the mode requires is
     unresolved (or mock-resolved), it refuses to exist; and Phase 1b
     solve specs additionally refuse with NotImplementedError because
-    the geometry engine has no bore/crystal (building it is SPEC §5b
-    work, not licensed by the Layer A design doc).
+    the geometry engine has no crystal sub-domain (building it is SPEC
+    §5b work, not licensed by the Layer A design doc).
 
 Sweep solve configuration (design doc §1/§6, committed): eigenfrequency
 search at 1.45 GHz with n_modes = 12, impedance walls, CANONICAL
@@ -79,7 +79,7 @@ class DrawSolveSpec:
     """One design row translated into solve inputs.
 
     `phase1b` holds the Phase 1b parameters the CURRENT geometry engine
-    cannot represent (bore radius, crystal permittivity, plate
+    cannot represent (crystal axial offset, crystal permittivity, plate
     position). It is non-empty exactly when θ carries those DOFs; the
     COMSOL backend refuses such specs (SPEC §5b pass pending), the mock
     backend folds them into its labelled mock maps.
@@ -99,7 +99,7 @@ class DrawSolveSpec:
 
 
 #: θ keys the current axisymmetric geometry engine cannot represent.
-_PHASE1B_THETA_KEYS = ("bore_radius_m", "p_tune")
+_PHASE1B_THETA_KEYS = ("crystal_axial_offset_m", "p_tune")
 
 
 def draw_solve_spec(
@@ -161,7 +161,13 @@ MOCK_F_LEVERS_HZ = {
     "box_radius_m": -0.02e12,
     "box_height_m": -0.01e12,
     "epsilon_r": -2.33e6,  # Hz per unit εr
-    "bore_radius_m": +0.01e12,
+    # Fresh MOCK lever for the 2026-07-16 axial-offset coordinate (the
+    # retired bore-radius lever does not carry over): deliberately small
+    # vs the geometry levers — the crystal is a weak perturbation and
+    # the true offset dependence is symmetric about the equatorial
+    # plane to first order; nonzero only so the dimension carries
+    # signal in pipeline-shape exercise.
+    "crystal_axial_offset_m": +2.0e8,
     "p_tune": +8.0e6,  # Hz per unit mock plate coordinate
 }
 #: MOCK wall Q for the impedance-wall branch of the mock loss map
@@ -186,7 +192,9 @@ def _mock_reference_theta() -> dict[str, float]:
         "torus_major_radius_m": GEOM_BOOTH_TE01D.torus_major_radius_m,
         "epsilon_r": STO.epsilon_r_real,
         "tan_delta": STO.tan_delta,
-        "bore_radius_m": 0.0,
+        # Axially centred — a fresh mock reference for the 2026-07-16
+        # crystal-placement coordinate, not the retired bore reference.
+        "crystal_axial_offset_m": 0.0,
         "p_tune": 0.5,
     }
 
@@ -339,7 +347,7 @@ class ComsolBackend:
         if spec.needs_phase1b_geometry:
             raise NotImplementedError(
                 "Phase 1b solve spec refused: the axisymmetric geometry "
-                "engine has no bore/crystal/plate "
+                "engine has no crystal/plate sub-domain "
                 f"(spec carries {sorted(spec.phase1b)}). Building them "
                 "is SPEC §5b work — a separate licensed pass, not "
                 "licensed by the Layer A design doc."

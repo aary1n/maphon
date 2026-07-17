@@ -61,8 +61,9 @@ def _full_real_context() -> ResolutionContext:
             SentinelResolution(
                 question_id="Q9",
                 payload={
-                    "bore_radius_nominal_m": 1.9e-3,
-                    "bore_radius_band_m": (1.875e-3, 1.925e-3),
+                    # MOCK axial-offset values (hypothetical, test only)
+                    "crystal_axial_offset_nominal_m": 0.5e-3,
+                    "crystal_axial_offset_band_m": (0.45e-3, 0.55e-3),
                     "centring_tolerance_m": 50e-6,
                 },
                 rung=Rung.PLANNING_ASSUMPTION,
@@ -115,9 +116,9 @@ def test_draw_solve_spec_builds_torus_geometry_and_sampled_materials():
 
 
 def test_draw_solve_spec_captures_phase1b_keys():
-    spec = draw_solve_spec(_theta(bore_radius_m=1.9e-3, p_tune=0.4))
+    spec = draw_solve_spec(_theta(crystal_axial_offset_m=0.5e-3, p_tune=0.4))
     assert spec.needs_phase1b_geometry
-    assert set(spec.phase1b) == {"bore_radius_m", "p_tune"}
+    assert set(spec.phase1b) == {"crystal_axial_offset_m", "p_tune"}
 
 
 # ---------------------------------------------------------------------------
@@ -208,6 +209,6 @@ def test_comsol_backend_refuses_mock_resolutions():
 
 def test_comsol_backend_refuses_phase1b_specs_naming_spec_5b():
     backend = ComsolBackend(_full_real_context(), DesignMode.BASELINE_D8)
-    spec = draw_solve_spec(_theta(bore_radius_m=1.9e-3, p_tune=0.0))
+    spec = draw_solve_spec(_theta(crystal_axial_offset_m=0.5e-3, p_tune=0.0))
     with pytest.raises(NotImplementedError, match="SPEC §5b"):
         backend.solve(spec)

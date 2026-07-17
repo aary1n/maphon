@@ -110,12 +110,12 @@ def test_materialise_with_mock_context_yields_flagged_dims():
     dims = materialise_dims(DesignMode.BASELINE_D8, mock_resolutions())
     by_name = {d.name: d for d in dims}
     assert len(dims) == 8
-    assert by_name["bore_radius_m"].mock
+    assert by_name["crystal_axial_offset_m"].mock
     assert by_name["p_tune"].mock and by_name["p_tune"].is_control
     assert not by_name["epsilon_r"].mock  # committed rows are not mock
 
 
-def test_geometry_uniform_variant_switches_rows_1_to_4_and_bore():
+def test_geometry_uniform_variant_switches_rows_1_to_4_and_axial_offset():
     dims = materialise_dims(
         DesignMode.BASELINE_D8,
         mock_resolutions(),
@@ -127,7 +127,7 @@ def test_geometry_uniform_variant_switches_rows_1_to_4_and_bore():
         "box_height_m",
         "torus_minor_radius_m",
         "torus_major_radius_m",
-        "bore_radius_m",
+        "crystal_axial_offset_m",
     ):
         assert by_name[name].distribution is DistributionKind.UNIFORM
     # εr/tanδ are untouched by the geometry variant.
@@ -325,8 +325,9 @@ def test_real_design_refuses_non_committed_sizes():
             SentinelResolution(
                 question_id="Q9",
                 payload={
-                    "bore_radius_nominal_m": 1.9e-3,
-                    "bore_radius_band_m": (1.875e-3, 1.925e-3),
+                    # MOCK axial-offset values (hypothetical, test only)
+                    "crystal_axial_offset_nominal_m": 0.5e-3,
+                    "crystal_axial_offset_band_m": (0.45e-3, 0.55e-3),
                     "centring_tolerance_m": 50e-6,
                 },
                 rung=Rung.PLANNING_ASSUMPTION,
@@ -368,8 +369,9 @@ def test_unresolved_context_blocks_solve_rows_even_for_real_design():
             SentinelResolution(
                 question_id="Q9",
                 payload={
-                    "bore_radius_nominal_m": 1.9e-3,
-                    "bore_radius_band_m": (1.875e-3, 1.925e-3),
+                    # MOCK axial-offset values (hypothetical, test only)
+                    "crystal_axial_offset_nominal_m": 0.5e-3,
+                    "crystal_axial_offset_band_m": (0.45e-3, 0.55e-3),
                     "centring_tolerance_m": 50e-6,
                 },
                 rung=Rung.PLANNING_ASSUMPTION,
@@ -402,8 +404,9 @@ def test_mock_rows_exercise_shape_and_refuse_on_real_designs():
             SentinelResolution(
                 question_id="Q9",
                 payload={
-                    "bore_radius_nominal_m": 1.9e-3,
-                    "bore_radius_band_m": (1.875e-3, 1.925e-3),
+                    # MOCK axial-offset values (hypothetical, test only)
+                    "crystal_axial_offset_nominal_m": 0.5e-3,
+                    "crystal_axial_offset_band_m": (0.45e-3, 0.55e-3),
                     "centring_tolerance_m": 50e-6,
                 },
                 rung=Rung.PLANNING_ASSUMPTION,
@@ -444,5 +447,7 @@ def test_manifest_carries_identity_and_dim_provenance():
     assert m["block"] == "training"
     assert m["seed"] == SEED
     assert m["any_mock"] is True
-    bore = next(d for d in m["dims"] if d["name"] == "bore_radius_m")
-    assert bore["mock"] is True and "Q9" in bore["source"]
+    axial = next(
+        d for d in m["dims"] if d["name"] == "crystal_axial_offset_m"
+    )
+    assert axial["mock"] is True and "Q9" in axial["source"]

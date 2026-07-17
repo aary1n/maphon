@@ -12,7 +12,7 @@
 - §5a GATE (R5): the §5a benchmark is PASSED as re-based 2026-07-11 (5 pass / 0 fail / 1 deferred — SPEC §5a finding: V window re-based on the 225/360-corrected Booth print, F_m tightened to ±1% consistency; tolerances unchanged). `phase1_complete` remains false on the deferred confinement row — §5a benchmark PASS is NOT phase completion, and Phase 2 claim levels still gate on §7.T5.
 - LAYER-A BOUNDARY: the joint C0/kappa_c dependence on the geometry DOFs (the §7.T4 headline requirement, SPEC §11 item 9) is NOT derived here — these are the per-draw maps and one composite point.
 - COMMON-DELTA-T TWO-ARMS CONVENTION (D8, planning assumption — proposed for the SPEC §11 item-10 bundle): both arms evaluated at the crystal's probe-weighted mean temperature rise because the crystal->STO thermal path is unmodelled (D7). Direction conservative — overstates detuning, understates ΔT_max/P_max; magnitude unmodelled; retires via D7 or a ruled ΔT_STO/ΔT_crystal ratio.
-- probe weight is a UNIFORM-OVER-CRYSTAL PLACEHOLDER, not the SPEC §7.T5(b) gain-region w_s (Phase 1b bore + crystal unbuilt; crystal-frame co-registration pending) — spin-arm numbers inherit UNRATIFIED-w_s status doubly until Phase 1b supplies w_s.
+- probe weight is a UNIFORM-OVER-CRYSTAL PLACEHOLDER, not the SPEC §7.T5(b) gain-region w_s (Phase 1b crystal unbuilt; crystal-frame co-registration pending) — spin-arm numbers inherit UNRATIFIED-w_s status doubly until Phase 1b supplies w_s.
 
 ## Planning point
 

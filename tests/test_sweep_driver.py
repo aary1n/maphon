@@ -158,8 +158,9 @@ def _real_q9_context() -> ResolutionContext:
             SentinelResolution(
                 question_id="Q9",
                 payload={
-                    "bore_radius_nominal_m": 1.9e-3,
-                    "bore_radius_band_m": (1.875e-3, 1.925e-3),
+                    # MOCK axial-offset values (hypothetical, test only)
+                    "crystal_axial_offset_nominal_m": 0.5e-3,
+                    "crystal_axial_offset_band_m": (0.45e-3, 0.55e-3),
                     "centring_tolerance_m": 50e-6,
                 },
                 rung=Rung.PLANNING_ASSUMPTION,

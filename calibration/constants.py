@@ -38,7 +38,8 @@ class AmbientConditions:
     for THIS rig: it sits at/below the bottom of the open-still-air
     `H_CONV_AIR` band (5–20 W m⁻² K⁻¹), which is why `ExposedFaceCoupling`
     pins h = 5 rather than the band midpoint. NON-TRANSFERABLE (the maser
-    bore is a different enclosure class)."""
+    crystal sits semi-enclosed in the STO torus central opening — a
+    different enclosure class)."""
 
     t_inf_k: float = 293.15
     enclosed: bool = True

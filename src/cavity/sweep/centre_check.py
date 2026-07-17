@@ -5,15 +5,21 @@ refs/gate_runs/20260711T132705Z_rejudge/): no quantity here is
 re-derived, and the pin test re-reads the record and asserts equality.
 Sweep-centre definition, verbatim from the design doc:
 
-    the Phase 1b model whose no-bore/no-crystal limit reproduces the
-    pinned gate-record values.
+    the Phase 1b model whose no-crystal limit reproduces the pinned
+    gate-record values.
 
-The §6 verification block is itemised exactly: (bore+crystal ON/OFF at
-nominal) × 2 mesh levels = 4, + 1 PEC arm (bore+crystal ON, wall-split
+(Wording updated 2026-07-16 with the Q9 reframe — formerly the
+ratified "no-bore/no-crystal limit": the recovered Booth geometry
+contains a torus central opening, often termed the bore, but no
+separately constructed or independently parameterised bore, so the
+no-crystal limit is the same statement.)
+
+The §6 verification block is itemised exactly: (crystal ON/OFF at
+nominal) × 2 mesh levels = 4, + 1 PEC arm (crystal ON, wall-split
 diagnostic) = 5 solves — the draft's "6" over-counted by one.
 
-GATES (enforced in code): the block cannot RUN until Q9 (bore nominal)
-and Q11 (crystal εr — the repo carries only a bound) resolve with
+GATES (enforced in code): the block cannot RUN until Q9 (crystal
+placement) and Q11 (crystal εr — the repo carries only a bound) resolve with
 non-mock resolutions; and even then the ComsolBackend refuses Phase 1b
 specs until the SPEC §5b geometry pass exists. Mock-shape exercise goes
 through `centre_verification_specs` with `mock_resolutions()`.
@@ -78,9 +84,11 @@ class PinnedCentre:
 
 PINNED_CENTRE = PinnedCentre()
 
-#: Verbatim sweep-centre definition (design doc §1 rider).
+#: Verbatim sweep-centre definition (design doc §1 rider; wording
+#: updated 2026-07-16 with the Q9 reframe — formerly
+#: "no-bore/no-crystal limit").
 SWEEP_CENTRE_DEFINITION = (
-    "the Phase 1b model whose no-bore/no-crystal limit reproduces the "
+    "the Phase 1b model whose no-crystal limit reproduces the "
     "pinned gate-record values (record 823e67969516bcf2); no "
     "re-derivation of the centre is performed or permitted"
 )
@@ -115,10 +123,10 @@ class CentreVerificationSpec:
     Phase 1b geometry it describes has no engine yet, SPEC §5b)."""
 
     label: str
-    bore_and_crystal_on: bool
+    crystal_on: bool
     mesh_level: str  # "finest" | "coarser"
     wall_bc: WallBC
-    bore_radius_m: float
+    crystal_axial_offset_m: float
     crystal_epsilon_r: float
 
     @property
@@ -179,16 +187,18 @@ def centre_verification_specs(
         "centre-verification spec construction",
         allow_mock=True,
     )
-    bore = float(context.get("Q9").payload["bore_radius_nominal_m"])
+    offset = float(
+        context.get("Q9").payload["crystal_axial_offset_nominal_m"]
+    )
     eps = float(context.get("Q11").payload["crystal_epsilon_r"])
 
     def spec(label, on, level, wall):
         return CentreVerificationSpec(
             label=label,
-            bore_and_crystal_on=on,
+            crystal_on=on,
             mesh_level=level,
             wall_bc=wall,
-            bore_radius_m=bore,
+            crystal_axial_offset_m=offset,
             crystal_epsilon_r=eps,
         )
 
@@ -208,8 +218,8 @@ def run_centre_verification(
 
     Refuses on unresolved Q9/Q11, refuses mock resolutions, and (once
     both pass) still refuses because the Phase 1b geometry engine does
-    not exist (SPEC §5b — a separate licensed pass builds bore +
-    crystal; this module must not).
+    not exist (SPEC §5b — a separate licensed pass builds the crystal
+    sub-domain; this module must not).
     """
     _require_questions(
         context,
@@ -219,7 +229,7 @@ def run_centre_verification(
     )
     raise NotImplementedError(
         "centre verification cannot run: the axisymmetric geometry "
-        "engine has no bore/crystal sub-domain — building them is the "
+        "engine has no crystal sub-domain — building it is the "
         "SPEC §5b Phase 1b pass, not licensed by the Layer A design "
         f"doc. Sweep-centre definition on record: {SWEEP_CENTRE_DEFINITION}"
     )
@@ -253,7 +263,7 @@ def centre_verification_report(
             "delta_q0_rel": off_arm_finest["q"] / pinned.q0 - 1.0,
             "delta_p_e": off_arm_finest["p_e"] - pinned.p_e,
             "meaning": (
-                "the no-bore/no-crystal limit must reproduce the "
+                "the no-crystal limit must reproduce the "
                 "pinned values (sweep-centre definition)"
             ),
         },

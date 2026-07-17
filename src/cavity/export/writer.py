@@ -208,7 +208,7 @@ def export_bundle(
     if gain_is_fallback:
         status_notes.append(
             "SCHEMA EXAMPLE, not physics handoff: gain_region_mask is the "
-            "STO-dielectric fallback (Phase 1b bore + pentacene crystal "
+            "STO-dielectric fallback (Phase 1b pentacene crystal "
             "unbuilt) — spin-arm quantities describe the STO puck, NOT "
             "the pentacene gain region."
         )

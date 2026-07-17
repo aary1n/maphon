@@ -86,7 +86,7 @@ Probe weight — uniform-over-crystal PLACEHOLDER this pass
 The §7.T2 output-3 probe weight for the maser is w_s by construction
 (`WeightField.probe_measure()` is the designed `weights` argument of
 `line_observable_from_samples`). But today's w_s lives on the
-STO-fallback mask in cavity coordinates (Phase 1b bore + crystal
+STO-fallback mask in cavity coordinates (Phase 1b crystal
 unbuilt) — disjoint from the crystal domain — so the shipped instance
 uses a uniform-over-crystal probe measure, flagged in every result
 (`probe_weight_is_placeholder`, `UNIFORM_PLACEHOLDER_RUNG`). The
@@ -170,7 +170,7 @@ SPIN_WEIGHT_RUNG = (
 
 UNIFORM_PLACEHOLDER_RUNG = (
     "probe weight is a UNIFORM-OVER-CRYSTAL PLACEHOLDER, not the "
-    "SPEC §7.T5(b) gain-region w_s (Phase 1b bore + crystal unbuilt; "
+    "SPEC §7.T5(b) gain-region w_s (Phase 1b crystal unbuilt; "
     "crystal-frame co-registration pending) — spin-arm numbers inherit "
     "UNRATIFIED-w_s status doubly until Phase 1b supplies w_s"
 )

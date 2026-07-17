@@ -21,6 +21,19 @@ is computed once per configuration at P = 1 W.
 
 NON-TRANSFERABLE: Θ values from this module are rig numbers. The transport
 core (`cavity.thermal.cylinder`) and dν/dT transfer; ΔT does not (§7.T5).
+
+CPW via-contact caveat — Oxborrow (verbal, in-person meeting 2026-07-16):
+heat extraction on the coplanar waveguide depends on whether the sample
+spans onto via'd copper regions of the board — a narrower sample that does
+not reach the vias runs hotter, and orientation on the CPW also matters.
+This adds a second geometry-dependent heat-sinking mechanism and further
+weakens any deuteration-only attribution. It is consistent with the
+existing geometry-sufficient verdict but is not quantified by the present
+ratio test and does not increase that test's numerical discriminating
+power. The T4 report's claim level — geometry-sufficient, low
+discriminating power, deuteration neither required nor excluded — is
+unchanged; see
+calibration/reports/ratio_test_digitized_addendum_2026-07-16.md.
 """
 
 from __future__ import annotations

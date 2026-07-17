@@ -292,7 +292,7 @@ Top-level keys (all required):
 
 ## 9. Gain-mask fallback semantics
 
-`FieldSample.gain_region_mask` exists only once Phase 1b (bore + pentacene
+`FieldSample.gain_region_mask` exists only once Phase 1b (the pentacene
 crystal sub-domain) is built. Until then the exporter materialises the
 fallback — the STO dielectric mask — and flags it:
 `summary.gain_mask_is_fallback: true` plus a SCHEMA EXAMPLE status note.

@@ -49,23 +49,28 @@ finest mesh level") and the re-based §5a gate record:
   5×10⁻⁴ m), inherited with the archived per-level convergence tables as its
   justification (humble-stirring-stardust, "Mesh-convergence evidence").
 
-**Phase 1b rider (load-bearing).** The pinned centre is the no-bore,
-no-crystal Booth validation point. The sweep itself must run on **Phase 1b
-geometry** (bore + pentacene crystal sub-domain, SPEC §5b) — otherwise the
-gain-region columns that close item 9 are the STO fallback and carry no
-G-physics (§3 below). The design therefore includes a budgeted verification
-that the Phase 1b additions perturb the pinned centre only weakly (SPEC §5b:
-"Booth argues it barely perturbs the mode; **verify, don't assume**"), and the
-sweep centre is defined as: *the Phase 1b model whose no-bore/no-crystal limit
-reproduces the pinned gate-record values.* No re-derivation of the centre is
-performed or permitted.
+**Phase 1b rider (load-bearing).** The pinned centre is the no-crystal Booth
+validation point. The sweep itself must run on **Phase 1b geometry**
+(pentacene crystal sub-domain in the torus central opening, SPEC §5b) —
+otherwise the gain-region columns that close item 9 are the STO fallback and
+carry no G-physics (§3 below). The design therefore includes a budgeted
+verification that the Phase 1b additions perturb the pinned centre only
+weakly (SPEC §5b: "Booth argues it barely perturbs the mode; **verify, don't
+assume**"), and the sweep centre is defined as: *the Phase 1b model whose
+no-crystal limit reproduces the pinned gate-record values.* No re-derivation
+of the centre is performed or permitted. *(Wording updated 2026-07-16 with
+the Q9 reframe — formerly the ratified "no-bore/no-crystal limit": the
+recovered Booth geometry contains a torus central opening, often termed the
+bore, but no separately constructed or independently parameterised bore, its
+clearance being implied by the torus major and minor radii — so the
+no-crystal limit is the same statement.)*
 
 ---
 
 ## 2. DOF table
 
-Seven sampled noise DOFs + one control. Bore **eccentricity** is listed but
-excluded from the axisymmetric sweep dimensions (it breaks m = 0; handled by
+Seven sampled noise DOFs + one control. Crystal centring **eccentricity** is
+listed but excluded from the axisymmetric sweep dimensions (it breaks m = 0; handled by
 the §7-expanded §7.4 side-branch — see notes). d = 8 surrogate dimensions
 (7 noise + 1 control), contingent on Q2 (plate definition); if the plate
 stays undefined, the noise-only d = 7 degraded mode (note below the table;
@@ -77,8 +82,8 @@ budget line in §6) is the FALLBACK, not the baseline.
 | 2 | Box height | noise | 18.42 mm (`GEOM_BOOTH_TE01D.box_height_m`) | ±25 µm | as row 1 | as row 1 |
 | 3 | Torus minor radius | noise | 2.456 mm (`GEOM_BOOTH_TE01D.torus_minor_radius_m`) | ±25 µm | as row 1 | as row 1. Note the measured stiff f-lever ≈ −0.35 MHz/µm (§2 finding, printed-2.46 sensitivity solve): this DOF alone moves f by ∓ ~8.8 MHz across the band — it dominates the tuning-feasibility metric. |
 | 4 | Torus major radius | noise | 6.14 mm (`GEOM_BOOTH_TE01D.torus_major_radius_m`) | ±25 µm | as row 1 | as row 1 |
-| 5 | Bore radius | noise | **TODO-trace** — no nominal exists in any repo artifact; Phase 1b geometry decision. Floor: crystal radius 1.5 mm (Breeze 2017 3 mm × 8 mm crystal, `provenance.Crystal`). | **TODO-trace** | trunc. Gaussian once band exists | **TODO-trace** (both nominal and band) |
-| 6 | Bore eccentricity | noise, **not a sweep dim** | 0 by construction | **TODO-trace** (achievable centring tolerance unknown; distinct from `machining_tol_m` per the `TolRanges` docstring — do not fold in) | n/a in the axisymmetric sweep | **TODO-trace**; method itself open (§7-expanded §7.4: (a) first-order perturbation from stored axisymmetric fields → (b) bounded 3-D side-study → (c) drop with justification; decision gate = the first-order estimate, BEFORE the main sweep) |
+| 5 | Crystal axial offset (`crystal_axial_offset_m`) | noise | **TODO-trace** — signed axial displacement of the crystal centre from the torus equatorial plane; coordinate fixed with the 2026-07-16 Q9 reframe, superseding the retired "bore radius" row (the torus central opening — often termed the bore — is not an independently parameterised geometry primitive; its clearance is implied by rows 3–4). Crystal dimensions themselves are resolved: 3 mm × 8 mm (Breeze 2017, `provenance.CRYSTAL`). | **TODO-trace** | trunc. Gaussian once band exists | **TODO-trace** (both nominal and band) |
+| 6 | Crystal centring eccentricity (`crystal_eccentricity_m`) | noise, **not a sweep dim** | 0 = CENTRED — **supervisor-confirmed** (Oxborrow-verbal, in-person 2026-07-16; was planning-assumption "0 by construction", numeric nominal unchanged) | **TODO-trace** (achievable centring tolerance unknown; distinct from `machining_tol_m` per the `TolRanges` docstring — do not fold in) | n/a in the axisymmetric sweep | nominal: supervisor-confirmed (verbal, 2026-07-16); band **TODO-trace**; method itself open (§7-expanded §7.4: (a) first-order perturbation from stored axisymmetric fields → (b) bounded 3-D side-study → (c) drop with justification; decision gate = the first-order estimate, BEFORE the main sweep) |
 | 7 | εr (STO) | noise | 316.3 (`provenance.STO`) | [312, 318] (`TOL.epsilon_r_min/max`) | uniform (conservative baseline); triangular-toward-nominal as sensitivity variant | **literature-anchored span**: endpoints = the committed published-anchor εr values (Wu 312 / Booth 316.3 / Breeze 318, `TARGETS.*.epsilon_r_real`); distribution shape = planning-assumption. Flag: SPEC §6 prose says "standardise on 316.3–318" while §7-expanded §7.4 and `TOL` commit [312, 318] — an internal tension to resolve at ratification (Q4), not silently re-pick. |
 | 8 | tanδ (STO) | noise | 1.1×10⁻⁴ (`provenance.STO`) | [1.0, 2.3]×10⁻⁴ (`TOL.tan_delta_min/max`) | uniform (conservative baseline) | **literature-confirmed span**: measured-device effective loss, Breeze Q₀ ≈ 10,700 ↔ Wu Q₀ ≈ 4,320 (SPEC §6) — an *effective*-loss inference through the model, which is why §7.4's Bayesian re-inference is the flagged upgrade (recommended-if-time; out of this doc's scope). |
 | 9 | Tuning-plate position p_tune | **control** (solved per draw, never sampled) | **TODO-trace** | [p_min, p_max] **TODO-trace** | n/a — root-solved per draw to put f̂ on f_spin = 1.4493 GHz (`TARGET.f_xz_measured_hz`) | **TODO-trace, blocking-adjacent**: no plate exists in the geometry engine, the SPEC geometry, or any repo artifact. §7.3's per-draw algorithm is unimplementable until the plate mechanism and travel are defined (Q2). |
@@ -192,7 +197,7 @@ composition — a modelled coupling port would be a schema/model *extension*,
 not within item 9 as written; (R3) κs enters as a constant — see above;
 (R4) **projection invariance of the anchored ratio** — rung:
 planning-assumption (plausible to first order for the TE01δ axial H in the
-bore; **not an identity**). The orientational matrix element couples to the
+torus central opening; **not an identity**). The orientational matrix element couples to the
 DIRECTION of H over the gain region, while raw-|H|² η_H is
 projection-independent by construction — so the ratio law
 C₀(θ,p) = 190 × [f·η_H/κc]-ratio ASSUMES the field-direction distribution
@@ -300,7 +305,7 @@ on the same rows — no additional solves. (Q2 degraded d = 7 fallback:
 
 | Block | Solves | Notes |
 |---|---:|---|
-| Phase 1b perturbation verification | 5 | itemized: (bore+crystal ON / OFF at nominal) × 2 mesh levels = 4, + 1 PEC arm (bore+crystal ON, wall-split diagnostic) = **5** — the draft's "6" over-counted by one, corrected here — the §5b "verify, don't assume" gate on the sweep centre (§1 rider) |
+| Phase 1b perturbation verification | 5 | itemized: (crystal ON / OFF at nominal) × 2 mesh levels = 4, + 1 PEC arm (crystal ON, wall-split diagnostic) = **5** — the draft's "6" over-counted by one, corrected here — the §5b "verify, don't assume" gate on the sweep centre (§1 rider) |
 | Main training design (Sobol, d = 8) | 120 | 2.7× the 45 order-2 coefficients |
 | Held-out validation set | 30 | independent batch, never used in fitting (CV gate, §9) |
 | Active-learning reserve | 40 | GP-variance-placed near f̂ ≈ f_spin and the low-margin (large-κ̂c) boundary, per §7.5 |
@@ -484,9 +489,18 @@ a byproduct rather than a separate campaign.
    composition, vs §7.5's literal C₀/κc list (§9 deviation flag).
 8. **CV-gate numerics:** the 5 %-of-5th-percentile-Δf_max and 10 %-of-κc
    quantifications of §7.5's "≪" (planning-assumption rung).
-9. **Bore nominal + centring tolerance (§2 rows 5–6):** Phase 1b bore radius
-   nominal, its band, the achievable centring tolerance, and sign-off on the
-   eccentricity decision ladder (first-order estimate → bounded 3-D → drop).
+9. **Crystal placement + centring tolerance (§2 rows 5–6)** *(renamed
+   2026-07-16 from "bore nominal + centring tolerance" — the recovered Booth
+   geometry contains a torus central opening, often termed the bore, but no
+   separately constructed or independently parameterised bore; crystal
+   dimensions are resolved, `provenance.CRYSTAL`, Breeze 2017 3 × 8 mm)*:
+   the crystal axial-offset nominal + band (signed axial displacement of the
+   crystal centre from the torus equatorial plane), the achievable lateral
+   centring tolerance, and sign-off on the eccentricity decision ladder
+   (first-order estimate → bounded 3-D → drop). **Partial resolution
+   (Oxborrow-verbal, in-person 2026-07-16): eccentricity nominal = CENTRED —
+   supervisor-confirmed, numeric nominal unchanged; tolerance band still
+   open; Q9 remains unresolved.**
 10. **Machining tolerances:** the ±25 µm placeholder (`TOL.machining_tol_m`)
     still awaits the workshop/Oxborrow numbers (§7-expanded ACTION 7.10.1) —
     the DOF table re-issues on receipt; no other row changes.
@@ -502,7 +516,7 @@ a byproduct rather than a separate campaign.
 
 §5 dissolves the law-deferral, but the sweep is now gated on **Phase 1b
 DEFINITION**: rider R1 (admissible rows must come from Phase 1b geometry,
-§3) + Q2 (plate) + Q9 (bore nominal/band) + Q11 (crystal εr) together mean
+§3) + Q2 (plate) + Q9 (crystal placement nominal/band) + Q11 (crystal εr) together mean
 **zero training solves can run until those resolve.** Partition of the
 twelve questions:
 

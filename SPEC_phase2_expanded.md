@@ -32,7 +32,7 @@ SiPhON contributes a **sampling-and-aggregation skeleton only.**
 - the **analytic thermal composition** on top of the surrogate (§7.3b) — new;
 - **emulator-uncertainty propagation** into the reported intervals (§7.6);
 - global **variance-based sensitivity / Sobol** (§7.7);
-- **axisymmetry-breaking inputs** (bore eccentricity, §7.4);
+- **axisymmetry-breaking inputs** (crystal centring eccentricity, §7.4);
 - **material-parameter inference** from the literature Q spread (§7.4, optional).
 
 → SiPhON is the I/O + aggregation layer. Everything below is what makes Phase 2 a *result*.
@@ -43,7 +43,7 @@ SiPhON contributes a **sampling-and-aggregation skeleton only.**
 
 | Class | Variables | Treatment |
 |---|---|---|
-| **Noise** (sampled per device, θ) | dielectric radius; dielectric height / minor radius; box width; box height; bore radius; **bore eccentricity**; εr; tanδ | as-built scatter, untunable → sampled from input distributions (§7.4) |
+| **Noise** (sampled per device, θ) | dielectric radius; dielectric height / minor radius; box width; box height; crystal axial offset; **crystal centring eccentricity**; εr; tanδ | as-built scatter, untunable → sampled from input distributions (§7.4) |
 | **Control** (solved per device, *not* sampled) | tuning-plate position `p_tune` ∈ [p_min, p_max] | set post-build to pull f onto the spin line; read the FOMs there |
 | **Model coefficient** (deterministic; scatter only if stretch) | thermal: df/dT (cavity, spin), p-terphenyl k/ρ/c_p, pump intensity (SPEC.md §6T) | fixed nominal in the baseline; enter Layer B, **not** the sampled noise. Their *uncertainty* is a separate error channel (§7.6), and their *scatter* across builds is stretch-scope (§7.9) |
 
@@ -97,10 +97,10 @@ Everything downstream (error budget, Sobol, tolerance curves) operates on Δf_ma
 
 **Geometry / machining (noise).**
 - *Shape:* per dimension, truncated Gaussian centred at nominal with ±3σ = tolerance band (process-centred), **or** uniform over the band (worst-case spec compliance). Report under both; the gap is informative. Default: Gaussian.
-- *Magnitudes:* ±25 µm is a **placeholder** — replace with real workshop-achievable tolerances (Oxborrow / Imperial workshop). **ACTION.** Distinguish: uniform machining tolerance (turned diameters/heights) vs **bore eccentricity** (separate, below) vs surface finish (feeds R_s → κc, secondary but now relevant since κc sets the budget).
+- *Magnitudes:* ±25 µm is a **placeholder** — replace with real workshop-achievable tolerances (Oxborrow / Imperial workshop). **ACTION.** Distinguish: uniform machining tolerance (turned diameters/heights) vs **crystal centring eccentricity** (separate, below) vs surface finish (feeds R_s → κc, secondary but now relevant since κc sets the budget).
 
-**Bore eccentricity (noise — and it breaks the model).**
-- An eccentric bore is a lateral displacement of the inner cylinder → **breaks the m=0 axisymmetry.** It **cannot be sampled in the 2-D axisymmetric solver directly.**
+**Crystal centring eccentricity (noise — and it breaks the model).** *(2026-07-16 reframe: the recovered Booth geometry contains a torus central opening — often termed the bore — but no separately constructed or independently parameterised bore; the eccentric element is the crystal within it.)*
+- An off-centred crystal is a lateral displacement of the crystal sub-domain → **breaks the m=0 axisymmetry.** It **cannot be sampled in the 2-D axisymmetric solver directly.**
 - Handling (pick + state): **(a)** first-order perturbation from the axisymmetric fields; **(b)** a *bounded* 3-D side-study — a handful of full-3-D solves, fit a local response, fold in as a correction; **(c)** if (a)/(b) show it negligible over the achievable centring tolerance, drop with justification. Do **not** silently carry it as if the axisymmetric model captures it. **ACTION / OPEN.**
 
 **Material — εr, tanδ (noise).**

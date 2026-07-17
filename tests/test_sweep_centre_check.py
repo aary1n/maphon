@@ -41,8 +41,9 @@ def _real_q9_q11_context() -> ResolutionContext:
             SentinelResolution(
                 question_id="Q9",
                 payload={
-                    "bore_radius_nominal_m": 1.9e-3,
-                    "bore_radius_band_m": (1.875e-3, 1.925e-3),
+                    # MOCK axial-offset values (hypothetical, test only)
+                    "crystal_axial_offset_nominal_m": 0.5e-3,
+                    "crystal_axial_offset_band_m": (0.45e-3, 0.55e-3),
                     "centring_tolerance_m": 50e-6,
                 },
                 rung=Rung.PLANNING_ASSUMPTION,
@@ -87,7 +88,10 @@ def test_q_l_is_a_convention_application_not_a_literal():
 
 
 def test_sweep_centre_definition_is_the_design_doc_sentence():
-    assert "no-bore/no-crystal limit" in SWEEP_CENTRE_DEFINITION
+    # Wording updated 2026-07-16 with the Q9 reframe (formerly
+    # "no-bore/no-crystal limit") — design doc §1 rider carries the
+    # dated wording-change note.
+    assert "no-crystal limit" in SWEEP_CENTRE_DEFINITION
     assert "823e67969516bcf2" in SWEEP_CENTRE_DEFINITION
 
 
@@ -100,7 +104,7 @@ def test_block_is_exactly_the_corrected_itemisation():
     specs = centre_verification_specs(mock_resolutions())
     assert len(specs) == 5  # 4 + 1 PEC arm; the draft's 6 over-counted
     on_off = [
-        (s.bore_and_crystal_on, s.mesh_level, s.wall_bc) for s in specs
+        (s.crystal_on, s.mesh_level, s.wall_bc) for s in specs
     ]
     assert on_off.count((True, "finest", WallBC.IMPEDANCE)) == 1
     assert on_off.count((False, "finest", WallBC.IMPEDANCE)) == 1
@@ -116,7 +120,7 @@ def test_specs_carry_resolved_phase1b_values_and_meshes():
     q9 = ctx.get("Q9").payload
     q11 = ctx.get("Q11").payload
     for s in specs:
-        assert s.bore_radius_m == q9["bore_radius_nominal_m"]
+        assert s.crystal_axial_offset_m == q9["crystal_axial_offset_nominal_m"]
         assert s.crystal_epsilon_r == q11["crystal_epsilon_r"]
         assert s.mesh in (SWEEP_MESH_FINEST, SWEEP_MESH_COARSER)
         assert s.study.n_modes == 12

@@ -45,8 +45,8 @@ def test_table_has_nine_rows_in_design_doc_order():
         "box_height_m",
         "torus_minor_radius_m",
         "torus_major_radius_m",
-        "bore_radius_m",
-        "bore_eccentricity_m",
+        "crystal_axial_offset_m",
+        "crystal_eccentricity_m",
         "epsilon_r",
         "tan_delta",
         "p_tune",
@@ -106,20 +106,24 @@ def test_tan_delta_band_is_tol_span():
 # ---------------------------------------------------------------------------
 
 
-def test_bore_radius_row_is_q9_todo_trace():
-    spec = dof_by_name("bore_radius_m")
+def test_crystal_axial_offset_row_is_q9_todo_trace():
+    spec = dof_by_name("crystal_axial_offset_m")
     assert isinstance(spec.nominal, TodoTrace)
     assert isinstance(spec.band, TodoTrace)
     assert spec.sentinel is SENTINEL_Q9
     assert spec.nominal_rung is Rung.TODO_TRACE
-    # The crystal-radius floor rides the provenance note.
-    assert f"{CRYSTAL.diameter_m / 2.0:g}" in spec.provenance
+    # The 2026-07-16 coordinate definition rides the provenance note.
+    assert "equatorial plane" in spec.provenance
+    assert "provenance.CRYSTAL" in spec.provenance
 
 
-def test_bore_eccentricity_is_not_a_sweep_dim_and_q9_banded():
-    spec = dof_by_name("bore_eccentricity_m")
+def test_crystal_eccentricity_is_not_a_sweep_dim_and_q9_banded():
+    spec = dof_by_name("crystal_eccentricity_m")
     assert spec.kind is DofKind.NOISE_NOT_A_SWEEP_DIM
-    assert spec.nominal == 0.0  # 0 by construction
+    assert spec.nominal == 0.0  # CENTRED
+    # 2026-07-16 verbal partial resolution: nominal rung upgraded with
+    # the numeric nominal unchanged; the band stays TODO-trace (Q9).
+    assert spec.nominal_rung is Rung.SUPERVISOR_CONFIRMED
     assert isinstance(spec.band, TodoTrace)
     assert spec.band.question_id == "Q9"
     # Never folded into machining_tol_m (TolRanges docstring guard).
@@ -192,16 +196,16 @@ def test_d8_baseline_dimensions():
     names = sweep_dimension_names(DesignMode.BASELINE_D8)
     assert len(names) == 8
     assert names[-1] == "p_tune"
-    assert "bore_eccentricity_m" not in names  # breaks m = 0
+    assert "crystal_eccentricity_m" not in names  # breaks m = 0
 
 
 def test_d7_degraded_dimensions():
     names = sweep_dimension_names(DesignMode.DEGRADED_D7)
     assert len(names) == 7
     assert "p_tune" not in names
-    # bore radius IS one of the seven noise dims — which is why the
-    # d = 7 fallback relieves only Q2, never Q9/Q11.
-    assert "bore_radius_m" in names
+    # the crystal axial offset IS one of the seven noise dims — which
+    # is why the d = 7 fallback relieves only Q2, never Q9/Q11.
+    assert "crystal_axial_offset_m" in names
 
 
 def test_solve_gate_partition_matches_design_doc():
@@ -252,7 +256,7 @@ def test_resolution_refuses_missing_payload_keys():
     with pytest.raises(ValueError, match="missing keys"):
         SentinelResolution(
             question_id="Q9",
-            payload={"bore_radius_nominal_m": 1.9e-3},
+            payload={"crystal_axial_offset_nominal_m": 0.5e-3},
             rung=Rung.PLANNING_ASSUMPTION,
             provenance="x",
         )
@@ -311,10 +315,12 @@ def test_mock_context_resolves_all_three_questions_for_shape():
     ctx = mock_resolutions()
     assert ctx.unresolved(DesignMode.BASELINE_D8) == ()
     assert ctx.unresolved(DesignMode.DEGRADED_D7) == ()
-    # And its bore mock respects the crystal-radius floor.
+    # And the axial-offset mock stays inside the geometric bound
+    # (crystal must fit axially inside the box).
     q9 = ctx.get("Q9")
     assert q9 is not None
-    assert q9.payload["bore_radius_nominal_m"] >= CRYSTAL.diameter_m / 2.0
+    max_offset_m = (GEOM_BOOTH_TE01D.box_height_m - CRYSTAL.height_m) / 2.0
+    assert abs(q9.payload["crystal_axial_offset_nominal_m"]) <= max_offset_m
     q11 = ctx.get("Q11")
     assert q11 is not None
     assert q11.payload["crystal_epsilon_r"] < CRYSTAL.epsilon_r_upper_bound

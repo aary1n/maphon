@@ -82,6 +82,20 @@ class Crystal:
     absorption arithmetic) inherits a bias in a known direction; see
     `PumpAbsorptionLength` for the l_abs consequence and SPEC §7.T5 for
     the check-3b concentration-ratio caveat.
+
+    Contact stack — Oxborrow (verbal, in-person meeting 2026-07-16):
+    the crystal–STO interface is a VASELINE-mediated contact — the gap
+    is Vaseline-filled, not an air gap (per the same verbal note, the
+    filling also suppresses reflections; recorded as stated); the
+    STO–copper enclosure interface carries THERMAL PASTE. Consequence
+    for the thermal model: the future crystal→STO contact extension
+    (SPEC §7.T5 model boundary; §7.T6-class finite-conductance Robin
+    contact, `cavity.thermal.cylinder`) is an EFFECTIVE
+    Vaseline-mediated thermal contact conductance — potentially
+    carrying both layer resistance and interfacial resistance, not
+    simply bulk Vaseline conduction — and must not be framed as an
+    air-gap conductance. No sweep or solver code changes with this
+    record.
     """
 
     diameter_m: float = 3.0e-3
@@ -188,12 +202,16 @@ class TolRanges:
     """Phase 2 input distributions (SPEC §7). Refine geometry tols with supervisor.
 
     `machining_tol_m` is a uniform scalar dimension tolerance — a placeholder
-    for the radii / heights of box and dielectric. It does NOT cover bore
-    eccentricity: SPEC §7 calls out "bore-centring and wall-thickness
-    tolerance are physically real and untunable" as a distinct DOF — a
-    centring error, not a dimension scatter. When sweep/ adds the bore
-    geometry (Phase 1b / §5b), bore eccentricity must enter as its own
+    for the radii / heights of box and dielectric. It does NOT cover crystal
+    centring eccentricity: SPEC §7 treats the centring tolerance as
+    physically real, untunable and distinct — a centring error, not a
+    dimension scatter. When sweep/ adds the crystal sub-domain
+    (Phase 1b / §5b), crystal centring eccentricity must enter as its own
     parameter; do not silently fold it into `machining_tol_m`.
+    (2026-07-16 reframe: the former "bore eccentricity" wording is retired —
+    the torus central opening, often termed the bore, is not an
+    independently parameterised geometry primitive; the eccentric element
+    is the crystal within it.)
     """
 
     epsilon_r_min: float = 312.0
@@ -982,6 +1000,20 @@ class FreeConvectionAir:
     scale and `identifiability.py`'s bare h = 20 stay as written; this
     constant single-sources the band for NEW consumers (the
     maser-cylinder anchor's tests and worked example, §7.T1).
+
+    Convective-onset nonlinearity (Oxborrow-verbal, 2026-07-16 —
+    appended; the 2026-07-08 regime reframe above is unchanged):
+    natural-convection heat transfer is nonlinear in ΔT through its
+    Rayleigh/Nusselt dependence — at low Rayleigh number transfer is
+    conduction-dominated, and as buoyancy becomes important convection
+    increasingly enhances the loss. A constant h is therefore a LOCAL
+    EFFECTIVE approximation whose applicable ΔT and geometry regime
+    must be stated with any band-edge choice. The h → 0 branch of the
+    switchable Robin BC remains the INSULATED / no-convective-loss
+    limit — it does not model stagnant-air conduction. Oxborrow's
+    verbal expectation (2026-07-16, unquantified): worked-example ΔT
+    values of order 20–50 K likely sit in the buoyancy-enhanced
+    regime — pending a geometry-specific Rayleigh-number check.
     """
 
     h_band_lo_w_m2_k: float = 5.0
