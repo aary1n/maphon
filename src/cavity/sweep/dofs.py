@@ -111,7 +111,10 @@ SENTINEL_Q11 = TodoTrace(
         "on a bound"
     ),
     routes_to="literature trace first (p-terphenyl host eps_r is "
-    "published); escalate to Oxborrow only if the trace fails",
+    "published); escalate to Oxborrow only if the trace fails "
+    "[2026-07-17: trace executed — direct static/microwave value NOT "
+    "FOUND; resolved at planning grade via anthracene analogy: "
+    "cavity.sweep.resolutions.RESOLUTION_Q11]",
 )
 
 #: The L5 acceptance window (rider R2, ratified 2026-07-15): a NAMED

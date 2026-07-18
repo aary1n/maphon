@@ -31,6 +31,10 @@ from cavity.sweep.dofs import (
     mock_resolutions,
     sweep_dimension_names,
 )
+from cavity.sweep.resolutions import (
+    RESOLUTION_Q11,
+    ratified_resolutions,
+)
 from cavity.sweep.design import (
     DesignBlock,
     DesignMatrix,
@@ -88,6 +92,7 @@ __all__ = [
     "MockResolutionError",
     "PINNED_CENTRE",
     "PinnedCentre",
+    "RESOLUTION_Q11",
     "ResolutionContext",
     "Rung",
     "SamplingDim",
@@ -108,6 +113,7 @@ __all__ = [
     "materialise_dims",
     "mock_resolutions",
     "projection_invariance_report",
+    "ratified_resolutions",
     "run_centre_verification",
     "sweep_dimension_names",
     "total_budgeted_solves",

@@ -507,7 +507,27 @@ a byproduct rather than a separate campaign.
 11. **Crystal permittivity for Phase 1b:** the repo carries only "εr < 5"
     (Breeze 2017) — a bound, not a value. The Phase 1b sub-domain needs a
     graded constant (TODO-trace) before the sweep-centre verification block
-    can run.
+    can run. **Resolution (literature trace, 2026-07-17): point εr = 3.0 =
+    round central planning value (band mid 3.25; anthracene isotropic mean
+    3.13), band [2.4, 4.1] — principal OPTICAL permittivities of
+    crystalline anthracene, εxx 2.42 / εyy 2.90 / εzz 4.07 (±0.05),
+    Cummins & Dunmur 1974, J. Phys. D: Appl. Phys. 7, 451 (immersion
+    method — refractive-index-derived; Zotero WNLM2C8X), carried across a
+    three-layer planning-tier inference chain: chemical-class analogy
+    anthracene → p-terphenyl; optical → static/microwave extrapolation,
+    justified only by both crystals being nonpolar rigid aromatics (no
+    orientational/Debye contribution expected between optical and
+    microwave); consequence of either layer failing bounded by Breeze 2017
+    <1% electric filling. Below the Breeze "εr < 5" bound by construction.
+    Negative space: direct p-terphenyl static/microwave permittivity NOT
+    FOUND (trace 2026-07-17); Selvakumar et al. 2014 (J. Mol. Struct.
+    1056–1057, 152; Zotero KCDCRN4C) examined and REJECTED — εr 5760 @
+    1 kHz is electrode/Maxwell–Wagner polarization per the paper's own
+    attribution, unusable at any grade. First non-mock SentinelResolution:
+    `cavity.sweep.resolutions.RESOLUTION_Q11`; the band rides the payload
+    unconsumed (machine-readable metadata for a future Phase 1b εr
+    sensitivity check, mirroring Q9's band-carrying pattern). Q2/Q9
+    unchanged and still blocking. RESOLVED (planning grade).**
 12. **k = 0.2 across the population:** the de-loading constant is applied
     uniformly per draw (rider R2, §3) — confirm this stands until a coupling
     model exists, and that no per-draw k scatter is wanted in baseline.
@@ -567,6 +587,8 @@ as drafted; status is recorded here.
 - **Q9 — OPEN** (schedule-blocking; routes to Oxborrow).
 - **Q10 — OPEN** (blocks nothing; rides the Oxborrow channel).
 - **Q11 — OPEN** (schedule-blocking; literature trace first, escalate only
-  on failure).
+  on failure). *2026-07-17: RESOLVED (planning grade) — trace executed,
+  direct value NOT FOUND, anthracene-analogy planning value ratified; see
+  the resolution record in the question text above.*
 - **Q12 — RESOLVED.** Uniform k = 0.2 per draw, no scatter, per the
   committed convention.
