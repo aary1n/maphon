@@ -592,3 +592,44 @@ as drafted; status is recorded here.
   the resolution record in the question text above.*
 - **Q12 — RESOLVED.** Uniform k = 0.2 per draw, no scatter, per the
   committed convention.
+
+---
+
+## Addendum — 2026-07-18 geometry re-base (Wu ring): DOF-table re-parameterisation + Q13
+
+Dated record; nothing above is edited — the §2 table and the 2026-07-14
+ratification outcomes stand as the record of their date. Changeset of record:
+SPEC.md dated revision block 2026-07-17/18 (Oxborrow-WRITTEN re-base,
+2026-07-17); implementation plan `docs/plans/plan-checkpoint-spec-zany-pizza.md`.
+
+- **Rows 1–4 re-parameterised** — the modelled build is now the Wu STO ring
+  (`provenance.GEOM_WU_STO_RING`): rows 1–3 = `box_radius_m` (14.0 mm, Fig. 6
+  caption — the 28-mm-nominal pipe-fitting caveat rides the provenance string),
+  `sto_outer_radius_m` (6.0 mm), `sto_inner_radius_m` (2.025 mm), each keeping
+  the ±25 µm `TOL.machining_tol_m` band at its unchanged planning-assumption
+  rung; row 4 = `sto_height_m`, the **Q13 print fork {8.5, 8.6} mm**
+  (`SENTINEL_Q13`, a `ForkTrace` machine-reading `provenance.STO_HEIGHT_FORK`;
+  8.6 evidence-favoured, never silently selected; NO band exists
+  pre-resolution — post-resolution band = payload override or nominal ±
+  machining tol, the Q9-branch mirror in `materialise_dims`).
+- **The former `box_height_m` noise row is DELETED, not renamed**
+  (invalidate-don't-rename discipline; the bore-radius row is the precedent):
+  the quantity became the control — p_tune IS the box internal height (piston
+  position, metres; Q2 re-scope: mechanism supervisor-written 2026-07-17 and
+  in print, travel band STILL OPEN, asked by email 2026-07-18). As-operated
+  nominal 15 mm recorded at `GEOM_WU_STO_RING.box_internal_height_asoperated_m`;
+  row 9's "no plate exists in the geometry engine" is superseded — the engine
+  now represents the piston, while the Q2 licence gate still refuses every
+  real solve.
+- **Row 5 context (Q9, still OPEN):** for the Wu build the crystal-in-bore is
+  real and its 3 × 8 mm dims re-grade to PLANNING-ASSUMPTION with the
+  cross-build-transfer flag (five Wu-side ~4 mm indicators; SPEC §5b) — the
+  table's "dimensions themselves are resolved" sentence reads Booth-context
+  only from this date.
+- **Row 8 band narrows mechanically:** `TOL.tan_delta_max` 2.3e-4 → 1.4e-4
+  (gap #3 CLOSED — Wu's k = 1 STATED in print ⇒ Q₀ = 7,200; SPEC §6 + §11
+  item 3; the row's "Wu Q₀ ≈ 4,320" quote is the assumed-k-era reading).
+- **Q13 — OPEN** (schedule-blocking in BOTH design modes — D8:
+  Q2+Q9+Q11+Q13, D7: Q9+Q11+Q13; the unresolved fork exits as a named
+  refusal via the design blocker filter, not a sampling TypeError; routes to
+  Oxborrow written reply or a caliper, spacer dims on the same caliper list).

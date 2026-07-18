@@ -43,7 +43,7 @@ SiPhON contributes a **sampling-and-aggregation skeleton only.**
 
 | Class | Variables | Treatment |
 |---|---|---|
-| **Noise** (sampled per device, θ) | dielectric radius; dielectric height / minor radius; box width; box height; crystal axial offset; **crystal centring eccentricity**; εr; tanδ | as-built scatter, untunable → sampled from input distributions (§7.4) |
+| **Noise** (sampled per device, θ) | box radius; STO ring outer radius; STO ring inner radius; STO ring height; crystal axial offset; **crystal centring eccentricity**; εr; tanδ *(re-worded 2026-07-18, geometry re-base: was "dielectric radius; dielectric height / minor radius; box width; box height; …" — the Booth-torus parameterisation; box HEIGHT left the noise set because the quantity IS the control p_tune (the piston position sets the internal height), and the ring height row is the Q13 print fork until resolved)* | as-built scatter, untunable → sampled from input distributions (§7.4) |
 | **Control** (solved per device, *not* sampled) | tuning-plate position `p_tune` ∈ [p_min, p_max] | set post-build to pull f onto the spin line; read the FOMs there |
 | **Model coefficient** (deterministic; scatter only if stretch) | thermal: df/dT (cavity, spin), p-terphenyl k/ρ/c_p, pump intensity (SPEC.md §6T) | fixed nominal in the baseline; enter Layer B, **not** the sampled noise. Their *uncertainty* is a separate error channel (§7.6), and their *scatter* across builds is stretch-scope (§7.9) |
 
