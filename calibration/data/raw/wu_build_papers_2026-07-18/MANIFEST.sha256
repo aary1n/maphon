@@ -1,0 +1,17 @@
+fb39bc6c9e1f285185dcdc231de96f43bb1c89f140cf4c3097208efde018d055  wu2020_pra_14_064017.pdf
+d4409c97192299efedf8a91e3778f66eb7f0dd034d5dcccfa95d7a27be09283e  wu2021_prl_127_053604.pdf
+de6d7de4771f62bf5c304419c195666518ee32a0de4e7fb52988ddcb2dcf9455  wu2021_prl_sm_proof.pdf
+# PROVENANCE (2026-07-18, geometry re-base changeset — plan-checkpoint R10b):
+#  pulled byte-for-byte from Zotero local storage (MCP attachment paths), SHA-256
+#  verified against the session pins recorded in the ratified plan:
+#   wu2020_pra_14_064017.pdf   <- Zotero item X4MH9DCL, attachment 8ZL66UT2
+#      (Wu et al., Phys. Rev. Applied 14, 064017 (2020) — full published PDF)
+#   wu2021_prl_127_053604.pdf  <- Zotero item 8QAXJG8Y, attachment 73WWZCKU
+#      (Wu, Mirkhanov, Ng & Oxborrow, Phys. Rev. Lett. 127, 053604 (2021))
+#   wu2021_prl_sm_proof.pdf    <- Zotero item 8QAXJG8Y, attachment EWVFZX3N
+#      NB: the SM copy is the PROOF version (Cooling_PRL_SM_Proof.pdf), not the
+#      published SM. Every SM-sourced number in the changeset was verified against
+#      this proof; a published-SM pull is a queued honesty upgrade, not a blocker.
+#  The PRA file is a verified real PDF (%PDF-1.4 header, 10 pages). The floating
+#  "PhysRevApplied_14_064017.pdf" circulating outside Zotero is a ZIP of page
+#  extracts, NOT a real PDF — it must never be archived as the paper.

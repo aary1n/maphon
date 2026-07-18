@@ -51,6 +51,16 @@ class TestRealArchive:
         assert main([str(DEFAULT_ARCHIVE_DIR)]) == 0
         assert "INTACT: 12 files" in capsys.readouterr().out
 
+    def test_wu_build_papers_archive_intact(self):
+        """Same read-only guard for the Wu-build primary-source archive
+        (geometry re-base changeset, 2026-07-18): the two papers + PRL SM
+        proof that ground every number in provenance.GEOM_WU_STO_RING."""
+        archive = DEFAULT_ARCHIVE_DIR.parent / "wu_build_papers_2026-07-18"
+        report = verify_manifest(archive)
+        assert report.ok, report.to_markdown()
+        # 3 pinned files: PRA 2020 + PRL 2021 main + PRL SM (proof copy)
+        assert len(report.matched) == 3
+
 
 class TestManifestParsing:
     def test_crlf_and_comments_tolerated(self, tmp_path):
