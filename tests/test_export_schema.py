@@ -397,3 +397,28 @@ class TestFromCachedRecord:
         assert summary["q_emw_cross_check"] == pytest.approx(
             record.field_sample.q_emw_cross_check, rel=1.0e-12
         )
+
+
+class TestSpacerMaskOptional:
+    def test_optional_spacer_mask_roundtrip(self, tmp_path):
+        """2026-07-18 re-base: a spacer-bearing FieldSample exports its
+        seat mask as an OPTIONAL bool array; spacer-less bundles carry
+        no such key (the pre-re-base contract, unchanged)."""
+        from dataclasses import replace as dc_replace
+
+        record = _synthetic_record()
+        field = record.field_sample
+        spacer_mask = ~field.dielectric_mask
+        spacer_mask &= np.arange(spacer_mask.size) % 7 == 0
+        record2 = dc_replace(
+            record, field_sample=dc_replace(field, spacer_mask=spacer_mask)
+        )
+        out = export_bundle(record2, tmp_path / "bundle_spacer")
+        bundle = validate_bundle(out)
+        assert "spacer_mask" in bundle.arrays
+        assert bundle.arrays["spacer_mask"].dtype == np.bool_
+        np.testing.assert_array_equal(
+            bundle.arrays["spacer_mask"], spacer_mask
+        )
+        plain = export_bundle(_synthetic_record(), tmp_path / "bundle_plain")
+        assert "spacer_mask" not in validate_bundle(plain).arrays

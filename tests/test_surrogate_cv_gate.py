@@ -204,17 +204,22 @@ def test_planning_pins_match_independent_monte_carlo():
 
 
 def test_planning_pins_carry_the_ratified_planning_values():
-    """The ratified plan's quoted planning quantifications: gate 1
-    threshold ≈ 479 kHz (κs point branch), gate 2 threshold ≈ 24.0 kHz.
-    Quoted-precision windows, not new tolerances."""
+    """Planning quantifications at the committed TOL band. RE-PINNED
+    2026-07-18 (gap #3 closure: tan_delta_max 2.3e-4 -> 1.4e-4, so the
+    p95 loss point moved 2.235e-4 -> 1.38e-4) — values recomputed by
+    independent arithmetic before pinning, per house rule. SUPERSEDED
+    ratified-plan values, dated record: gate 1 ≈ 479 kHz; P5 point/lo/hi
+    = 9.571e6 / 5.183e6 / 11.378e6 (ticklish-possum, 2026-07-15). Gate 2
+    hangs off tan_delta_MIN and is unchanged (≈ 24.0 kHz). Windows are
+    quoted-precision, not new tolerances."""
     pins = planning_threshold_pins()
-    assert 478.0e3 < pins["gate1_threshold_hz_point_branch"] < 480.0e3
+    assert 536.9e3 < pins["gate1_threshold_hz_point_branch"] < 537.9e3
     assert 23.9e3 < pins["gate2_threshold_hz"] < 24.1e3
-    # And the P5 planning points per branch as quoted in the plan.
+    # And the P5 planning points per branch, independently recomputed.
     p5 = pins["p5_delta_f_max_hz_by_kappa_s_branch"]
-    assert p5["point"] == pytest.approx(9.571e6, rel=1e-3)
-    assert p5["lo"] == pytest.approx(5.183e6, rel=1e-3)
-    assert p5["hi"] == pytest.approx(11.378e6, rel=1e-3)
+    assert p5["point"] == pytest.approx(1.0747e7, rel=1e-3)
+    assert p5["lo"] == pytest.approx(5.392e6, rel=1e-3)
+    assert p5["hi"] == pytest.approx(1.2953e7, rel=1e-3)
 
 
 def test_delta_f_max_is_monotone_decreasing_in_tan_delta():

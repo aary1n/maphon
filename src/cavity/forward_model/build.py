@@ -84,6 +84,24 @@ def validate_wall_bc_consistency(
         )
 
 
+def validate_spacer_consistency(
+    geom: CavityGeometry, materials: MaterialSpec
+) -> None:
+    """Geometry and materials must agree about the spacer sub-domain
+    (2026-07-18, Wu-ring re-base): a spacer-bearing geometry without a
+    spacer material would silently solve the seat as air; a spacer
+    material without the sub-domain would silently drop it. One switch,
+    one owner — checked before any COMSOL contact."""
+    if (geom.spacer is None) != (materials.spacer is None):
+        raise ValueError(
+            "spacer switch mismatch: geometry declares "
+            f"spacer={'yes' if geom.spacer is not None else 'no'} but "
+            "MaterialSpec declares "
+            f"spacer={'yes' if materials.spacer is not None else 'no'}. "
+            "Populate both (RING build with seat) or neither."
+        )
+
+
 @dataclass(frozen=True)
 class BuiltModel:
     """Handles into one assembled §2 model.
@@ -106,26 +124,53 @@ class BuiltModel:
     dielectric_selection_tag: str
     wall_bc: WallBC
     comsol_version: str
+    spacer_selection_tag: str | None = None
+    size_spacer: Any | None = None
 
 
 def _walls_selection(model: Any, geom: CavityGeometry) -> Any:
-    """Box-select the three exterior wall edges (bottom, top, radial).
+    """Box-select the exterior wall edges (bottom, top/ceiling, radial).
 
     Thin box selections with `condition = inside` catch exactly the
     edges lying on z = 0, z = H and r = R; the axis edge (r = 0) spans
     the full height and falls inside none of them, so it keeps the
     automatic axial-symmetry condition. Interior (dielectric) edges sit
     near mid-height/mid-radius and are likewise excluded.
+
+    Piston step (RING-only, 2026-07-18): when the geometry declares the
+    piston fields, the ceiling at z = H is the piston FACE only
+    (r <= piston_radius); the piston-to-barrel annular gap adds three
+    copper edges — the piston's cylindrical side (r = piston_radius,
+    z in [H, H+d]), the gap's outer wall (r = R continued upward) and
+    the gap's top (z = H + d). The former full-width ceiling edge
+    segment r in [piston_radius, R] at z = H becomes an interior
+    boundary of the finalized union and must NOT be selected — the
+    ceiling box is narrowed so that edge (which extends to r = R) falls
+    outside its `inside` condition. The no-piston path is unchanged.
     """
     selections = model / "selections"
     pad = 1e-6 * min(geom.box_radius_m, geom.box_height_m)
     r_hi = geom.box_radius_m
     z_hi = geom.box_height_m
-    spans = {
-        "wall z=0": (-pad, r_hi + pad, -pad, +pad),
-        "wall z=H": (-pad, r_hi + pad, z_hi - pad, z_hi + pad),
-        "wall r=R": (r_hi - pad, r_hi + pad, -pad, z_hi + pad),
-    }
+    if geom.piston_radius_m is None:
+        spans = {
+            "wall z=0": (-pad, r_hi + pad, -pad, +pad),
+            "wall z=H": (-pad, r_hi + pad, z_hi - pad, z_hi + pad),
+            "wall r=R": (r_hi - pad, r_hi + pad, -pad, z_hi + pad),
+        }
+    else:
+        assert geom.piston_gap_depth_m is not None
+        r_p = geom.piston_radius_m
+        z_top = z_hi + geom.piston_gap_depth_m
+        spans = {
+            "wall z=0": (-pad, r_hi + pad, -pad, +pad),
+            # Piston face only: the shared edge r in [r_p, R] at z = H is
+            # interior and extends past xmax, so `inside` excludes it.
+            "wall z=H piston face": (-pad, r_p + pad, z_hi - pad, z_hi + pad),
+            "wall piston side": (r_p - pad, r_p + pad, z_hi - pad, z_top + pad),
+            "wall r=R": (r_hi - pad, r_hi + pad, -pad, z_top + pad),
+            "wall gap top": (r_p - pad, r_hi + pad, z_top - pad, z_top + pad),
+        }
     boxes = []
     for name, (xmin, xmax, ymin, ymax) in spans.items():
         box = selections.create("Box", name=name)
@@ -140,6 +185,52 @@ def _walls_selection(model: Any, geom: CavityGeometry) -> Any:
     union.property("entitydim", 1)
     union.property("input", [box.tag() for box in boxes])
     return union
+
+
+def _spacer_selection(model: Any, geom: CavityGeometry) -> Any:
+    """Domain-select the two spacer rectangles (base + lip) via snug Box
+    selections with `condition = inside` — the `_walls_selection`
+    pattern at entitydim 2. Returns the Union selection node."""
+    assert geom.spacer is not None
+    sp = geom.spacer
+    selections = model / "selections"
+    pad = 1e-6 * min(geom.box_radius_m, geom.box_height_m)
+    spans = {
+        "spacer base": (
+            sp.base_inner_radius_m - pad,
+            sp.base_outer_radius_m + pad,
+            -pad,
+            sp.base_height_m + pad,
+        ),
+        "spacer lip": (
+            sp.lip_inner_radius_m - pad,
+            sp.lip_outer_radius_m + pad,
+            sp.base_height_m - pad,
+            sp.base_height_m + sp.lip_height_m + pad,
+        ),
+    }
+    boxes = []
+    for name, (xmin, xmax, ymin, ymax) in spans.items():
+        box = selections.create("Box", name=name)
+        box.property("entitydim", 2)
+        box.property("xmin", xmin)
+        box.property("xmax", xmax)
+        box.property("ymin", ymin)
+        box.property("ymax", ymax)
+        box.property("condition", "inside")
+        boxes.append(box)
+    union = selections.create("Union", name="spacer domains")
+    union.property("entitydim", 2)
+    union.property("input", [box.tag() for box in boxes])
+    return union
+
+
+def _spacer_permittivity_expression(materials: MaterialSpec) -> str:
+    """Spacer eps_r' * (1 - i*tan_delta), formula form like the STO
+    expression so the .mph inspection stays transparent."""
+    assert materials.spacer is not None
+    sp = materials.spacer
+    return f"{sp.epsilon_r_real!r}*(1-{sp.tan_delta!r}*i)"
 
 
 def _sto_permittivity_expression(materials: MaterialSpec) -> str:
@@ -235,19 +326,22 @@ def build_model(
 ) -> BuiltModel:
     """Assemble the §2 axisymmetric model via MPh.
 
-    Builds geometry (puck/torus switch), materials (air + complex-eps
-    STO), the packaged RF interface, wall BC per `study.wall_bc`, the
-    two-tier mesh with curved dielectric boundary, and the
-    eigenfrequency study searching near `study.search_hz`. Does NOT
-    run the mesh or the solve — the runner owns execution so the
-    convergence loop can re-mesh without rebuilding.
+    Builds geometry (puck/torus/ring switch, plus the RING-only spacer
+    seat and piston-gap step when declared), materials (air +
+    complex-eps STO + optional spacer polystyrene), the packaged RF
+    interface, wall BC per `study.wall_bc`, the tiered mesh with curved
+    dielectric boundary, and the eigenfrequency study searching near
+    `study.search_hz`. Does NOT run the mesh or the solve — the runner
+    owns execution so the convergence loop can re-mesh without
+    rebuilding.
 
     Raises:
-        ValueError: wall-BC switch mismatch (checked before any COMSOL
-            contact).
+        ValueError: wall-BC or spacer switch mismatch (checked before
+            any COMSOL contact).
         ComsolUnavailable: MPh is not installed.
     """
     validate_wall_bc_consistency(materials, study)
+    validate_spacer_consistency(geom, materials)
     mph = _require_mph()
 
     if client is None:
@@ -263,6 +357,21 @@ def build_model(
     box.property("size", [geom.box_radius_m, geom.box_height_m])
     box.property("selresult", True)
 
+    if geom.piston_radius_m is not None:
+        # RING piston step: the modelled piston-to-barrel annular gap
+        # above the ceiling plane (ratified 2026-07-18; depth rides Q2).
+        assert geom.piston_gap_depth_m is not None
+        gap = geometry.create("Rectangle", name="piston gap")
+        gap.property(
+            "size",
+            [
+                geom.box_radius_m - geom.piston_radius_m,
+                geom.piston_gap_depth_m,
+            ],
+        )
+        gap.property("pos", [geom.piston_radius_m, geom.box_height_m])
+        gap.property("selresult", True)
+
     z0 = geom.dielectric_centre_z_m
     if geom.dielectric_shape is DielectricShape.PUCK:
         assert geom.dielectric_height_m is not None
@@ -273,12 +382,52 @@ def build_model(
         dielectric.property(
             "pos", [0.0, z0 - 0.5 * geom.dielectric_height_m]
         )
+    elif geom.dielectric_shape is DielectricShape.RING:
+        assert (
+            geom.dielectric_height_m is not None
+            and geom.dielectric_inner_radius_m is not None
+            and geom.ring_bottom_z_m is not None
+        )
+        dielectric = geometry.create("Rectangle", name="dielectric ring")
+        dielectric.property(
+            "size",
+            [
+                geom.dielectric_radius_m - geom.dielectric_inner_radius_m,
+                geom.dielectric_height_m,
+            ],
+        )
+        dielectric.property(
+            "pos", [geom.dielectric_inner_radius_m, geom.ring_bottom_z_m]
+        )
     else:
         assert geom.dielectric_minor_radius_m is not None
         dielectric = geometry.create("Circle", name="dielectric torus")
         dielectric.property("r", geom.dielectric_minor_radius_m)
         dielectric.property("pos", [geom.dielectric_radius_m, z0])
     dielectric.property("selresult", True)
+
+    if geom.spacer is not None:
+        sp = geom.spacer
+        spacer_base = geometry.create("Rectangle", name="spacer base")
+        spacer_base.property(
+            "size",
+            [
+                sp.base_outer_radius_m - sp.base_inner_radius_m,
+                sp.base_height_m,
+            ],
+        )
+        spacer_base.property("pos", [sp.base_inner_radius_m, 0.0])
+        spacer_base.property("selresult", True)
+        spacer_lip = geometry.create("Rectangle", name="spacer lip")
+        spacer_lip.property(
+            "size",
+            [
+                sp.lip_outer_radius_m - sp.lip_inner_radius_m,
+                sp.lip_height_m,
+            ],
+        )
+        spacer_lip.property("pos", [sp.lip_inner_radius_m, sp.base_height_m])
+        spacer_lip.property("selresult", True)
 
     model.build(geometry)
     diel_sel_tag = f"{geometry.tag()}_{dielectric.tag()}_dom"
@@ -302,6 +451,23 @@ def build_model(
         ("electricconductivity", f"{materials.sto.sigma!r}"),
     ):
         sto.java.propertyGroup("def").set(name, value)
+
+    spacer_sel = None
+    spacer_sel_tag: str | None = None
+    if geom.spacer is not None:
+        assert materials.spacer is not None  # validate_spacer_consistency
+        spacer_sel = _spacer_selection(model, geom)
+        spacer_sel_tag = str(spacer_sel.tag())
+        clps = materials_group.create(
+            "Common", name="spacer (cross-linked polystyrene)"
+        )
+        clps.java.selection().named(spacer_sel_tag)
+        for name, value in (
+            ("relpermittivity", _spacer_permittivity_expression(materials)),
+            ("relpermeability", f"{materials.spacer.mu_r!r}"),
+            ("electricconductivity", f"{materials.spacer.sigma!r}"),
+        ):
+            clps.java.propertyGroup("def").set(name, value)
 
     # --- physics: packaged RF interface (SPEC §11 gap #4, resolved) ---
     emw = (model / "physics").create(
@@ -328,7 +494,7 @@ def build_model(
             impedance.property(name, value)
     # WallBC.PEC: the emw default exterior condition is PEC — add nothing.
 
-    # --- mesh: two-tier size + free triangular ------------------------
+    # --- mesh: tiered size + free triangular --------------------------
     mesh = (model / "meshes").create(geometry, name="mesh")
     size_global = mesh / "Size"
     free_tri = mesh.create("FreeTri", name="free triangular")
@@ -336,6 +502,17 @@ def build_model(
     size_dielectric.java.selection().geom(geometry.tag(), 2)
     size_dielectric.java.selection().named(diel_sel_tag)
     apply_mesh_config(size_global, size_dielectric, mesh_cfg)
+
+    size_spacer = None
+    if spacer_sel_tag is not None and mesh_cfg.spacer_max_h_m is not None:
+        # Optional third tier; when spacer_max_h_m is None the spacer
+        # inherits the global/air tier (see MeshConfig docstring).
+        size_spacer = free_tri.create("Size", name="spacer size")
+        size_spacer.java.selection().geom(geometry.tag(), 2)
+        size_spacer.java.selection().named(spacer_sel_tag)
+        size_spacer.property("custom", "on")
+        size_spacer.property("hmax", str(mesh_cfg.spacer_max_h_m))
+        size_spacer.property("hmaxactive", True)
 
     # --- eigenfrequency study -----------------------------------------
     study_node = (model / "studies").create(name="eigenfrequency study")
@@ -356,4 +533,6 @@ def build_model(
         dielectric_selection_tag=diel_sel_tag,
         wall_bc=study.wall_bc,
         comsol_version=str(client.version),
+        spacer_selection_tag=spacer_sel_tag,
+        size_spacer=size_spacer,
     )

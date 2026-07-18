@@ -19,6 +19,7 @@ from cavity.forward_model.convergence import (
 from cavity.forward_model.geometry import (
     CavityGeometry,
     DielectricShape,
+    SpacerSpec,
 )
 from cavity.forward_model.gridding import (
     GridSpec,
@@ -60,6 +61,7 @@ __all__ = [
     "MIN_CONVERGENCE_LEVELS",
     "MU_0",
     "CavityGeometry",
+    "SpacerSpec",
     "ConvergenceAssessment",
     "ConvergenceCriterion",
     "ConvergenceError",

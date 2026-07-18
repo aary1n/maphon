@@ -248,3 +248,68 @@ class TestHashDiscipline:
         hashes = [solve_hash(fp) for fp in perturbed]
         assert base not in hashes
         assert len(set(hashes)) == len(hashes), "perturbations collided"
+
+
+class TestWuRingFingerprint:
+    """2026-07-18 re-base: the canonical fingerprint must describe the
+    RING/spacer/piston state (else two physically different solves could
+    share a hash), and the schema version records the change."""
+
+    def test_schema_version_is_2(self):
+        from cavity.forward_model.persistence import SCHEMA_VERSION
+
+        assert SCHEMA_VERSION == 2
+
+    def test_fingerprint_carries_ring_and_spacer_fields(self):
+        from cavity.forward_model.geometry import SpacerSpec
+        from cavity.forward_model.persistence import solve_fingerprint
+        from cavity.provenance import CLPS, GEOM_WU_STO_RING as G
+
+        spacer = SpacerSpec(
+            base_inner_radius_m=G.spacer_base_inner_radius_m,
+            base_outer_radius_m=G.spacer_base_outer_radius_m,
+            base_height_m=G.spacer_base_height_m,
+            lip_inner_radius_m=G.spacer_lip_inner_radius_m,
+            lip_outer_radius_m=G.spacer_lip_outer_radius_m,
+            lip_height_m=G.spacer_lip_height_m,
+        )
+        geom = CavityGeometry(
+            box_radius_m=G.box_inner_radius_m,
+            box_height_m=G.box_internal_height_asoperated_m,
+            dielectric_radius_m=G.sto_outer_radius_m,
+            dielectric_shape=DielectricShape.RING,
+            dielectric_height_m=8.6e-3,
+            dielectric_inner_radius_m=G.sto_inner_radius_m,
+            ring_bottom_z_m=G.deck_clearance_m,
+            spacer=spacer,
+        )
+        fp = solve_fingerprint(
+            geom,
+            MaterialSpec(spacer=CLPS),
+            MeshConfig(),
+            EigenStudyConfig(),
+            GridSpec(),
+        )
+        assert fp["schema_version"] == 2
+        assert fp["geometry"]["shape"] == "ring"
+        assert fp["geometry"]["dielectric_inner_radius_m"] == G.sto_inner_radius_m
+        assert fp["geometry"]["ring_bottom_z_m"] == G.deck_clearance_m
+        assert fp["geometry"]["spacer"]["base_outer_radius_m"] == (
+            G.spacer_base_outer_radius_m
+        )
+        assert fp["materials"]["spacer"]["epsilon_r_real"] == CLPS.epsilon_r_real
+        # no-spacer path stays serialisable (None, not a missing key)
+        geom_plain = CavityGeometry(
+            box_radius_m=G.box_inner_radius_m,
+            box_height_m=G.box_internal_height_asoperated_m,
+            dielectric_radius_m=G.sto_outer_radius_m,
+            dielectric_shape=DielectricShape.RING,
+            dielectric_height_m=8.6e-3,
+            dielectric_inner_radius_m=G.sto_inner_radius_m,
+            ring_bottom_z_m=G.deck_clearance_m,
+        )
+        fp_plain = solve_fingerprint(
+            geom_plain, MaterialSpec(), MeshConfig(), EigenStudyConfig(), GridSpec()
+        )
+        assert fp_plain["geometry"]["spacer"] is None
+        assert fp_plain["materials"]["spacer"] is None

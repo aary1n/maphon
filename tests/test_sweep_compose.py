@@ -33,7 +33,7 @@ from cavity.sweep.compose import (
 )
 from cavity.thermal.broadening import resonance_linewidth_hz
 from cavity.thermal.report_margin import PLANNING_C0
-from cavity.provenance import GEOM_BOOTH_TE01D, STO
+from cavity.provenance import GEOM_WU_STO_RING, STO, STO_HEIGHT_FORK
 from cavity.export.writer import export_bundle
 
 
@@ -59,23 +59,31 @@ def mock_bundles(tmp_path_factory):
     backend = MockBackend()
     thetas = [
         {},
-        {"torus_minor_radius_m": GEOM_BOOTH_TE01D.torus_minor_radius_m
+        {"sto_outer_radius_m": GEOM_WU_STO_RING.sto_outer_radius_m
          + 20e-6, "epsilon_r": 313.0},
-        {"box_height_m": GEOM_BOOTH_TE01D.box_height_m - 20e-6,
-         "epsilon_r": 317.5},
+        {"p_tune": GEOM_WU_STO_RING.box_internal_height_asoperated_m
+         - 20e-6, "epsilon_r": 317.5},
     ]
     dirs = []
     for i, overrides in enumerate(thetas):
         theta = {
-            "box_radius_m": GEOM_BOOTH_TE01D.box_radius_m,
-            "box_height_m": GEOM_BOOTH_TE01D.box_height_m,
-            "torus_minor_radius_m": GEOM_BOOTH_TE01D.torus_minor_radius_m,
-            "torus_major_radius_m": GEOM_BOOTH_TE01D.torus_major_radius_m,
+            "box_radius_m": GEOM_WU_STO_RING.box_inner_radius_m,
+            "sto_outer_radius_m": GEOM_WU_STO_RING.sto_outer_radius_m,
+            "sto_inner_radius_m": GEOM_WU_STO_RING.sto_inner_radius_m,
+            # mock-tier labelled read of the Q13 evidence-favoured branch
+            "sto_height_m": STO_HEIGHT_FORK.evidence_favoured,
             "epsilon_r": STO.epsilon_r_real,
             "tan_delta": STO.tan_delta,
         }
         theta.update(overrides)
-        record = backend.solve(draw_solve_spec(theta)).record
+        record = backend.solve(
+            draw_solve_spec(
+                theta,
+                box_height_fallback_m=(
+                    GEOM_WU_STO_RING.box_internal_height_asoperated_m
+                ),
+            )
+        ).record
         dirs.append(export_bundle(record, out / f"bundle_{i}"))
     return dirs
 

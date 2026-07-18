@@ -26,24 +26,38 @@ class MeshConfig:
     §2). Exposed only so the convergence runner can flip it for the
     diagnostic comparison that demonstrates why straight segments here
     poison Q.
+
+    `spacer_max_h_m` (2026-07-18, Wu-ring re-base): optional third tier
+    for the spacer sub-domain. None (default) means the spacer inherits
+    the global/air tier — the low-eps_r spacer does not need the
+    dielectric tier, and the ladder revalidation with the spacer present
+    is a named licence-session follow-on, not smuggled in here.
     """
 
     dielectric_max_h_m: float = 1.0e-4
     air_max_h_m: float = 5.0e-4
     curved_dielectric_boundary: bool = True
+    spacer_max_h_m: float | None = None
 
     def __post_init__(self) -> None:
         if self.dielectric_max_h_m <= 0 or self.air_max_h_m <= 0:
             raise ValueError("mesh element sizes must be positive")
+        if self.spacer_max_h_m is not None and self.spacer_max_h_m <= 0:
+            raise ValueError("mesh element sizes must be positive")
 
     def refined(self, factor: float) -> "MeshConfig":
-        """Copy with both maximum element sizes shrunk by `factor` > 1."""
+        """Copy with all maximum element sizes shrunk by `factor` > 1."""
         if factor <= 1.0:
             raise ValueError("refinement factor must be > 1")
         return MeshConfig(
             dielectric_max_h_m=self.dielectric_max_h_m / factor,
             air_max_h_m=self.air_max_h_m / factor,
             curved_dielectric_boundary=self.curved_dielectric_boundary,
+            spacer_max_h_m=(
+                None
+                if self.spacer_max_h_m is None
+                else self.spacer_max_h_m / factor
+            ),
         )
 
 

@@ -52,6 +52,12 @@ class FieldSample:
         gain_region_mask: (N,) bool — V_mode local takes its H^2
             maximum here. Defaults to `dielectric_mask`; Phase 1b
             (§5b) overrides with the pentacene crystal sub-domain.
+        spacer_mask: optional (N,) bool — True inside the Wu-ring
+            polystyrene seat sub-domain (2026-07-18 re-base). Audit
+            trail only: no extraction primitive consumes it — p_e stays
+            STO-only by definition — but the exported eps_r_complex
+            carries the spacer permittivity at these nodes, so the mask
+            records which nodes those are.
         q_emw_cross_check: optional COMSOL emw.Qfactor scalar from the
             same solve. Compared against f'/(2 f'') in `qfactor`;
             never used as the primary Q.
@@ -67,6 +73,7 @@ class FieldSample:
     complex_eigenfrequency_hz: complex
     gain_region_mask: NDArray[np.bool_] | None = None
     q_emw_cross_check: float | None = None
+    spacer_mask: NDArray[np.bool_] | None = None
 
     def __post_init__(self) -> None:
         n = self.r_m.shape[0]
@@ -104,6 +111,17 @@ class FieldSample:
                 f"gain_region_mask shape must be ({n},); "
                 f"got {self.gain_region_mask.shape}"
             )
+        if self.spacer_mask is not None:
+            if self.spacer_mask.shape != (n,):
+                raise ValueError(
+                    f"spacer_mask shape must be ({n},); "
+                    f"got {self.spacer_mask.shape}"
+                )
+            if np.any(self.spacer_mask & self.dielectric_mask):
+                raise ValueError(
+                    "spacer_mask overlaps dielectric_mask — the seat "
+                    "must never enter the STO domain (p_e integrity)"
+                )
 
         if np.any(self.r_m < 0):
             raise ValueError(

@@ -25,7 +25,13 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from cavity.provenance import COPPER, STO, Copper, STOSingleCrystal
+from cavity.provenance import (
+    COPPER,
+    STO,
+    Copper,
+    CrossLinkedPolystyrene,
+    STOSingleCrystal,
+)
 
 MU_0: float = 4.0e-7 * math.pi
 
@@ -56,12 +62,29 @@ class MaterialSpec:
     `wall_pec=True` is the SPEC §4 variant: PEC walls (sigma -> infinity)
     isolate dielectric loss so Q -> Q_diel. Run once IBC + once PEC at
     the same geometry to extract 1/Q_wall = 1/Q_total - 1/Q_diel.
+
+    `spacer` (2026-07-18, Wu-ring re-base): the cross-linked polystyrene
+    seat material (`provenance.CLPS`) for RING geometries that declare a
+    spacer sub-domain; None otherwise. Geometry and materials must agree
+    — `build.validate_spacer_consistency` refuses a spacer-bearing
+    geometry without a spacer material and vice versa.
     """
 
     sto: STOSingleCrystal = STO
     copper: Copper = COPPER
     wall_pec: bool = False
+    spacer: CrossLinkedPolystyrene | None = None
 
     @property
     def sto_complex_eps_r(self) -> complex:
         return sto_complex_permittivity(self.sto)
+
+    @property
+    def spacer_complex_eps_r(self) -> complex:
+        """eps_r_complex of the spacer (lossless this pass — see the
+        `CrossLinkedPolystyrene` grade note). Raises when no spacer."""
+        if self.spacer is None:
+            raise ValueError("MaterialSpec has no spacer material")
+        return self.spacer.epsilon_r_real * (
+            1.0 - 1j * self.spacer.tan_delta
+        )

@@ -200,6 +200,10 @@ def export_bundle(
         arrays["spectrum_q_emw"] = np.asarray(
             record.spectrum_q_emw, dtype=np.float64
         )
+    if field.spacer_mask is not None:
+        # Wu-ring seat sub-domain (2026-07-18): audit trail for the
+        # spacer-bearing eps_r_complex; no extraction consumer reads it.
+        arrays["spacer_mask"] = np.asarray(field.spacer_mask, dtype=np.bool_)
 
     criteria = TE01DeltaCriteria()
     git_commit, git_dirty = _git_state(_REPO_ROOT)
@@ -326,8 +330,10 @@ def export_bundle(
                 "quality factor; no coupling port is modelled. The "
                 "Maxwell-Bloch kappa_c = 2*pi*f/Q_L (rad/s) needs the "
                 "LOADED Q_L: de-load convention Q_0 = Q_L*(1 + k) with "
-                f"k = {DELOAD_K} (Breeze 2017; Wu 2020 coupling unstated "
-                "- SPEC section 11 item 3). The loaded/unloaded split is "
+                f"k = {DELOAD_K} for OUR build's composition (Breeze "
+                "2017, per the resolved Q12 ruling; Wu's own coupling "
+                "is k = 1, STATED in print — gap #3 CLOSED 2026-07-18, "
+                "TARGETS.wu_ring). The loaded/unloaded split is "
                 "a flagged, separate pass — see the schema doc's kappa_c "
                 "section and its W20 angular-'Hz' trap warning."
             ),

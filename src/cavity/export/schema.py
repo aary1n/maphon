@@ -59,7 +59,7 @@ REQUIRED_ARRAY_KEYS = (
     "spectrum_f_real_hz",
     "spectrum_f_imag_hz",
 )
-OPTIONAL_ARRAY_KEYS = ("spectrum_q_emw",)
+OPTIONAL_ARRAY_KEYS = ("spectrum_q_emw", "spacer_mask")
 
 REQUIRED_META_KEYS = (
     "export_schema_version",
@@ -214,6 +214,15 @@ def validate_bundle(bundle_dir: Path) -> ExportBundle:
     for key in ("dielectric_mask", "gain_region_mask"):
         _require(
             arrays[key].dtype == np.bool_, f"{key} must be boolean"
+        )
+    if "spacer_mask" in arrays:
+        _require(
+            arrays["spacer_mask"].shape == (n,),
+            f"spacer_mask shape {arrays['spacer_mask'].shape} != ({n},)",
+        )
+        _require(
+            arrays["spacer_mask"].dtype == np.bool_,
+            "spacer_mask must be boolean",
         )
     shape_rz = arrays["shape_rz"]
     _require(

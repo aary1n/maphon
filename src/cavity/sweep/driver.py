@@ -36,6 +36,7 @@ from pathlib import Path
 from cavity.export.schema import REQUIRED_SUMMARY_KEYS, META_FILENAME
 from cavity.export.writer import export_bundle
 from cavity.forward_model.persistence import utc_timestamp
+from cavity.provenance import GEOM_WU_STO_RING
 from cavity.sweep.backend import (
     ComsolBackend,
     DrawSolveSpec,
@@ -198,7 +199,15 @@ def run_sweep(
     bundle_dirs: list[Path] = []
     for row in rows:
         theta = row["theta"]
-        spec: DrawSolveSpec = draw_solve_spec(theta)
+        # Explicit fallback: harmless in d = 8 (θ carries p_tune, which
+        # wins), load-bearing in DEGRADED_D7 and mock dry-runs — the
+        # as-operated internal height, never a silent module default.
+        spec: DrawSolveSpec = draw_solve_spec(
+            theta,
+            box_height_fallback_m=(
+                GEOM_WU_STO_RING.box_internal_height_asoperated_m
+            ),
+        )
         result = backend.solve(spec)
         bundle_dir = (
             out_root / BUNDLES_DIRNAME / row["row_hash"]

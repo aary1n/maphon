@@ -99,11 +99,11 @@ def test_order2_basis_terms_pinned():
 def test_materialise_refuses_on_unresolved_rows_naming_questions():
     with pytest.raises(UnresolvedTodoTraceError) as exc:
         materialise_dims(DesignMode.BASELINE_D8, ResolutionContext())
-    assert exc.value.question_ids == ("Q2", "Q9")
+    assert exc.value.question_ids == ("Q2", "Q9", "Q13")
 
     with pytest.raises(UnresolvedTodoTraceError) as exc:
         materialise_dims(DesignMode.DEGRADED_D7, ResolutionContext())
-    assert exc.value.question_ids == ("Q9",)
+    assert exc.value.question_ids == ("Q9", "Q13")
 
 
 def test_materialise_with_mock_context_yields_flagged_dims():
@@ -124,9 +124,9 @@ def test_geometry_uniform_variant_switches_rows_1_to_4_and_axial_offset():
     by_name = {d.name: d for d in dims}
     for name in (
         "box_radius_m",
-        "box_height_m",
-        "torus_minor_radius_m",
-        "torus_major_radius_m",
+        "sto_outer_radius_m",
+        "sto_inner_radius_m",
+        "sto_height_m",
         "crystal_axial_offset_m",
     ):
         assert by_name[name].distribution is DistributionKind.UNIFORM
@@ -333,6 +333,17 @@ def test_real_design_refuses_non_committed_sizes():
                 rung=Rung.PLANNING_ASSUMPTION,
                 provenance="hypothetical (test only)",
             ),
+            SentinelResolution(
+                question_id="Q13",
+                payload={
+                    # hypothetical fork selection (test only) — the real
+                    # discriminator is Oxborrow's reply or a caliper
+                    "sto_height_m": 8.6e-3,
+                    "selection_evidence": "hypothetical (test only)",
+                },
+                rung=Rung.PLANNING_ASSUMPTION,
+                provenance="hypothetical (test only)",
+            ),
         )
     )
     with pytest.raises(ValueError, match="committed §6 block size"):
@@ -377,6 +388,17 @@ def test_unresolved_context_blocks_solve_rows_even_for_real_design():
                 rung=Rung.PLANNING_ASSUMPTION,
                 provenance="hypothetical (test only)",
             ),
+            SentinelResolution(
+                question_id="Q13",
+                payload={
+                    # hypothetical fork selection (test only) — the real
+                    # discriminator is Oxborrow's reply or a caliper
+                    "sto_height_m": 8.6e-3,
+                    "selection_evidence": "hypothetical (test only)",
+                },
+                rung=Rung.PLANNING_ASSUMPTION,
+                provenance="hypothetical (test only)",
+            ),
         )
     )
     design = generate_design(
@@ -408,6 +430,17 @@ def test_mock_rows_exercise_shape_and_refuse_on_real_designs():
                     "crystal_axial_offset_nominal_m": 0.5e-3,
                     "crystal_axial_offset_band_m": (0.45e-3, 0.55e-3),
                     "centring_tolerance_m": 50e-6,
+                },
+                rung=Rung.PLANNING_ASSUMPTION,
+                provenance="hypothetical (test only)",
+            ),
+            SentinelResolution(
+                question_id="Q13",
+                payload={
+                    # hypothetical fork selection (test only) — the real
+                    # discriminator is Oxborrow's reply or a caliper
+                    "sto_height_m": 8.6e-3,
+                    "selection_evidence": "hypothetical (test only)",
                 },
                 rung=Rung.PLANNING_ASSUMPTION,
                 provenance="hypothetical (test only)",
@@ -451,3 +484,49 @@ def test_manifest_carries_identity_and_dim_provenance():
         d for d in m["dims"] if d["name"] == "crystal_axial_offset_m"
     )
     assert axial["mock"] is True and "Q9" in axial["source"]
+
+
+def test_materialise_sto_height_band_from_q13_resolution():
+    """The Q13 branch of materialise_dims: nominal = the resolved
+    height; band = the ±25 µm machining placeholder by default, or a
+    caliper band riding the payload (the RESOLUTION_Q11 extra-key
+    precedent)."""
+    from cavity.provenance import TOL
+
+    dims = materialise_dims(DesignMode.BASELINE_D8, mock_resolutions())
+    by_name = {d.name: d for d in dims}
+    h = by_name["sto_height_m"]
+    assert h.mock  # mock context => flagged dim
+    assert h.nominal == 8.6e-3  # the labelled evidence-favoured mock read
+    assert h.lo == pytest.approx(8.6e-3 - TOL.machining_tol_m)
+    assert h.hi == pytest.approx(8.6e-3 + TOL.machining_tol_m)
+    assert "Q13" in h.source and "machining" in h.source
+
+    caliper_ctx = ResolutionContext(
+        resolutions=(
+            SentinelResolution(
+                question_id="Q9",
+                payload={
+                    "crystal_axial_offset_nominal_m": 0.0,
+                    "crystal_axial_offset_band_m": (-50e-6, 50e-6),
+                    "centring_tolerance_m": 50e-6,
+                },
+                rung=Rung.PLANNING_ASSUMPTION,
+                provenance="hypothetical (test only)",
+            ),
+            SentinelResolution(
+                question_id="Q13",
+                payload={
+                    "sto_height_m": 8.6e-3,
+                    "sto_height_band_m": (8.55e-3, 8.65e-3),
+                    "selection_evidence": "hypothetical caliper (test only)",
+                },
+                rung=Rung.PLANNING_ASSUMPTION,
+                provenance="hypothetical caliper (test only)",
+            ),
+        )
+    )
+    dims7 = materialise_dims(DesignMode.DEGRADED_D7, caliper_ctx)
+    h7 = {d.name: d for d in dims7}["sto_height_m"]
+    assert (h7.lo, h7.hi) == (8.55e-3, 8.65e-3)
+    assert "caliper" in h7.source

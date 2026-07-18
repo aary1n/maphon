@@ -8,7 +8,7 @@ degraded fallback — the doc's own roundings of 2.7x oversampling, not
 re-derived here). Seeds are pinned per SPEC §1.
 
 Solve-readiness is gated in code: a design can only be MATERIALISED
-once every question its mode requires (Q2/Q9/Q11 per
+once every question its mode requires (Q2/Q9/Q11/Q13 per
 `dofs.SOLVE_GATE_QUESTIONS`) carries a resolution, and it can only emit
 SOLVE-READY rows when none of those resolutions is a mock test double
 (`DesignMatrix.solve_rows`). Mock-resolved designs exercise pipeline
@@ -35,6 +35,7 @@ from cavity.sweep.dofs import (
     ResolutionContext,
     MockResolutionError,
     UnresolvedTodoTraceError,
+    _machining_band,
     dof_by_name,
     sweep_dimension_names,
 )
@@ -212,7 +213,10 @@ def materialise_dims(
     # Q11 is not a DOF row, but it gates solves (rider R1); for
     # MATERIALISATION only the DOF rows matter — Q11's absence must not
     # block generating a matrix whose rows could never solve anyway.
-    missing_rows = tuple(q for q in missing if q in ("Q2", "Q9"))
+    # Q13 (ring-height fork, 2026-07-18) IS a DOF row and must block
+    # here, else the unresolved fork dies as a TypeError in sampling
+    # instead of a named refusal.
+    missing_rows = tuple(q for q in missing if q in ("Q2", "Q9", "Q13"))
     if missing_rows:
         raise UnresolvedTodoTraceError(
             missing_rows, "design-matrix materialisation"
@@ -236,6 +240,28 @@ def materialise_dims(
                     distribution=_geometry_kind(geometry_distribution),
                     mock=res.mock,
                     source=f"Q9 resolution ({res.provenance})",
+                )
+            )
+        elif name == "sto_height_m":
+            res = context.get("Q13")
+            assert res is not None  # guaranteed by the gate above
+            h = float(res.payload["sto_height_m"])
+            band = res.payload.get("sto_height_band_m")
+            if band is not None:
+                lo, hi = (float(band[0]), float(band[1]))
+                band_src = "caliper band riding the Q13 payload"
+            else:
+                lo, hi = _machining_band(h)
+                band_src = "TOL.machining_tol_m placeholder"
+            dims.append(
+                SamplingDim(
+                    name=name,
+                    lo=lo,
+                    hi=hi,
+                    nominal=h,
+                    distribution=_geometry_kind(geometry_distribution),
+                    mock=res.mock,
+                    source=f"Q13 resolution ({res.provenance}; {band_src})",
                 )
             )
         elif name == "p_tune":

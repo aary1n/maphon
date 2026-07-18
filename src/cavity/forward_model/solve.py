@@ -379,6 +379,14 @@ def solve_eigenfrequency(
         materials.sto_complex_eps_r,
         complex(1.0, 0.0),
     ).astype(np.complex128)
+    spacer_mask = None
+    if geom.spacer is not None:
+        # The exported eps map must describe the SOLVED model: spacer
+        # nodes carry the seat permittivity, never air (2026-07-18).
+        spacer_mask = geom.spacer_mask(grid.r_m, grid.z_m)
+        eps_r = np.where(
+            spacer_mask, materials.spacer_complex_eps_r, eps_r
+        ).astype(np.complex128)
 
     q_cross = (
         float(spectrum.q_emw[picked]) if spectrum.q_emw is not None else None
@@ -393,6 +401,7 @@ def solve_eigenfrequency(
         dielectric_mask=dielectric_mask,
         complex_eigenfrequency_hz=spectrum.complex_at(picked),
         q_emw_cross_check=q_cross,
+        spacer_mask=spacer_mask,
     )
     eigen = EigenResult(
         complex_eigenfrequency_hz=spectrum.complex_at(picked),

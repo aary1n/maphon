@@ -15,11 +15,14 @@ Two implementations of one protocol:
   - `ComsolBackend`: thin wrapper over the EXISTING
     `cavity.forward_model.runner.run_forward_model` (persistence,
     cache, .mph archiving included). Its CONSTRUCTOR enforces the
-    Q2/Q9/Q11 licence gate — while any sentinel the mode requires is
-    unresolved (or mock-resolved), it refuses to exist; and Phase 1b
+    Q2/Q9/Q11/Q13 licence gate — while any sentinel the mode requires
+    is unresolved (or mock-resolved), it refuses to exist; and Phase 1b
     solve specs additionally refuse with NotImplementedError because
     the geometry engine has no crystal sub-domain (building it is SPEC
-    §5b work, not licensed by the Layer A design doc).
+    §5b work, not licensed by the Layer A design doc). NOTE 2026-07-18:
+    p_tune is no longer a Phase 1b key — it IS the RING build's box
+    internal height, which the engine represents directly; Q2 still
+    gates every real solve through the licence gate.
 
 Sweep solve configuration (design doc §1/§6, committed): eigenfrequency
 search at 1.45 GHz with n_modes = 12, impedance walls, CANONICAL
@@ -38,7 +41,11 @@ import numpy as np
 
 from cavity.extraction import FieldSample
 from cavity.extraction.quadrature import axisymmetric_volume_integral
-from cavity.forward_model.geometry import CavityGeometry, DielectricShape
+from cavity.forward_model.geometry import (
+    CavityGeometry,
+    DielectricShape,
+    SpacerSpec,
+)
 from cavity.forward_model.gridding import GridSpec, structured_grid
 from cavity.forward_model.materials import MaterialSpec
 from cavity.forward_model.mesh import MeshConfig
@@ -50,7 +57,14 @@ from cavity.forward_model.persistence import (
 )
 from cavity.forward_model.runner import ForwardModelResult, run_forward_model
 from cavity.forward_model.study import EigenStudyConfig, WallBC
-from cavity.provenance import STO, STOSingleCrystal, TARGET
+from cavity.provenance import (
+    CLPS,
+    GEOM_WU_STO_RING,
+    STO,
+    STO_HEIGHT_FORK,
+    STOSingleCrystal,
+    TARGET,
+)
 from cavity.sweep.dofs import DesignMode, ResolutionContext
 from cavity.validation.analytic_fields import TE011Mode, te011_fields
 
@@ -79,10 +93,11 @@ class DrawSolveSpec:
     """One design row translated into solve inputs.
 
     `phase1b` holds the Phase 1b parameters the CURRENT geometry engine
-    cannot represent (crystal axial offset, crystal permittivity, plate
-    position). It is non-empty exactly when θ carries those DOFs; the
-    COMSOL backend refuses such specs (SPEC §5b pass pending), the mock
-    backend folds them into its labelled mock maps.
+    cannot represent (crystal axial offset — the crystal sub-domain is
+    SPEC §5b work). It is non-empty exactly when θ carries those DOFs;
+    the COMSOL backend refuses such specs, the mock backend folds them
+    into its labelled mock maps. NOTE 2026-07-18: p_tune LEFT this set
+    — it is the RING build's box internal height, represented directly.
     """
 
     geom: CavityGeometry
@@ -98,8 +113,23 @@ class DrawSolveSpec:
         return bool(self.phase1b)
 
 
-#: θ keys the current axisymmetric geometry engine cannot represent.
-_PHASE1B_THETA_KEYS = ("crystal_axial_offset_m", "p_tune")
+#: θ keys the current axisymmetric geometry engine cannot represent
+#: (p_tune left 2026-07-18 — it became the RING box internal height).
+_PHASE1B_THETA_KEYS = ("crystal_axial_offset_m",)
+
+
+def _wu_spacer_spec() -> SpacerSpec:
+    """The Wu seat from the graded provenance fields (figure-derived,
+    GEOM_WU_STO_RING docstring)."""
+    g = GEOM_WU_STO_RING
+    return SpacerSpec(
+        base_inner_radius_m=g.spacer_base_inner_radius_m,
+        base_outer_radius_m=g.spacer_base_outer_radius_m,
+        base_height_m=g.spacer_base_height_m,
+        lip_inner_radius_m=g.spacer_lip_inner_radius_m,
+        lip_outer_radius_m=g.spacer_lip_outer_radius_m,
+        lip_height_m=g.spacer_lip_height_m,
+    )
 
 
 def draw_solve_spec(
@@ -108,15 +138,44 @@ def draw_solve_spec(
     study: EigenStudyConfig = SWEEP_STUDY,
     mesh: MeshConfig = SWEEP_MESH_FINEST,
     grid: GridSpec = GridSpec(),
+    box_height_fallback_m: float | None = None,
+    include_spacer: bool = True,
 ) -> DrawSolveSpec:
-    """θ → solve inputs (torus branch off the recovered Booth layout,
-    canonical materials with the sampled εr/tanδ overrides)."""
+    """θ → solve inputs (RING branch on the Wu build from 2026-07-18,
+    canonical materials with the sampled εr/tanδ overrides).
+
+    Box height sourcing: `theta["p_tune"]` when present — p_tune IS the
+    box internal height (piston position, metres; identity map). A θ
+    without p_tune (DEGRADED_D7, mock dry-runs) must pass
+    `box_height_fallback_m` EXPLICITLY (callers use the as-operated
+    nominal `GEOM_WU_STO_RING.box_internal_height_asoperated_m`) — no
+    silent module default.
+
+    `include_spacer` (default ON, ratified — Wu's own COMSOL includes
+    the seat, Fig. 6) is the ONE spacer switch: it populates (or not)
+    both `geom.spacer` and `materials.spacer`; build.py follows the
+    geometry.
+    """
+    if "p_tune" in theta:
+        box_height_m = theta["p_tune"]
+    elif box_height_fallback_m is not None:
+        box_height_m = box_height_fallback_m
+    else:
+        raise ValueError(
+            "no box internal height: θ carries no p_tune (Q2-gated "
+            "control) and no box_height_fallback_m was passed — the "
+            "d = 7 / dry-run path must supply the as-operated nominal "
+            "explicitly (GEOM_WU_STO_RING.box_internal_height_asoperated_m)"
+        )
     geom = CavityGeometry(
         box_radius_m=theta["box_radius_m"],
-        box_height_m=theta["box_height_m"],
-        dielectric_radius_m=theta["torus_major_radius_m"],
-        dielectric_shape=DielectricShape.TORUS,
-        dielectric_minor_radius_m=theta["torus_minor_radius_m"],
+        box_height_m=box_height_m,
+        dielectric_radius_m=theta["sto_outer_radius_m"],
+        dielectric_shape=DielectricShape.RING,
+        dielectric_height_m=theta["sto_height_m"],
+        dielectric_inner_radius_m=theta["sto_inner_radius_m"],
+        ring_bottom_z_m=GEOM_WU_STO_RING.deck_clearance_m,
+        spacer=_wu_spacer_spec() if include_spacer else None,
     )
     materials = MaterialSpec(
         sto=STOSingleCrystal(
@@ -124,6 +183,7 @@ def draw_solve_spec(
             tan_delta=theta["tan_delta"],
         ),
         wall_pec=study.wall_bc is WallBC.PEC,
+        spacer=CLPS if include_spacer else None,
     )
     phase1b = {
         k: theta[k] for k in _PHASE1B_THETA_KEYS if k in theta
@@ -152,15 +212,17 @@ class SolveBackend(Protocol):
 #: MOCK parameter-map coefficients — smooth, plausible-ordering values
 #: for pipeline/surrogate SHAPE exercise ONLY. They are labelled mock
 #: precisely because the real levers are what the licensed sweep will
-#: measure; nothing downstream may quote them as physics. Orders of
-#: magnitude follow the design doc's planning notes (minor-radius lever
-#: ≈ -0.35 MHz/µm; εr band moving f by ~14 MHz across ~6 units).
+#: measure; nothing downstream may quote them as physics. Re-keyed
+#: FRESH 2026-07-18 for the Wu-ring rows (mocks never carry over from
+#: the retired torus rows); orderings are plausible only (ring dims
+#: dominate, enclosure weak; εr keeps its band-derived ~14 MHz/6-unit
+#: order).
 MOCK_F_LEVERS_HZ = {
-    "torus_minor_radius_m": -0.35e12,  # Hz per metre (= -0.35 MHz/µm)
-    "torus_major_radius_m": -0.10e12,
-    "box_radius_m": -0.02e12,
-    "box_height_m": -0.01e12,
-    "epsilon_r": -2.33e6,  # Hz per unit εr
+    "sto_outer_radius_m": -0.30e12,  # Hz per metre — MOCK, dominant ring dim
+    "sto_inner_radius_m": +0.08e12,  # MOCK (bigger bore -> less dielectric)
+    "sto_height_m": -0.15e12,  # MOCK
+    "box_radius_m": -0.02e12,  # MOCK, weak enclosure lever
+    "epsilon_r": -2.33e6,  # Hz per unit εr (band-derived order, mock)
     # Fresh MOCK lever for the 2026-07-16 axial-offset coordinate (the
     # retired bore-radius lever does not carry over): deliberately small
     # vs the geometry levers — the crystal is a weak perturbation and
@@ -168,7 +230,9 @@ MOCK_F_LEVERS_HZ = {
     # plane to first order; nonzero only so the dimension carries
     # signal in pipeline-shape exercise.
     "crystal_axial_offset_m": +2.0e8,
-    "p_tune": +8.0e6,  # Hz per unit mock plate coordinate
+    # p_tune is now the box internal height in METRES (2026-07-18):
+    # MOCK tuning lever, piston-down (smaller height) raises f.
+    "p_tune": -0.05e12,
 }
 #: MOCK wall Q for the impedance-wall branch of the mock loss map
 #: 1/Q0 = p_e·tanδ + 1/Q_wall (the committed §4 split SHAPE with a
@@ -182,20 +246,22 @@ _MOCK_COMSOL_VERSION = (
 
 
 def _mock_reference_theta() -> dict[str, float]:
-    """Committed nominals the mock f-map is anchored at."""
-    from cavity.provenance import GEOM_BOOTH_TE01D
-
+    """Committed nominals the mock f-map is anchored at (Wu build)."""
     return {
-        "box_radius_m": GEOM_BOOTH_TE01D.box_radius_m,
-        "box_height_m": GEOM_BOOTH_TE01D.box_height_m,
-        "torus_minor_radius_m": GEOM_BOOTH_TE01D.torus_minor_radius_m,
-        "torus_major_radius_m": GEOM_BOOTH_TE01D.torus_major_radius_m,
+        "box_radius_m": GEOM_WU_STO_RING.box_inner_radius_m,
+        "sto_outer_radius_m": GEOM_WU_STO_RING.sto_outer_radius_m,
+        "sto_inner_radius_m": GEOM_WU_STO_RING.sto_inner_radius_m,
+        # The ONE sanctioned pre-resolution read of the Q13 fork's
+        # machine-readable branch: MOCK tier only, explicit and
+        # labelled — never a silent selection (8.6 evidence-favoured).
+        "sto_height_m": STO_HEIGHT_FORK.evidence_favoured,
         "epsilon_r": STO.epsilon_r_real,
         "tan_delta": STO.tan_delta,
         # Axially centred — a fresh mock reference for the 2026-07-16
         # crystal-placement coordinate, not the retired bore reference.
         "crystal_axial_offset_m": 0.0,
-        "p_tune": 0.5,
+        # As-operated internal height (metres — 2026-07-18 semantics).
+        "p_tune": GEOM_WU_STO_RING.box_internal_height_asoperated_m,
     }
 
 
@@ -233,6 +299,12 @@ class MockBackend:
         dielectric_mask = spec.geom.dielectric_mask(grid.r_m, grid.z_m)
         eps_r = np.ones(grid.r_m.shape[0], dtype=np.complex128)
         eps_r[dielectric_mask] = spec.materials.sto_complex_eps_r
+        spacer_mask = None
+        if spec.geom.spacer is not None:
+            # Same integrity rule as the live path: the eps map must
+            # describe the declared model, spacer nodes included.
+            spacer_mask = spec.geom.spacer_mask(grid.r_m, grid.z_m)
+            eps_r[spacer_mask] = spec.materials.spacer_complex_eps_r
 
         # p_e from the actual synthetic fields (same §3 primitive the
         # extraction uses) so the mock loss map is self-consistent.
@@ -275,6 +347,7 @@ class MockBackend:
             dielectric_mask=dielectric_mask,
             complex_eigenfrequency_hz=complex(f_real, f_imag),
             gain_region_mask=None,  # Phase 1b unbuilt: honest fallback
+            spacer_mask=spacer_mask,
         )
         record = SolveRecord(
             fingerprint=fingerprint,
@@ -323,8 +396,8 @@ class MockBackend:
 
 class ComsolBackend:
     """The licensed path. Refuses to be CONSTRUCTED while the mode's
-    Q2/Q9/Q11 sentinels are unresolved (or mock-resolved) — the gate
-    sits upstream of any client connection, so a licence cannot be
+    Q2/Q9/Q11/Q13 sentinels are unresolved (or mock-resolved) — the
+    gate sits upstream of any client connection, so a licence cannot be
     touched by accident. This wiring is what `--comsol` reaches."""
 
     def __init__(
@@ -347,8 +420,8 @@ class ComsolBackend:
         if spec.needs_phase1b_geometry:
             raise NotImplementedError(
                 "Phase 1b solve spec refused: the axisymmetric geometry "
-                "engine has no crystal/plate sub-domain "
-                f"(spec carries {sorted(spec.phase1b)}). Building them "
+                "engine has no crystal sub-domain "
+                f"(spec carries {sorted(spec.phase1b)}). Building it "
                 "is SPEC §5b work — a separate licensed pass, not "
                 "licensed by the Layer A design doc."
             )

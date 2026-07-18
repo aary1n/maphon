@@ -48,22 +48,22 @@ def test_ratified_q11_provenance_carries_chain_and_negative_space():
     assert "KCDCRN4C" in p
 
 
-def test_ratified_context_resolves_q11_while_q2_q9_remain():
+def test_ratified_context_resolves_q11_while_q2_q9_q13_remain():
     ctx = ratified_resolutions()
     assert not ctx.any_mock
     assert ctx.get("Q11") is RESOLUTION_Q11
-    assert ctx.unresolved(DesignMode.BASELINE_D8) == ("Q2", "Q9")
-    assert ctx.unresolved(DesignMode.DEGRADED_D7) == ("Q9",)
+    assert ctx.unresolved(DesignMode.BASELINE_D8) == ("Q2", "Q9", "Q13")
+    assert ctx.unresolved(DesignMode.DEGRADED_D7) == ("Q9", "Q13")
 
 
-def test_solve_ready_exits_still_refuse_naming_q2_q9():
+def test_solve_ready_exits_still_refuse_naming_q2_q9_q13():
     ctx = ratified_resolutions()
     with pytest.raises(UnresolvedTodoTraceError) as exc:
         ctx.assert_solveable(DesignMode.BASELINE_D8, what="test")
-    assert exc.value.question_ids == ("Q2", "Q9")
+    assert exc.value.question_ids == ("Q2", "Q9", "Q13")
     with pytest.raises(UnresolvedTodoTraceError) as exc:
         materialise_dims(DesignMode.BASELINE_D8, ctx)
-    assert exc.value.question_ids == ("Q2", "Q9")
+    assert exc.value.question_ids == ("Q2", "Q9", "Q13")
     with pytest.raises(UnresolvedTodoTraceError) as exc:
         ComsolBackend(ctx, DesignMode.DEGRADED_D7)
-    assert exc.value.question_ids == ("Q9",)
+    assert exc.value.question_ids == ("Q9", "Q13")

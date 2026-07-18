@@ -153,6 +153,8 @@ def test_append_raw_row_validates_before_writing(tmp_path, mock_run):
 
 
 def _real_q9_context() -> ResolutionContext:
+    """Hypothetical real Q9 + Q13 (the two d = 7 DOF rows); Q11 stays
+    unresolved so the rider-R1 gate is what the tests below hit."""
     return ResolutionContext(
         resolutions=(
             SentinelResolution(
@@ -162,6 +164,15 @@ def _real_q9_context() -> ResolutionContext:
                     "crystal_axial_offset_nominal_m": 0.5e-3,
                     "crystal_axial_offset_band_m": (0.45e-3, 0.55e-3),
                     "centring_tolerance_m": 50e-6,
+                },
+                rung=Rung.PLANNING_ASSUMPTION,
+                provenance="hypothetical (test only)",
+            ),
+            SentinelResolution(
+                question_id="Q13",
+                payload={
+                    "sto_height_m": 8.6e-3,
+                    "selection_evidence": "hypothetical (test only)",
                 },
                 rung=Rung.PLANNING_ASSUMPTION,
                 provenance="hypothetical (test only)",

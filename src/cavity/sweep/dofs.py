@@ -1,26 +1,43 @@
 """Layer A DOF table — SPEC §7 / docs/plans/layer_a_sweep_design.md §2.
 
+RE-BASED 2026-07-18 (geometry re-base, Oxborrow-WRITTEN 2026-07-17):
+the sweep's modelled build is now the Wu STO ring
+(`provenance.GEOM_WU_STO_RING`); rows 1–4 re-parameterise from the
+Booth torus rows {box_radius, box_height, torus_minor, torus_major} to
+{box_radius, sto_outer_r, sto_inner_r, sto_height}. The Booth torus is
+NOT superseded as the §5a solver-correctness anchor — it simply no
+longer defines the Layer-A sweep space.
+
+ROW INVALIDATION RECORD (invalidate, don't rename — the bore-row
+discipline): the former row-2 `box_height_m` is DELETED as a noise DOF,
+not renamed: in the Wu build the box internal height IS the tuning
+control (the piston position) — the physical quantity did not vanish,
+it BECAME row 9's `p_tune` (Q2). No noise row measures it any more.
+
 The design doc's nine-row (θ, p) table as code, with its rung vocabulary
-and TODO-trace sentinels carried as first-class objects. Three rows are
-NOT numbers yet:
+and TODO-trace sentinels carried as first-class objects. Rows NOT
+numbers yet:
 
+  - row 4 (sto_height_m): the ring height is a PRINT FORK {8.5, 8.6} mm
+    (SM text vs Wu-2020 text + PRL Fig. 1(c) label), open question Q13
+    — a `ForkTrace` whose evidence-favoured branch (8.6) is
+    machine-readable but never silently selected;
   - row 5 (crystal axial offset) and row 6 (crystal centring
-    eccentricity): Phase 1b crystal placement, open question Q9.
-    Reframed 2026-07-16 (Oxborrow-verbal): the recovered Booth
-    geometry contains a torus central opening — often termed the
-    bore — but no separately constructed or independently
-    parameterised bore; its clearance is implied by the torus major
-    and minor radii. The former "bore radius" row is therefore
-    INVALIDATED as a physical DOF (not renamed) and replaced by the
-    crystal-placement coordinate;
-  - row 9 (tuning plate p_tune): no plate exists in any repo artifact,
-    open question Q2;
+    eccentricity): crystal placement, open question Q9 (coordinate
+    fixed with the 2026-07-16 reframe; the former "bore radius" row was
+    INVALIDATED, not renamed);
+  - row 9 (p_tune): the box internal height (piston position, metres).
+    Mechanism now IDENTIFIED — supervisor-written 2026-07-17 and in
+    print (Wu 2020 screw-suspended ceiling; PRL SM 26-mm piston on a
+    brass screw); the as-operated nominal 15 mm is recorded at
+    `GEOM_WU_STO_RING.box_internal_height_asoperated_m`. The travel
+    [p_min, p_max] is STILL OPEN (Oxborrow asked by email 2026-07-18) —
+    Q2 stays unresolved;
   - additionally the Phase 1b crystal permittivity (not a DOF row, but
-    rider R1 makes it a solve precondition): the repo carries only
-    "εr < 5" (`provenance.CRYSTAL.epsilon_r_upper_bound`) — a bound,
-    not a value; open question Q11.
+    rider R1 makes it a solve precondition): resolved at planning grade
+    via RESOLUTION_Q11 (2026-07-17); the question remains gate-tracked.
 
-The Q2/Q9/Q11 gate is ENFORCED IN CODE, not convention: anything
+The Q2/Q9/Q11/Q13 gate is ENFORCED IN CODE, not convention: anything
 solve-ready (design rows, the COMSOL backend, the centre-verification
 block) calls `ResolutionContext.assert_solveable(mode)` and refuses
 with `UnresolvedTodoTraceError` while any required sentinel is
@@ -39,7 +56,13 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 
-from cavity.provenance import CRYSTAL, GEOM_BOOTH_TE01D, STO, TOL
+from cavity.provenance import (
+    CRYSTAL,
+    GEOM_WU_STO_RING,
+    STO,
+    STO_HEIGHT_FORK,
+    TOL,
+)
 
 
 class Rung(Enum):
@@ -75,14 +98,49 @@ class TodoTrace:
             )
 
 
+@dataclass(frozen=True)
+class ForkTrace(TodoTrace):
+    """A TodoTrace whose answer is one of finitely many PUBLISHED
+    candidates (2026-07-18, the Q13 ring-height print fork).
+
+    Same refusal semantics as TodoTrace — never coercible to a float,
+    resolved only via `SentinelResolution` — plus a machine-readable
+    candidate set and evidence-favoured branch, so mock/shape tiers can
+    select the favoured print EXPLICITLY and labelled, never silently.
+    Defaults exist only because dataclass inheritance requires them;
+    the validator refuses an empty fork.
+    """
+
+    candidates: tuple[float, ...] = ()
+    evidence_favoured: float | None = None
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if len(self.candidates) < 2:
+            raise ValueError(
+                f"{self.question_id}: a ForkTrace needs >= 2 candidates"
+            )
+        if self.evidence_favoured not in self.candidates:
+            raise ValueError(
+                f"{self.question_id}: evidence_favoured must be one of "
+                "the candidates"
+            )
+
+
 SENTINEL_Q2 = TodoTrace(
     question_id="Q2",
     description=(
-        "tuning plate: physical mechanism, geometric parameterisation, "
-        "and travel [p_min, p_max] — no repo artifact defines it "
-        "(blocking-adjacent; §7.3's per-draw root-solve depends on it)"
+        "p_tune = the box INTERNAL HEIGHT (piston position), metres — "
+        "semantics fixed 2026-07-18 (geometry re-base). Mechanism now "
+        "IDENTIFIED: supervisor-written 2026-07-17 and in print (Wu "
+        "2020: ceiling suspended on a screw; PRL SM: 26-mm copper-disk "
+        "piston on a brass screw); as-operated nominal 15 mm recorded "
+        "at GEOM_WU_STO_RING.box_internal_height_asoperated_m. STILL "
+        "OPEN, so the sentinel stays: the travel [p_min, p_max] (and "
+        "the piston-gap depth rider) — Oxborrow asked by email "
+        "2026-07-18; §7.3's per-draw root-solve depends on the travel"
     ),
-    routes_to="Oxborrow (findings-note asks / next touchpoint)",
+    routes_to="Oxborrow (travel-band email sent 2026-07-18, reply pending)",
 )
 SENTINEL_Q9 = TodoTrace(
     question_id="Q9",
@@ -92,10 +150,15 @@ SENTINEL_Q9 = TodoTrace(
         "the crystal centre from the torus equatorial plane) plus the "
         "achievable lateral centring tolerance (crystal_eccentricity_m "
         "row; distinct from TOL.machining_tol_m per the TolRanges "
-        "docstring). Crystal DIMENSIONS are already resolved — "
-        "provenance.CRYSTAL (Breeze 2017, 3 mm x 8 mm) — so the ask "
-        "is placement + centring tolerance only. Partial resolution "
-        "on record: eccentricity nominal = CENTRED, per Oxborrow — "
+        "docstring). Crystal DIMENSIONS: resolved for the Booth-context "
+        "Breeze import (provenance.CRYSTAL, 3 mm x 8 mm); for the Wu "
+        "build (the modelled geometry from 2026-07-18) they are a "
+        "PLANNING-ASSUMPTION carrying a cross-build-transfer flag — "
+        "five published Wu-side indicators lean toward a ~4 mm "
+        "bore-filling crystal (GEOM_WU_STO_RING docstring; ask in the "
+        "Oxborrow email queue). The Q9 ask itself is placement + "
+        "centring tolerance, unchanged. Partial resolution on record: "
+        "eccentricity nominal = CENTRED, per Oxborrow — "
         "supervisor-confirmed (VERBAL, in-person meeting 2026-07-16); "
         "the tolerance band is still open, so the sentinel remains "
         "unresolved."
@@ -115,6 +178,28 @@ SENTINEL_Q11 = TodoTrace(
     "[2026-07-17: trace executed — direct static/microwave value NOT "
     "FOUND; resolved at planning grade via anthracene analogy: "
     "cavity.sweep.resolutions.RESOLUTION_Q11]",
+)
+
+SENTINEL_Q13 = ForkTrace(
+    question_id="Q13",
+    description=(
+        "STO ring height PRINT FORK {8.5, 8.6} mm (geometry re-base "
+        "2026-07-18): the PRL 127 SM text prints 8.5 mm; Wu 2020's text "
+        "AND the PRL Fig. 1(c) photograph label print 8.6 mm. Weight of "
+        "evidence favours 8.6 (two independent statements vs one) — "
+        "recorded machine-readably on this sentinel and on "
+        "provenance.STO_HEIGHT_FORK, but NEVER silently selected; no "
+        "plain-float ring height exists in the repo until this "
+        "resolves. Post-resolution the machining band (±25 µm "
+        "placeholder, or a caliper-measured band riding the payload) "
+        "materialises in design.materialise_dims."
+    ),
+    routes_to=(
+        "Oxborrow written reply or a caliper measurement of the ring "
+        "(spacer dims ride the same caliper list — 2026-07-18 rider)"
+    ),
+    candidates=STO_HEIGHT_FORK.candidates,
+    evidence_favoured=STO_HEIGHT_FORK.evidence_favoured,
 )
 
 #: The L5 acceptance window (rider R2, ratified 2026-07-15): a NAMED
@@ -218,62 +303,71 @@ def _machining_band(nominal_m: float) -> tuple[float, float]:
     return (nominal_m - TOL.machining_tol_m, nominal_m + TOL.machining_tol_m)
 
 
-#: The nine rows of layer_a_sweep_design.md §2, in table order.
+#: The nine rows of layer_a_sweep_design.md §2 (re-parameterised
+#: 2026-07-18 to the Wu ring build — see the module docstring's row
+#: invalidation record), in table order.
 LAYER_A_DOFS: tuple[DofSpec, ...] = (
     DofSpec(
         name="box_radius_m",
         kind=DofKind.NOISE,
-        nominal=GEOM_BOOTH_TE01D.box_radius_m,
-        band=_machining_band(GEOM_BOOTH_TE01D.box_radius_m),
+        nominal=GEOM_WU_STO_RING.box_inner_radius_m,
+        band=_machining_band(GEOM_WU_STO_RING.box_inner_radius_m),
         distribution=DistributionKind.TRUNC_GAUSSIAN_3SIGMA,
         nominal_rung=Rung.LITERATURE_CONFIRMED,
         band_rung=Rung.PLANNING_ASSUMPTION,
         provenance=(
-            "nominal: provenance.GEOM_BOOTH_TE01D.box_radius_m (Booth "
-            "App. A r-extent, refs/booth_geometry_recovery.md); band: "
+            "nominal: provenance.GEOM_WU_STO_RING.box_inner_radius_m "
+            "(Wu 2020 Fig. 6 caption, region width 14 mm = enclosure "
+            "radius). CAVEAT on the grade: the barrel is a NOMINAL "
+            "28-mm end-feed pipe fitting (PRL SM), so the true bore "
+            "may differ by the fitting tolerance; band: "
             "TOL.machining_tol_m ±25 µm committed placeholder (§7.4)"
         ),
     ),
     DofSpec(
-        name="box_height_m",
+        name="sto_outer_radius_m",
         kind=DofKind.NOISE,
-        nominal=GEOM_BOOTH_TE01D.box_height_m,
-        band=_machining_band(GEOM_BOOTH_TE01D.box_height_m),
+        nominal=GEOM_WU_STO_RING.sto_outer_radius_m,
+        band=_machining_band(GEOM_WU_STO_RING.sto_outer_radius_m),
         distribution=DistributionKind.TRUNC_GAUSSIAN_3SIGMA,
         nominal_rung=Rung.LITERATURE_CONFIRMED,
         band_rung=Rung.PLANNING_ASSUMPTION,
         provenance=(
-            "nominal: provenance.GEOM_BOOTH_TE01D.box_height_m; band: "
+            "nominal: provenance.GEOM_WU_STO_RING.sto_outer_radius_m "
+            "(Wu 2020: 'O.D. = 12.0 mm', Gaskell Quartz ring); band: "
             "TOL.machining_tol_m placeholder (§7.4)"
         ),
     ),
     DofSpec(
-        name="torus_minor_radius_m",
+        name="sto_inner_radius_m",
         kind=DofKind.NOISE,
-        nominal=GEOM_BOOTH_TE01D.torus_minor_radius_m,
-        band=_machining_band(GEOM_BOOTH_TE01D.torus_minor_radius_m),
+        nominal=GEOM_WU_STO_RING.sto_inner_radius_m,
+        band=_machining_band(GEOM_WU_STO_RING.sto_inner_radius_m),
         distribution=DistributionKind.TRUNC_GAUSSIAN_3SIGMA,
         nominal_rung=Rung.LITERATURE_CONFIRMED,
         band_rung=Rung.PLANNING_ASSUMPTION,
         provenance=(
-            "nominal: provenance.GEOM_BOOTH_TE01D.torus_minor_radius_m "
-            "(ratio-exact x/5 = 2.456 mm); band: TOL.machining_tol_m "
-            "placeholder. Stiff f-lever ≈ -0.35 MHz/µm (§2 printed-2.46 "
-            "sensitivity solve) — dominates the tuning-feasibility metric"
+            "nominal: provenance.GEOM_WU_STO_RING.sto_inner_radius_m "
+            "(Wu 2020: 'I.D. = 4.05 mm'; the PRL SM's '4-mm bore' is a "
+            "round of this print); band: TOL.machining_tol_m "
+            "placeholder (§7.4)"
         ),
     ),
     DofSpec(
-        name="torus_major_radius_m",
+        name="sto_height_m",
         kind=DofKind.NOISE,
-        nominal=GEOM_BOOTH_TE01D.torus_major_radius_m,
-        band=_machining_band(GEOM_BOOTH_TE01D.torus_major_radius_m),
-        distribution=DistributionKind.TRUNC_GAUSSIAN_3SIGMA,
-        nominal_rung=Rung.SUPERVISOR_CONFIRMED,
-        band_rung=Rung.PLANNING_ASSUMPTION,
+        nominal=SENTINEL_Q13,
+        band=SENTINEL_Q13,
+        distribution=DistributionKind.UNDEFINED_TODO_TRACE,
+        nominal_rung=Rung.TODO_TRACE,
+        band_rung=Rung.TODO_TRACE,
         provenance=(
-            "nominal: provenance.GEOM_BOOTH_TE01D.torus_major_radius_m "
-            "(x/2 = 6.14 mm, pinned by the supervisor .mph — the one "
-            "untabulated DOF); band: TOL.machining_tol_m placeholder"
+            "ring height, PRINT-FORKED {8.5, 8.6} mm (Q13; "
+            "provenance.STO_HEIGHT_FORK — PRL SM text 8.5 vs Wu 2020 "
+            "text + PRL Fig. 1(c) label 8.6; 8.6 evidence-favoured, "
+            "never silently selected). Post-resolution band: "
+            "TOL.machining_tol_m placeholder, or the caliper band "
+            "riding the Q13 resolution payload"
         ),
     ),
     DofSpec(
@@ -345,11 +439,14 @@ LAYER_A_DOFS: tuple[DofSpec, ...] = (
         nominal_rung=Rung.LITERATURE_CONFIRMED,
         band_rung=Rung.LITERATURE_CONFIRMED,
         provenance=(
-            "nominal: provenance.STO.tan_delta; band: TOL [1.0, 2.3]e-4 "
-            "— measured-device effective loss span (Breeze Q0≈10.7k <-> "
-            "Wu Q0≈4.3k, SPEC §6); uniform = conservative baseline; the "
-            "§7.4 Bayesian re-inference is the flagged upgrade, out of "
-            "scope here"
+            "nominal: provenance.STO.tan_delta; band: TOL [1.0, 1.4]e-4 "
+            "— measured-device effective loss span, re-derived "
+            "2026-07-18 at Wu's STATED coupling k = 1 (Breeze "
+            "Q0≈10.7k <-> Wu Q0 = 7,200 = 2*Q_L; gap #3 closed — was "
+            "[1.0, 2.3]e-4 under the assumed k = 0.2 de-load, see "
+            "TolRanges.tan_delta_max); uniform = conservative baseline; "
+            "the §7.4 Bayesian re-inference is the flagged upgrade, out "
+            "of scope here"
         ),
     ),
     DofSpec(
@@ -361,11 +458,17 @@ LAYER_A_DOFS: tuple[DofSpec, ...] = (
         nominal_rung=Rung.TODO_TRACE,
         band_rung=Rung.TODO_TRACE,
         provenance=(
-            "TODO-trace, blocking-adjacent (Q2): no plate exists in the "
-            "geometry engine, the SPEC geometry, or any repo artifact; "
-            "root-solved per draw onto f_spin = TARGET.f_xz_measured_hz "
-            "once defined; sampled uniformly over its travel in the "
-            "training design only"
+            "TODO-trace, blocking-adjacent (Q2). SEMANTICS 2026-07-18: "
+            "p_tune IS the box internal height (piston position), "
+            "metres — the geometry engine now represents it directly "
+            "(RING build box_height_m). Mechanism supervisor-written "
+            "2026-07-17 + in print (Wu 2020 screw ceiling / PRL SM "
+            "piston); as-operated nominal 15 mm recorded at "
+            "GEOM_WU_STO_RING.box_internal_height_asoperated_m; travel "
+            "[p_min, p_max] OPEN (email sent 2026-07-18). Root-solved "
+            "per draw onto f_spin = TARGET.f_xz_measured_hz once the "
+            "travel exists; sampled uniformly over it in the training "
+            "design only"
         ),
     ),
 )
@@ -381,12 +484,14 @@ class DesignMode(Enum):
     DEGRADED_D7 = "degraded-d7"
 
 
-#: The seven noise sweep dimensions (row 6 excluded by construction).
+#: The seven noise sweep dimensions (row 6 excluded by construction;
+#: re-parameterised 2026-07-18 — box_height_m left the noise set, it is
+#: now the p_tune control).
 _NOISE_DIM_NAMES: tuple[str, ...] = (
     "box_radius_m",
-    "box_height_m",
-    "torus_minor_radius_m",
-    "torus_major_radius_m",
+    "sto_outer_radius_m",
+    "sto_inner_radius_m",
+    "sto_height_m",
     "crystal_axial_offset_m",
     "epsilon_r",
     "tan_delta",
@@ -404,22 +509,30 @@ def sweep_dimension_names(mode: DesignMode) -> tuple[str, ...]:
 #: fallback relieves only Q2: crystal axial offset (row 5) is one of the seven
 #: noise dims, and rider R1 (admissible rows come from Phase 1b
 #: geometry) requires the crystal sub-domain (Q11) regardless — this is
-#: the critical-path partition of the design doc, in code.
+#: the critical-path partition of the design doc, in code. Q13 (the
+#: ring-height print fork, 2026-07-18) gates BOTH modes: sto_height_m
+#: is a noise dim, so no geometry can be built in either mode without
+#: a resolved height.
 SOLVE_GATE_QUESTIONS: dict[DesignMode, tuple[str, ...]] = {
-    DesignMode.BASELINE_D8: ("Q2", "Q9", "Q11"),
-    DesignMode.DEGRADED_D7: ("Q9", "Q11"),
+    DesignMode.BASELINE_D8: ("Q2", "Q9", "Q11", "Q13"),
+    DesignMode.DEGRADED_D7: ("Q9", "Q11", "Q13"),
 }
 
 _SENTINELS_BY_QUESTION: dict[str, TodoTrace] = {
     "Q2": SENTINEL_Q2,
     "Q9": SENTINEL_Q9,
     "Q11": SENTINEL_Q11,
+    "Q13": SENTINEL_Q13,
     "W1": SENTINEL_W1,
 }
 
 #: Required payload keys per resolvable question. Q9 carries both the
 #: axial-offset row and the eccentricity centring tolerance; Q2 carries
-#: the plate travel; Q11 the graded crystal permittivity.
+#: the internal-height travel; Q11 the graded crystal permittivity;
+#: Q13 the selected ring height plus a statement of WHICH discriminator
+#: landed (written reply vs caliper) — an optional `sto_height_band_m`
+#: may ride along (the RESOLUTION_Q11 extra-key precedent) for a
+#: caliper-measured band.
 _REQUIRED_PAYLOAD_KEYS: dict[str, tuple[str, ...]] = {
     "Q2": ("p_tune_nominal", "p_tune_min", "p_tune_max", "mechanism"),
     "Q9": (
@@ -428,6 +541,7 @@ _REQUIRED_PAYLOAD_KEYS: dict[str, tuple[str, ...]] = {
         "centring_tolerance_m",
     ),
     "Q11": ("crystal_epsilon_r",),
+    "Q13": ("sto_height_m", "selection_evidence"),
 }
 
 
@@ -572,10 +686,25 @@ def mock_resolutions() -> ResolutionContext:
             SentinelResolution(
                 question_id="Q2",
                 payload={
-                    "p_tune_nominal": 0.5,
-                    "p_tune_min": 0.0,
-                    "p_tune_max": 1.0,
-                    "mechanism": "MOCK normalised plate coordinate",
+                    # MOCK travel about the as-operated 15 mm internal
+                    # height (metres — the 2026-07-18 p_tune semantics);
+                    # the fresh mock band is arbitrary, the real travel
+                    # is the open Q2 ask.
+                    "p_tune_nominal": (
+                        GEOM_WU_STO_RING.box_internal_height_asoperated_m
+                    ),
+                    "p_tune_min": (
+                        GEOM_WU_STO_RING.box_internal_height_asoperated_m
+                        - 2.0e-3
+                    ),
+                    "p_tune_max": (
+                        GEOM_WU_STO_RING.box_internal_height_asoperated_m
+                        + 2.0e-3
+                    ),
+                    "mechanism": (
+                        "MOCK travel band about the recorded as-operated "
+                        "nominal (piston position, metres)"
+                    ),
                 },
                 rung=Rung.PLANNING_ASSUMPTION,
                 provenance="MOCK test double (dry-run tier only)",
@@ -606,6 +735,23 @@ def mock_resolutions() -> ResolutionContext:
                     "MOCK test double (dry-run tier only; below the "
                     "published 'eps_r < 5' bound by construction)"
                 ),
+                mock=True,
+            ),
+            SentinelResolution(
+                question_id="Q13",
+                payload={
+                    # The ONE sanctioned pre-resolution read of the
+                    # fork's machine-readable branch: mock tier only,
+                    # explicit and labelled — never a silent selection.
+                    "sto_height_m": SENTINEL_Q13.evidence_favoured,
+                    "selection_evidence": (
+                        "MOCK — evidence-favoured branch, machine-read "
+                        "from the Q13 fork (dry-run tier only; the real "
+                        "discriminator is Oxborrow's reply or a caliper)"
+                    ),
+                },
+                rung=Rung.PLANNING_ASSUMPTION,
+                provenance="MOCK test double (dry-run tier only)",
                 mock=True,
             ),
         )

@@ -34,7 +34,19 @@ from cavity.forward_model.materials import MaterialSpec
 from cavity.forward_model.mesh import MeshConfig
 from cavity.forward_model.study import EigenStudyConfig
 
-SCHEMA_VERSION = 1
+# 2 (2026-07-18, Wu-ring re-base): geometry dict gains the RING /
+# spacer / piston fields, materials the spacer entries, and MeshConfig
+# the spacer tier — the canonical JSON changes for EVERY solve, so the
+# version bumps. Pinned historical hashes (e.g. the sweep-centre record
+# 823e67969516bcf2) are import-only records, never recomputed.
+SCHEMA_VERSION = 2
+
+# Versions `load_solve_record` may read. Frozen v1 archives (the gate
+# records under refs/gate_runs) MUST stay loadable; this is hash-safe —
+# cache lookups key on the fingerprint hash, and a v2 fingerprint can
+# never hash to a v1 record's hash, so accepting v1 cannot cause a
+# stale cache hit. Only explicit historical-hash reads reach v1 records.
+_LOADABLE_SCHEMA_VERSIONS = (1, 2)
 
 _META_FILENAME = "meta.json"
 _FIELDS_FILENAME = "fields.npz"
@@ -57,6 +69,11 @@ def solve_fingerprint(
             "dielectric_radius_m": geom.dielectric_radius_m,
             "dielectric_height_m": geom.dielectric_height_m,
             "dielectric_minor_radius_m": geom.dielectric_minor_radius_m,
+            "dielectric_inner_radius_m": geom.dielectric_inner_radius_m,
+            "ring_bottom_z_m": geom.ring_bottom_z_m,
+            "piston_radius_m": geom.piston_radius_m,
+            "piston_gap_depth_m": geom.piston_gap_depth_m,
+            "spacer": None if geom.spacer is None else asdict(geom.spacer),
         },
         "materials": {
             "sto_epsilon_r_real": materials.sto.epsilon_r_real,
@@ -66,6 +83,9 @@ def solve_fingerprint(
             "copper_sigma": materials.copper.sigma,
             "copper_mu_r": materials.copper.mu_r,
             "wall_pec": materials.wall_pec,
+            "spacer": (
+                None if materials.spacer is None else asdict(materials.spacer)
+            ),
         },
         "mesh": asdict(mesh_cfg),
         "study": {
@@ -168,8 +188,8 @@ def load_solve_record(root: Path, record_hash: str) -> SolveRecord | None:
         return None
 
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    if meta["fingerprint"]["schema_version"] != SCHEMA_VERSION:
-        return None  # stale schema: treat as a cache miss, re-solve
+    if meta["fingerprint"]["schema_version"] not in _LOADABLE_SCHEMA_VERSIONS:
+        return None  # unknown schema: treat as a cache miss, re-solve
 
     with np.load(fields_path) as data:
         spectrum_re = data["spectrum_f_real_hz"]

@@ -41,7 +41,9 @@ class STOSingleCrystal:
 
     `tan_delta = 1.1e-4` is Booth's 22-GHz extrapolation (Debye,
     omega tau_ionic >> omega_cavity), which sits at the optimistic end
-    of measured-device effective loss 1.0-2.3e-4.
+    of measured-device effective loss 1.0-1.4e-4 (span re-derived
+    2026-07-18 at Wu's stated k = 1 => Q_0 = 7,200; was 1.0-2.3e-4
+    under the assumed k = 0.2 — see TolRanges.tan_delta_max).
     """
 
     epsilon_r_real: float = 316.3
@@ -96,6 +98,18 @@ class Crystal:
     simply bulk Vaseline conduction — and must not be framed as an
     air-gap conductance. No sweep or solver code changes with this
     record.
+
+    SUPERSESSION, dated (2026-07-18 pass; annotate-never-delete): the
+    STO–copper THERMAL-PASTE half of the 2026-07-16 verbal stack above
+    is SUPERSEDED by Oxborrow's WRITTEN statement of 2026-07-17 —
+    "generally just placed the STO ring on a plastic spacer and not
+    bothered with paste" (geometry email; archive target:
+    calibration/data/raw/oxborrow_geometry_2026-07-17/ — archive
+    DEFERRED at changeset time pending a .eml export, R10a). Written beats
+    verbal on the ladder; the verbal text above is preserved verbatim.
+    The Vaseline crystal–STO half is UNTOUCHED by the written note.
+    Consistent with the Wu build's spacer seat (Fig. 6;
+    `WuSTORingGeometry.spacer_*`).
     """
 
     diameter_m: float = 3.0e-3
@@ -103,6 +117,40 @@ class Crystal:
     doping_mol_frac: float = 0.053e-2
     epsilon_r_upper_bound: float = 5.0
     mu_r: float = 1.0
+
+
+@dataclass(frozen=True)
+class CrossLinkedPolystyrene:
+    """Wu-build STO-ring support material (geometry re-base, 2026-07-18).
+
+    Product identity (literature, Wu 2020 §III.C): "A support made of
+    cross-linked polystyrene (viz., Polypenco Q200.5, Elder Engineering
+    Ltd.)". The PRL 127 SM (p. 1) describes the same part as "a post made
+    of cross-linked polystyrene (an equivalent of Rexolite)".
+
+    `epsilon_r_real = 2.53` — GRADE: DATASHEET-CLASS-ANALOG, two-link
+    chain, gap stated:
+      1. the SM's own printed equivalence bridges the part to the
+         Rexolite class (the authors' bridge, not ours);
+      2. the Rexolite 1422 manufacturer datasheet (C-Lec Plastics;
+         mirrored at spacematdb.com/spacemat/manudatasheets/
+         REXOLITE1422.pdf) prints dielectric constant 2.53, stated flat
+         up to 500 GHz.
+    Gap carried: Polypenco Q200.5 is a cross-linked-PS CLASS SIBLING of
+    Rexolite 1422, not the identical resin — 2.53 is a class value, not
+    a measurement of the as-built part.
+
+    `tan_delta = 0.0` — DELIBERATELY NOT GRADED this pass: the spacer
+    enters the EM geometry as a lossless dielectric; folding its (small,
+    Rexolite-class ~5e-4) loss into the budget is licence-session work
+    queued with the with/without-spacer delta solve, not smuggled in
+    here as an ungraded literal.
+    """
+
+    epsilon_r_real: float = 2.53
+    tan_delta: float = 0.0
+    mu_r: float = 1.0
+    sigma: float = 0.0
 
 
 @dataclass(frozen=True)
@@ -185,6 +233,158 @@ class BoothTE01DeltaGeometry:
 
 
 @dataclass(frozen=True)
+class ForkedConstant:
+    """A published value FORKED across primary prints — refuses silent
+    selection (geometry re-base pass, 2026-07-18).
+
+    Same spirit as the sweep layer's TodoTrace gate: this object is never
+    coercible to a float, so any arithmetic on a forked slot fails loudly.
+    A committed number enters ONLY via the sentinel-resolution path named
+    in `resolution_route` (the sweep layer registers the matching
+    question; provenance stays import-free of `cavity.sweep`).
+
+    `evidence_favoured` is machine-readable so mock/shape tiers can select
+    the favoured branch EXPLICITLY and labelled — never silently.
+    """
+
+    candidates: tuple[float, ...]
+    candidate_sources: tuple[str, ...]
+    evidence_favoured: float
+    resolution_route: str
+
+    def __post_init__(self) -> None:
+        if len(self.candidates) < 2:
+            raise ValueError("a fork needs >= 2 candidates")
+        if len(self.candidate_sources) != len(self.candidates):
+            raise ValueError("one provenance string per candidate, aligned")
+        if self.evidence_favoured not in self.candidates:
+            raise ValueError("evidence_favoured must be one of the candidates")
+        if not self.resolution_route:
+            raise ValueError("resolution_route must name the resolving question")
+
+    def __float__(self) -> float:
+        raise TypeError(
+            "ForkedConstant refuses silent selection: no arithmetic until "
+            f"resolved via {self.resolution_route!r} "
+            f"(candidates {self.candidates}, "
+            f"evidence-favoured {self.evidence_favoured})"
+        )
+
+
+STO_HEIGHT_FORK = ForkedConstant(
+    candidates=(8.5e-3, 8.6e-3),
+    candidate_sources=(
+        "PRL 127, 053604 (2021) SM p. 1: '8.5 mm in height' "
+        "(NB the in-hand SM copy is the PROOF version — "
+        "calibration/data/raw/wu_build_papers_2026-07-18/)",
+        "Wu 2020 (PRA 14, 064017) SEC. III.C: 'height = 8.6 mm' AND the "
+        "PRL 127 Fig. 1(c) photograph label '8.6 mm'",
+    ),
+    evidence_favoured=8.6e-3,
+    resolution_route=(
+        "Q13: Oxborrow written reply or a caliper measurement of the ring "
+        "(cavity.sweep.dofs.SENTINEL_Q13; spacer dims ride the same "
+        "caliper list per the 2026-07-18 ratification riders)"
+    ),
+)
+"""The Wu STO ring height print fork {8.5, 8.6} mm.
+
+Weight of evidence favours 8.6e-3 (two independent statements — the Wu
+2020 text and the PRL Fig. 1(c) label — against the SM text's one), but
+resolution is Oxborrow's reply or a caliper, NEVER a silent selection.
+No plain-float ring height exists anywhere in the repo until Q13
+resolves.
+"""
+
+
+@dataclass(frozen=True)
+class WuSTORingGeometry:
+    """The Wu build — Gaskell Quartz STO ring in a copper pipe-fitting
+    enclosure (Wu 2020, PRA 14, 064017 + Wu/Mirkhanov/Ng/Oxborrow,
+    PRL 127, 053604 (2021) + SM). THE MODELLED GEOMETRY from 2026-07-18
+    (Oxborrow-WRITTEN recommendation, 2026-07-17); the Booth torus
+    (`BoothTE01DeltaGeometry`) is NOT superseded by this class — it
+    remains the SPEC §5a solver-correctness anchor.
+
+    GRADE: literature prints from the two papers (same physical cavity —
+    same ring, same Q_L = 3600, same f, same lab), each field's source
+    below; every number re-verified against the archived PDFs
+    (calibration/data/raw/wu_build_papers_2026-07-18/) on 2026-07-18.
+
+    - `sto_outer_radius_m` = 6.0e-3 — Wu 2020 SEC. III.C "O.D. = 12.0 mm".
+    - `sto_inner_radius_m` = 2.025e-3 — Wu 2020 "I.D. = 4.05 mm". The
+      PRL SM's "4-mm bore" / "inner diameter ... 4 mm" is a ROUND of
+      this print, not an independent value.
+    - `sto_height_m` — FORKED {8.5, 8.6} mm (`STO_HEIGHT_FORK`, Q13);
+      refuses arithmetic until resolved.
+    - `box_inner_radius_m` = 14.0e-3 — Wu 2020 Fig. 6 caption: region
+      width 14 mm "corresponds to the radius of the copper enclosure".
+      CAVEAT carried on the grade: the barrel is "a standard copper pipe
+      fitting, viz. a 28-mm end-feed end cap" (PRL SM) — 28 mm is the
+      NOMINAL pipe-fitting size, so the true barrel bore may differ from
+      14.0 mm by the fitting tolerance.
+    - `box_internal_height_asoperated_m` = 15e-3 — RECORD ONLY, not a
+      fixed dimension: the internal height IS the tuning DOF (p_tune,
+      Q2 — piston position). 15 mm is the as-operated/as-simulated
+      nominal (Wu 2020 Fig. 6 caption; PRL SM "internal height
+      (~15 mm)"). Travel band OPEN — Oxborrow asked by email 2026-07-18;
+      Q2 stays unresolved.
+    - `deck_clearance_m` = 3.0e-3 — Wu 2020 "raises the STO ring 3 mm
+      above a copper conducting plane"; PRL SM "~3 mm above the PCB".
+    - `piston_radius_m` = 13.0e-3 — PRL SM "26-mm dia. copper disk"
+      suspended by a brass screw. The 1 mm annular gap between piston
+      edge and barrel is MODELLED, not simplified away (ratified
+      2026-07-18); the gap DEPTH is unprinted and rides Q2.
+    - spacer_* — the cross-linked polystyrene support (Polypenco Q200.5,
+      Elder Engineering Ltd. — Wu 2020; material grade: `CLPS`).
+      Form settled 2026-07-18 by direct inspection of Wu 2020 Fig. 6
+      (vector-path extraction, cyan-ring-calibrated — the digitization
+      record and script are committed under refs/): a stepped ANNULAR
+      SEAT, not a bore plug — base annulus (inner ~2.5 mm, outer
+      ~8.1 mm) filling the full 3 mm deck clearance (the ring seats on
+      the BASE), plus an outer registration lip (r ~6.1..8.1 mm, rising
+      ~1.5 mm beside the ring's outside wall — PRL SM: held the ring
+      "concentrically"). Nothing under the bore. GRADE:
+      FIGURE-DERIVED, +/-~0.3 mm (the overlays are hand-placed
+      annotations, ~2-3% aspect mismatch vs the printed ring dims);
+      dims added to the caliper ask list (2026-07-18 rider). Residual
+      tension recorded, not resolved: the SM's "post mounted into a
+      hole in the PCB" describes the sub-deck form, unmodelled either
+      way (the simulated region stops at the PCB plane).
+    - `crystal_diameter_m` / `crystal_height_m` = 3.0e-3 / 8.0e-3 —
+      PLANNING-ASSUMPTION (= `Crystal`, Breeze 2017) with an explicit
+      CROSS-BUILD-TRANSFER FLAG: five published Wu-side indicators lean
+      toward a ~4 mm bore-filling crystal instead — (1) PRL SM "slotted
+      snugly into the STO ring's 4-mm bore (though did not entirely
+      fill it)" (carry the parenthetical); (2) PRL SM pump path through
+      the crystal "<= 4 mm"; (3) Wu 2020 "approximate volume of
+      100 mm^3", which at 8 mm height implies ~4 mm dia; (4) Wu 2020
+      SEC. III.B: grown inside a PTFE sleeve of I.D. 4 mm x height 8 mm
+      ("limiting the crystal's radial growth to the same diameter");
+      (5) Wu's own Fig. 6 simulation draws the crystal bore-filling
+      (~3.9 mm dia) at FULL ring height. Ask is in the Oxborrow email
+      queue; PLACEMENT (axial-offset band, centring tolerance) stays
+      Q9-open regardless.
+    """
+
+    sto_outer_radius_m: float = 6.0e-3
+    sto_inner_radius_m: float = 2.025e-3
+    sto_height_m: ForkedConstant = STO_HEIGHT_FORK
+    box_inner_radius_m: float = 14.0e-3
+    box_internal_height_asoperated_m: float = 15e-3
+    deck_clearance_m: float = 3.0e-3
+    piston_radius_m: float = 13.0e-3
+    spacer_base_inner_radius_m: float = 2.5e-3
+    spacer_base_outer_radius_m: float = 8.1e-3
+    spacer_base_height_m: float = 3.0e-3
+    spacer_lip_inner_radius_m: float = 6.1e-3
+    spacer_lip_outer_radius_m: float = 8.1e-3
+    spacer_lip_height_m: float = 1.5e-3
+    crystal_diameter_m: float = 3.0e-3
+    crystal_height_m: float = 8.0e-3
+
+
+@dataclass(frozen=True)
 class TargetMode:
     """The X-Z spin transition the cavity must overlap.
 
@@ -212,12 +412,33 @@ class TolRanges:
     the torus central opening, often termed the bore, is not an
     independently parameterised geometry primitive; the eccentric element
     is the crystal within it.)
+
+    `tan_delta_max` — RE-DERIVED 2026-07-18 (gap #3 closure; ratified
+    plan-checkpoint R8). Arithmetic, traced:
+
+        Wu's coupling is now LITERATURE, k = 1 ("inductive loop
+        (coupling coefficient k = 1)", Wu 2020 SEC. III.C)
+        =>  Q_0 = Q_L * (1 + k) = 3_600 * 2 = 7_200
+            (independently corroborated in print: PRL 127 SM,
+            "Q_0 ~= 2 Q_L = 7200")
+        =>  measured-device effective-loss ceiling
+            tan_delta_max = 1/Q_0 = 1/7_200 = 1.3889e-4
+        ->  2 s.f. round: 1.4e-4.
+
+    Same reading as the superseded derivation (ALL loss attributed to
+    the dielectric — a conservative ceiling, not a material property);
+    same 2-s.f. rounding convention (the old 2.3e-4 was the round of
+    1/4_320 = 2.3148e-4). SUPERSEDED VALUE, dated record: 2.3e-4
+    (2026-07-15 Layer-A table and earlier), derived from the ASSUMED
+    k = 0.2 de-load of Wu's Q_L = 3_600 (Q_0 ~ 4_320) — see the
+    DELOAD_K two-era comment below. Breeze's end of the band
+    (`tan_delta_min` = 1.0e-4) is untouched.
     """
 
     epsilon_r_min: float = 312.0
     epsilon_r_max: float = 318.0
     tan_delta_min: float = 1.0e-4
-    tan_delta_max: float = 2.3e-4
+    tan_delta_max: float = 1.4e-4
     machining_tol_m: float = 25e-6
 
 
@@ -231,7 +452,14 @@ class PublishedTarget:
     `v_mode_m3` and `f_m` are None for measured anchors that publish only
     loaded Q. `kind`: "modelled" (Breeze/Booth tables, compare to forward-
     model Q_0 directly) or "measured_loaded" (cold-cavity Q_L; de-load to
-    Q_0 with `DELOAD_K` before comparing).
+    Q_0 before comparing — see `deload_k`).
+
+    `stated_coupling_k` (added 2026-07-18, gap #3 closure): the coupling
+    coefficient AS PRINTED by the anchor's paper, when the paper states
+    one. None means unstated — de-loading then falls back to the ASSUMED
+    `DELOAD_K` and the comparison inherits that assumption. Only
+    meaningful on `kind="measured_loaded"` (a stated coupling de-loads a
+    loaded print; a modelled Q_0 needs no de-load) — enforced.
     """
 
     source: str
@@ -241,6 +469,31 @@ class PublishedTarget:
     v_mode_m3: float | None = None
     f_m: float | None = None
     kind: str = "modelled"
+    stated_coupling_k: float | None = None
+
+    def __post_init__(self) -> None:
+        if self.stated_coupling_k is not None:
+            if self.kind != "measured_loaded":
+                raise ValueError(
+                    "stated_coupling_k only applies to measured_loaded "
+                    f"anchors, not kind={self.kind!r}"
+                )
+            if not self.stated_coupling_k > 0.0:
+                raise ValueError("stated_coupling_k must be > 0")
+
+    @property
+    def deload_k(self) -> float:
+        """k in Q_0 = (1 + k) * Q_L: the STATED print when the paper
+        gives one, else the assumed `DELOAD_K` (with its assumption
+        caveat). Raises on modelled anchors — they carry Q_0 already."""
+        if self.kind != "measured_loaded":
+            raise ValueError(
+                f"deload_k is undefined for kind={self.kind!r}: "
+                "modelled anchors already publish Q_0"
+            )
+        if self.stated_coupling_k is not None:
+            return self.stated_coupling_k
+        return DELOAD_K
 
 
 @dataclass(frozen=True)
@@ -251,10 +504,26 @@ class ValidationTargets:
       - breeze: Q=10,000, V=0.2 cm^3, F_m=3.6e7, eps_r=318       (Breeze Table 1)
       - booth:  Q=6,980,  V=0.409 cm^3,           eps_r=316.3    (Booth Table 8)
 
-    Measured loaded-Q anchors (de-load with DELOAD_K to compare):
-      - breeze_measured: Q_L=8,900   (Breeze 2017 cold-cavity)
-      - npj_measured:    Q_L=8,500   (Salvadori npj 2020)
-      - wu_measured:     Q_L=3,600   (Wu 2020; coupling unstated -> gap #3)
+    Measured loaded-Q anchors (de-load via `PublishedTarget.deload_k`):
+      - breeze_measured: Q_L=8,900   (Breeze 2017 cold-cavity; k=0.2 theirs)
+      - npj_measured:    Q_L=8,500   (Salvadori npj 2020; k=0.2 theirs)
+      - wu_measured:     Q_L=3,600   (Wu 2020) — SUPERSEDED FOR ANCHOR DUTY
+        by `wu_ring` (2026-07-18); retained byte-identical as the printed
+        record of the assumed-k era. Its f_hz = 1.4493e9 is the
+        record-time B15-lineage reading (provenance table, f_XZ row:
+        W20 cites B15 for 1.4495, a number B15 does not print; B15's own
+        measured peak is 1.4493) — documented here; prints stay as
+        printed.
+      - wu_ring:         Q_L=3,600   (same physical build as wu_measured;
+        the anchor of record from 2026-07-18) — coupling k = 1 STATED in
+        print => deload_k = 1.0 => Q_0 = 2 Q_L = 7,200, corroborated
+        independently by the PRL SM ("Q_0 ~= 2 Q_L = 7200"); gap #3
+        CLOSED. f_hz = 1.4495e9 as printed by Wu 2020. Its
+        v_mode_m3 = 0.32e-6 (PRL SM COMSOL estimate) is RECORDED but
+        HELD OUT of every gate until its integration convention is
+        checked against the Booth convention (the 225/360 lesson);
+        acceptance windows for this anchor are a NEW named ratification
+        item (W2) — no gate row exists yet by design.
 
     Wall-loss split (SPEC §4, derived from the two modelled anchors and
     Q_diel_ceiling = 1/tan_delta = 9,091 at tan_delta = 1.1e-4):
@@ -269,6 +538,7 @@ class ValidationTargets:
     breeze_measured: PublishedTarget
     npj_measured: PublishedTarget
     wu_measured: PublishedTarget
+    wu_ring: PublishedTarget
 
     q_diel_lo: float = 9_000.0
     q_diel_hi: float = 10_000.0
@@ -278,11 +548,24 @@ class ValidationTargets:
     empty_cavity_rel_error_max: float = 1.0e-3
 
 
-# Applying k = 0.2 to Wu is an **assumption** — Wu's coupling coefficient
-# is unstated (SPEC §11, gap #3). Breeze 2017 and Salvadori npj 2020 use
-# k = 0.2; reusing it for Wu lets us de-load Q_L=3,600 -> Q_0 ~ 4,320 for
-# the cross-paper comparison, but the resulting tan_delta upper bound
-# (2.3e-4) carries that assumption.
+# --- de-loading assumption: two-era record ---------------------------
+# ERA 1 (until 2026-07-18), kept verbatim as the dated superseded record:
+#   "Applying k = 0.2 to Wu is an **assumption** — Wu's coupling
+#   coefficient is unstated (SPEC §11, gap #3). Breeze 2017 and Salvadori
+#   npj 2020 use k = 0.2; reusing it for Wu lets us de-load Q_L=3,600 ->
+#   Q_0 ~ 4,320 for the cross-paper comparison, but the resulting
+#   tan_delta upper bound (2.3e-4) carries that assumption."
+# ERA 2 (2026-07-18, gap #3 CLOSED): Wu's coupling is k = 1, STATED in
+# print (Wu 2020 SEC. III.C, "inductive loop (coupling coefficient
+# k = 1)") — the Wu anchor no longer takes this assumption; its de-load
+# is the stated print via `TARGETS.wu_ring.deload_k` (=> Q_0 = 7,200),
+# and TolRanges.tan_delta_max is re-derived accordingly (1.4e-4; see the
+# TolRanges docstring). DELOAD_K = 0.2 REMAINS for (a) the
+# breeze_measured / npj_measured anchors, whose k = 0.2 is their papers'
+# own, and (b) the composed kappa_c of OUR build (compose.kappa_c_hz,
+# thermal detuning/margin, PINNED_CENTRE.q_l) per the resolved Q12
+# ruling — Booth states no coupling, so Breeze's k = 0.2 is still the
+# documented import there.
 DELOAD_K: float = 0.2
 
 
@@ -607,6 +890,19 @@ class SpinResonanceLinewidth:
       FID 0.7 MHz (0.01% protonated), O12 fitted 860 kHz +/- 20%,
       W20's adopted 1.1e6 s^-1 (angular). The table values sit
       consistent with the concentration trend of that lineage.
+    - SAME-BUILD published points (annotation 2026-07-18, geometry
+      re-base — W20's device is now THE MODELLED BUILD,
+      `GEOM_WU_STO_RING`): W20 p. 064017-8 prints, for this exact
+      cavity+crystal, kappa_s = 1.1 MHz (0.1% crystal; "larger than ...
+      FID ... (0.7 MHz)" at ~0.01%, with the concentration-effect
+      attribution [43]) and kappa_c = 2*pi*f_XZ/Q_L = 2.5 MHz — BOTH
+      ANGULAR (unit trap 1 stands; cyclic equivalents kappa_s/2pi
+      ~= 0.175 MHz, kappa_c/2pi ~= 0.398 MHz — cross-check: f/Q_L =
+      1.4495e9/3600 = 402.6 kHz, consistent). This feeds the
+      linewidth-branch question (which kappa_s the margin law should
+      carry for the Wu build: the imported Cowley-Semple d14 branch
+      above vs W20's own same-build point) — recorded here, DELIBERATELY
+      NOT RESOLVED; values and band above unchanged.
     - Attribution: the table is Angus Cowley-Semple's, shared in-thread
       — same early-brokering guard as the ODMR dataset (SPEC §11
       item 5 riders).
@@ -1103,8 +1399,10 @@ class RigSampleGeometry:
 STO = STOSingleCrystal()
 COPPER = Copper()
 CRYSTAL = Crystal()
+CLPS = CrossLinkedPolystyrene()
 GEOM = NominalGeometry()
 GEOM_BOOTH_TE01D = BoothTE01DeltaGeometry()
+GEOM_WU_STO_RING = WuSTORingGeometry()
 TARGET = TargetMode()
 TOL = TolRanges()
 EXTRACTION_TOL = ExtractionTolerances()
@@ -1155,11 +1453,27 @@ TARGETS = ValidationTargets(
         kind="measured_loaded",
     ),
     wu_measured=PublishedTarget(
+        # Fields byte-identical since the assumed-k era; superseded for
+        # anchor duty by wu_ring (2026-07-18) — see the class docstring.
         source="Wu 2020 cold-cavity loaded Q (coupling unstated, gap #3)",
         epsilon_r_real=312.0,
         q_factor=3_600.0,
         f_hz=1.4493e9,
         kind="measured_loaded",
+    ),
+    wu_ring=PublishedTarget(
+        source=(
+            "Wu 2020 SEC. III.C + PRL 127, 053604 (2021) SM — same build; "
+            "coupling k = 1 STATED in print; gap #3 CLOSED 2026-07-18; "
+            "V_mode recorded, gate-held pending the integration-convention "
+            "check (W2)"
+        ),
+        epsilon_r_real=312.0,
+        q_factor=3_600.0,
+        f_hz=1.4495e9,
+        v_mode_m3=0.32e-6,
+        kind="measured_loaded",
+        stated_coupling_k=1.0,
     ),
 )
 

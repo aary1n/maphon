@@ -14,6 +14,15 @@ contains a torus central opening, often termed the bore, but no
 separately constructed or independently parameterised bore, so the
 no-crystal limit is the same statement.)
 
+BUILD MISMATCH, recorded 2026-07-18 (geometry re-base; no logic
+change): the pinned record 823e67969516bcf2 is a BOOTH-BUILD gate
+record, while the Layer-A sweep now runs on the Wu ring
+(GEOM_WU_STO_RING). No Wu-build gate record exists yet — producing one
+(and re-basing this centre definition onto it) is queued
+licence-session work behind the W2 acceptance-window ratification. The
+Booth pins stay import-only and untouched: they remain correct AS the
+§5a anchor record; they no longer describe the sweep centre's build.
+
 The §6 verification block is itemised exactly: (crystal ON/OFF at
 nominal) × 2 mesh levels = 4, + 1 PEC arm (crystal ON, wall-split
 diagnostic) = 5 solves — the draft's "6" over-counted by one.
