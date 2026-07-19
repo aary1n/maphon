@@ -385,6 +385,50 @@ class WuSTORingGeometry:
 
 
 @dataclass(frozen=True)
+class WuPumpBeamGeometry:
+    """Wu-build pump beam/prism cross-section in the crystal (PRL 127 SM).
+
+    Source, single paragraph, PRL 127, 053604 (2021) SM p. 1 — the archived
+    copy is the PROOF version (`calibration/data/raw/wu_build_papers_
+    2026-07-18/wu2021_prl_sm_proof.pdf`, MANIFEST-pinned; archive provenance
+    note records "proof"): the 590-nm long-pulsed dye laser's collimated
+    ~2-mm beam enters through a 3-mm hole in the cavity's solid copper
+    wall; the STO ring functions as a cylindrical beam compressor (outer
+    STO/air surface = converging cylindrical lens, width x~0.61; the
+    STO/crystal interface = compensating diverging lens), so the beam
+    propagating through the p-terphenyl crystal is NEAR-COLLIMATED with an
+    elliptical cross-section "~2 mm in height (major diameter) and ~1.2 mm
+    in width (minor diameter)"; A_p ~ 1.9 mm^2 (printed at Eq. (S2);
+    consistency: pi x 1.0 x 0.6 mm^2 = 1.885 mm^2); illuminated volume ~ an
+    elliptical prism <= 4 mm in length through the crystal, its end-face
+    centres at opposite azimuths on the equatorial circle half way up the
+    STO ring's inner wall (|B| >= 90% of the mode maximum over the prism).
+
+    GRADE: LITERATURE (tilde-precision prints; SM proof copy). Consumer
+    caveats, stated here so no generator re-derives them silently:
+    - intensity UNIFORM over the ellipse is a PLANNING ASSUMPTION — the SM
+      prints dimensions only, no beam profile;
+    - the S-ladder S4 band centre z_b = L/2 is a planning READING of "half
+      way up the inner cylindrical wall" onto the planning crystal dims
+      (`Crystal`, 3 x 8 mm, cross-build-transfer flag riding); the crystal's
+      axial placement itself stays Q9-open;
+    - the shot energetics in the same paragraph (three 150 us pulses at
+      500 us intervals, 2.4 J/shot, bolometer-calibrated) are recorded
+      PROSE, not fields: no shot repetition rate is in print, so no
+      time-averaged CW power is derivable from the published record — the
+      S-ladder power axis is a stated scoping grid instead (S4 report).
+
+    Consumed by `cavity.thermal.report_s_ladder` (band height h_b = the
+    major axis, chord width w_b = the minor axis) — never as generator
+    literals (ratification amendment 1, 2026-07-19).
+    """
+
+    beam_height_m: float = 2.0e-3
+    beam_width_m: float = 1.2e-3
+    beam_cross_section_m2: float = 1.9e-6
+
+
+@dataclass(frozen=True)
 class TargetMode:
     """The X-Z spin transition the cavity must overlap.
 
@@ -1403,6 +1447,7 @@ CLPS = CrossLinkedPolystyrene()
 GEOM = NominalGeometry()
 GEOM_BOOTH_TE01D = BoothTE01DeltaGeometry()
 GEOM_WU_STO_RING = WuSTORingGeometry()
+WU_PUMP_BEAM = WuPumpBeamGeometry()
 TARGET = TargetMode()
 TOL = TolRanges()
 EXTRACTION_TOL = ExtractionTolerances()

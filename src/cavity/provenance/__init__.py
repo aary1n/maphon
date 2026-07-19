@@ -35,6 +35,7 @@ from cavity.provenance.constants import (
     TARGETS,
     TOL,
     WALL_LOSS_THRESHOLDS,
+    WU_PUMP_BEAM,
     BoothTE01DeltaGeometry,
     Copper,
     CrossLinkedPolystyrene,
@@ -50,6 +51,7 @@ from cavity.provenance.constants import (
     TolRanges,
     ValidationTargets,
     WallLossThresholds,
+    WuPumpBeamGeometry,
     WuSTORingGeometry,
 )
 from cavity.provenance.gate_targets import (
@@ -100,5 +102,7 @@ __all__ = [
     "TolRanges",
     "ValidationTargets",
     "WallLossThresholds",
+    "WU_PUMP_BEAM",
+    "WuPumpBeamGeometry",
     "WuSTORingGeometry",
 ]

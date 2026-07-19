@@ -123,3 +123,25 @@ def test_tan_delta_max_rederivation_arithmetic():
     rederived_2sf = float(f"{1.0 / q_0:.1e}")  # 2-s.f. round, same convention
     assert rederived_2sf == 1.4e-4
     assert TOL.tan_delta_max == rederived_2sf
+
+# ---------------------------------------------------------------------------
+# Pump beam/prism dims (PRL SM p. 1; S-ladder amendment 1, 2026-07-19)
+# ---------------------------------------------------------------------------
+
+
+def test_wu_pump_beam_dims_match_prl_sm_prints():
+    """WU_PUMP_BEAM pins the SM's elliptical prism cross-section: ~2 mm
+    major (vertical -> the S4 band height), ~1.2 mm minor (horizontal ->
+    the chord width), A_p ~ 1.9 mm^2 as printed (pi*1.0*0.6 = 1.885 mm^2
+    consistency inside the tilde)."""
+    from cavity.provenance import WU_PUMP_BEAM
+
+    assert WU_PUMP_BEAM.beam_height_m == 2.0e-3
+    assert WU_PUMP_BEAM.beam_width_m == 1.2e-3
+    assert WU_PUMP_BEAM.beam_cross_section_m2 == 1.9e-6
+    import math
+
+    ellipse = math.pi * (WU_PUMP_BEAM.beam_height_m / 2.0) * (
+        WU_PUMP_BEAM.beam_width_m / 2.0
+    )
+    assert abs(ellipse - WU_PUMP_BEAM.beam_cross_section_m2) < 0.02e-6
