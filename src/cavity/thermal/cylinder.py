@@ -41,12 +41,21 @@ the positive-mode drive coefficients vanish identically (J₁ at its own
 zeros), the constant mode carries the closed 1-D linear profile with zero
 truncation error — the ladder's analytic anchor. Dirichlet-side S1 carries
 the classic sharp-corner caveat: the imposed value is discontinuous along
-the top rim, so the TOTAL top inflow is LOG-DIVERGENT (per mode ~2Λ/xₙ) —
-`boundary_power_w()` entries grow ~log N there and a total conductance is
-not a well-posed observable of the sharp problem; interior and integrated
-observables converge (Gibbs-class, ~1/N² on integrated scalars). A source
-and a nonzero drive in one call are rejected — superpose two solves.
-Driven SIDE values are rejected (no ladder scenario needs them).
+the top rim, so the TOTAL top inflow is LOG-DIVERGENT. Normalisation,
+stated (2026-07-19 adversarial-review finding — the dimensionless form
+alone was ambiguous): per mode, in WATTS,
+
+    |p_top,n| ≈ [2πR²·k_z·ΔT_hot/L]·(2Λ/xₙ) = 4πR·√(k_r·k_z)·ΔT_hot/xₙ
+
+with Λ = (L/R)·√(k_r/k_z) as defined below (NOT its reciprocal), so each
+N → 2N mode-doubling adds ≈ 4·R·√(k_r·k_z)·ΔT_hot·ln 2 watts (Σ 1/xₙ per
+doubling → ln2/π; approached from below at finite N — absolutely pinned
+in tests/test_thermal_cylinder.py). `boundary_power_w()` entries grow
+~log N there and a total conductance is not a well-posed observable of
+the sharp problem; interior and integrated observables converge
+(Gibbs-class, ~1/N² on integrated scalars). A source and a nonzero drive
+in one call are rejected — superpose two solves. Driven SIDE values are
+rejected (no ladder scenario needs them).
 
 Radial eigenproblem
 -------------------

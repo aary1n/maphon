@@ -802,11 +802,15 @@ def test_s1_interior_matches_independent_series():
 
 
 def test_s1_top_inflow_grows_with_n_modes_log_divergence_documented():
-    """Sharp-corner S1 has LOG-DIVERGENT total top inflow (per mode
-    p_top,n ~ 2Λ/x_n; Σ1/x_n diverges — the classic mixed-boundary edge
-    singularity): the truncated inflow grows ~log N, with near-constant
-    increments per doubling — documented so it is never mistaken for slow
-    convergence. Interior scalars stay convergent; net stays ~0."""
+    """Sharp-corner S1 has LOG-DIVERGENT total top inflow — the classic
+    mixed-boundary edge singularity. Normalisation, DIMENSIONAL (the
+    module Λ = (L/R)·√(k_r/k_z), not its reciprocal): per mode
+    |p_top,n| ≈ 4πR·√(k_r·k_z)·ΔT_hot/x_n watts, so each N → 2N doubling
+    adds ≈ 4·R·√(k_r·k_z)·ΔT_hot·ln 2 W (Σ1/x_n per doubling → ln2/π),
+    approached from BELOW at finite N (coth and x_n ≈ (n−1/4)π
+    corrections). Pinned absolutely so a normalisation regression in
+    boundary_power_w() cannot pass as "still log-divergent". Interior
+    scalars stay convergent; net stays ~0."""
     inflow, net = [], []
     for n in (32, 64, 128, 256):
         bp = solve(S1_SPEC, n_modes=n).boundary_power_w()
@@ -819,6 +823,11 @@ def test_s1_top_inflow_grows_with_n_modes_log_divergence_documented():
         inflow[3] - inflow[2],
     )
     assert d1 > 0 and 0.7 < d2 / d1 < 1.3 and 0.7 < d3 / d2 < 1.3
+    # absolute normalisation pin (2026-07-19 adversarial-review finding):
+    # increments approach 4·R·√(k_r·k_z)·ΔT_hot·ln2 monotonically from below
+    increment_exact = 4.0 * R * K * DT_HOT * math.log(2.0)  # isotropic: √(k²)=K
+    assert d1 < d2 < d3 < increment_exact
+    assert d1 > 0.99 * increment_exact
     assert all(nv < 1e-9 * abs(iv) for nv, iv in zip(net, inflow))
     # the field observable CONVERGES in contrast (coefficient decay is
     # Gibbs-class ~1/N² on integrated scalars): halving steps shrink ~4×

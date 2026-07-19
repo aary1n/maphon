@@ -37,7 +37,7 @@ BC configuration, not a source extension (blown-air imposed-T limit: forced air 
 - volume average /ΔT_hot = 0.0607
 - band-window average /ΔT_hot = 0.0017 (z in [3, 5] mm)
 
-Sharp-corner caveat, stated in advance: the imposed-T idealisation is discontinuous along the top rim, so the TOTAL top inflow is log-divergent (per mode ~2Λ/xₙ; the classic mixed-boundary edge singularity — demonstrated as monotone ~log N growth in CI). A total conductance is NOT a well-posed observable of sharp S1; power coupling rides S0's exact G or the S1b flux conjugate below. Interior/integrated observables converge and are what S1 reports.
+Sharp-corner caveat, stated in advance: the imposed-T idealisation is discontinuous along the top rim, so the TOTAL top inflow is log-divergent — the classic mixed-boundary edge singularity. Normalisation, dimensional (module Λ = (L/R)·sqrt(k_r/k_z), not its reciprocal): per mode |p_top,n| ≈ 4πR·sqrt(k_r·k_z)·ΔT_hot/xₙ W, so each mode-doubling adds ≈ 4·R·sqrt(k_r·k_z)·ΔT_hot·ln 2 W, approached from below at finite N — absolutely pinned in CI. A total conductance is NOT a well-posed observable of sharp S1; power coupling rides S0's exact G or the S1b flux conjugate below. Interior/integrated observables converge and are what S1 reports.
 
 Cold-bottom realisability rider (SPEC outcome 5): the as-built seat is INSULATING cross-linked polystyrene with no paste (Oxborrow-WRITTEN 2026-07-17 supersession) — an imposed-cold BOTTOM is a blown-air/forced-contact idealisation, not the current build's seat.
 

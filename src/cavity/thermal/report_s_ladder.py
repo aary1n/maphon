@@ -331,8 +331,11 @@ def build_report() -> str:
         "",
         "Sharp-corner caveat, stated in advance: the imposed-T idealisation"
         " is discontinuous along the top rim, so the TOTAL top inflow is"
-        " log-divergent (per mode ~2Λ/xₙ; the classic mixed-boundary edge"
-        " singularity — demonstrated as monotone ~log N growth in CI). A"
+        " log-divergent — the classic mixed-boundary edge singularity."
+        " Normalisation, dimensional (module Λ = (L/R)·sqrt(k_r/k_z), not"
+        " its reciprocal): per mode |p_top,n| ≈ 4πR·sqrt(k_r·k_z)·ΔT_hot/xₙ"
+        " W, so each mode-doubling adds ≈ 4·R·sqrt(k_r·k_z)·ΔT_hot·ln 2 W,"
+        " approached from below at finite N — absolutely pinned in CI. A"
         " total conductance is NOT a well-posed observable of sharp S1;"
         " power coupling rides S0's exact G or the S1b flux conjugate"
         " below. Interior/integrated observables converge and are what S1"
