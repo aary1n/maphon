@@ -183,19 +183,25 @@ import numpy as np
 from scipy.optimize import brentq
 from scipy.special import j0, j1, jn_zeros
 
+from cavity.thermal.side_deposition import side_projection
+
 _CONFLUENT_WINDOW = 1e-6  # |mₙ·ℓ − 1| below this → z·e^(−z/ℓ) confluent branch
 
-_AXIAL_FORMS = ("beer_lambert", "uniform", "surface")
-_RADIAL_FORMS = ("flood", "disc", "gaussian")
+_AXIAL_FORMS = ("beer_lambert", "uniform", "surface", "band")
+_RADIAL_FORMS = ("flood", "disc", "gaussian", "side_chord")
 
 
 @dataclass(frozen=True)
 class SurfaceBC:
     """One surface's boundary condition: Robin (h ≥ 0, ambient = bath) or
-    exact Dirichlet (ΔT = 0). Robin h = 0 is an insulated surface."""
+    exact Dirichlet (imposed constant ΔT = dt_k, default 0). Robin h = 0 is
+    an insulated surface. A nonzero dt_k (S-ladder driven mode, SPEC
+    2026-07-16 outcome 5) is valid only on a Dirichlet surface — a Robin
+    surface's ambient is the bath by convention (D5)."""
 
     kind: str
     h_w_m2_k: float = 0.0
+    dt_k: float = 0.0
 
     def __post_init__(self) -> None:
         if self.kind not in ("robin", "dirichlet"):
@@ -204,14 +210,19 @@ class SurfaceBC:
             raise ValueError("Robin coefficient h must be non-negative")
         if self.kind == "dirichlet" and self.h_w_m2_k != 0.0:
             raise ValueError("a Dirichlet surface carries no h")
+        if self.kind == "robin" and self.dt_k != 0.0:
+            raise ValueError(
+                "an imposed dt_k is valid only on a Dirichlet surface "
+                "(Robin ambient = bath, D5)"
+            )
 
     @classmethod
     def robin(cls, h_w_m2_k: float) -> "SurfaceBC":
         return cls(kind="robin", h_w_m2_k=float(h_w_m2_k))
 
     @classmethod
-    def dirichlet(cls) -> "SurfaceBC":
-        return cls(kind="dirichlet")
+    def dirichlet(cls, dt_k: float = 0.0) -> "SurfaceBC":
+        return cls(kind="dirichlet", dt_k=float(dt_k))
 
     @property
     def is_dirichlet(self) -> bool:
@@ -267,6 +278,9 @@ class PumpSource:
     l_abs_m: float | None = None
     disc_radius_m: float | None = None
     gaussian_w_m: float | None = None
+    band_lo_m: float | None = None
+    band_hi_m: float | None = None
+    beam_width_m: float | None = None
 
     def __post_init__(self) -> None:
         if not self.p_w > 0.0:
@@ -275,11 +289,38 @@ class PumpSource:
             raise ValueError(f"axial_form must be one of {_AXIAL_FORMS}")
         if self.radial_form not in _RADIAL_FORMS:
             raise ValueError(f"radial_form must be one of {_RADIAL_FORMS}")
+        if self.radial_form == "side_chord":
+            # chord absorption (radial plane) + axial Beer-Lambert would
+            # claim two absorption directions at once — rejected
+            if self.axial_form not in ("band", "uniform"):
+                raise ValueError(
+                    "side_chord combines only with the band or uniform "
+                    "axial forms (chord + axial Beer-Lambert would claim "
+                    "two absorption directions)"
+                )
+            if self.beam_width_m is None or not self.beam_width_m > 0.0:
+                raise ValueError("side_chord needs a positive beam_width_m")
+            if self.l_abs_m is None or not self.l_abs_m > 0.0:
+                raise ValueError(
+                    "side_chord needs a positive l_abs_m along the chord "
+                    "(math.inf = the bleached optically-thin limit)"
+                )
+        elif self.beam_width_m is not None:
+            raise ValueError("beam_width_m only applies to the side_chord form")
         if self.axial_form == "beer_lambert":
             if self.l_abs_m is None or not self.l_abs_m > 0.0:
                 raise ValueError("beer_lambert needs a positive l_abs_m")
-        elif self.l_abs_m is not None:
-            raise ValueError("l_abs_m only applies to the beer_lambert form")
+        elif self.l_abs_m is not None and self.radial_form != "side_chord":
+            raise ValueError(
+                "l_abs_m only applies to the beer_lambert or side_chord forms"
+            )
+        if self.axial_form == "band":
+            if self.band_lo_m is None or self.band_hi_m is None:
+                raise ValueError("band needs band_lo_m and band_hi_m")
+            if not 0.0 <= self.band_lo_m < self.band_hi_m:
+                raise ValueError("band needs 0 <= band_lo_m < band_hi_m")
+        elif self.band_lo_m is not None or self.band_hi_m is not None:
+            raise ValueError("band_lo_m/band_hi_m only apply to the band form")
         if self.radial_form == "disc":
             if self.disc_radius_m is None or not self.disc_radius_m > 0.0:
                 raise ValueError("disc needs a positive disc_radius_m")
@@ -333,6 +374,15 @@ def _radial_projection(
         if alpha > 1.0:
             raise ValueError("disc radius exceeds the cylinder radius")
         return (j1(x * alpha) / (alpha * x)) / n_hat
+    if source.radial_form == "side_chord":
+        if source.beam_width_m > 2.0 * radius_m:
+            raise ValueError("beam width exceeds the cylinder diameter")
+        return side_projection(
+            x,
+            n_hat,
+            source.beam_width_m / (2.0 * radius_m),
+            source.l_abs_m / radius_m,
+        )
     # gaussian: f̂(ρ) = Ĉ·e^(−2ρ²/ω²) on [0, 1], truncated-renormalised
     omega = source.gaussian_w_m / radius_m
     c_norm = 2.0 / (omega**2 * (-math.expm1(-2.0 / omega**2)))
@@ -358,20 +408,34 @@ class _AxialModes:
         self,
         m: np.ndarray,
         f_hat: np.ndarray,
-        source: PumpSource,
+        source: PumpSource | None,
         ell: float | None,
         bi_top: float | None,
         bi_base: float | None,
+        band: tuple[float, float] | None = None,
+        top_drive: np.ndarray | None = None,
+        base_drive: np.ndarray | None = None,
     ) -> None:
-        # bi_top / bi_base: Biot numbers for Robin, None for Dirichlet
+        # bi_top / bi_base: Biot numbers for Robin, None for Dirichlet.
+        # top_drive / base_drive: imposed Dirichlet end VALUES per mode
+        # (kelvin; the driven S-ladder mode) — homogeneous ODE, form 'none'.
         self.m = m
         self.f_hat = f_hat
-        self.form = source.axial_form
+        self.form = "none" if source is None else source.axial_form
         self.ell = ell
+        self.band = band
         n = m.size
         # --- particular solution coefficients -----------------------------
         if self.form == "uniform":
             self._p_const = f_hat / m**2
+        elif self.form == "band":
+            # Green-kernel particular for ĝ = 1/(b−a) on [a, b] ⊂ [0, 1]:
+            # θ̂_p = (f̂ĝ/2m²)·∫ₐᵇ m·e^(−m|ζ−s|) ds — piecewise elementary
+            # exponentials with NON-POSITIVE exponents only (overflow-free;
+            # no difference-of-squares denominators, no confluent hazard)
+            g_hat = 1.0 / (band[1] - band[0])
+            self._c2 = f_hat * g_hat / (2.0 * m**2)
+            self._c1 = f_hat * g_hat / (2.0 * m)
         elif self.form == "beer_lambert":
             beta = 1.0 / ell
             c_hat = -math.expm1(-1.0 / ell)
@@ -389,17 +453,19 @@ class _AxialModes:
         p1, p1p = self._part_and_deriv(1.0)
         self._p0, self._p1 = p0, p1
         q_s = f_hat if self.form == "surface" else np.zeros(n)
+        c_top = np.zeros(n) if top_drive is None else top_drive
+        c_base = np.zeros(n) if base_drive is None else base_drive
         e0 = np.exp(-m)
         self.e0 = e0
         # --- 2×2 end-condition solve (Cramer) ------------------------------
-        if bi_top is None:  # Dirichlet top
-            a11, a12, r1 = np.ones(n), e0, -p0
+        if bi_top is None:  # Dirichlet top: θ̂ₙ(0) = c_top,ₙ (0 undriven)
+            a11, a12, r1 = np.ones(n), e0, c_top - p0
         else:
             a11 = -(m + bi_top)
             a12 = e0 * (m - bi_top)
             r1 = -p0p + bi_top * p0 - q_s
-        if bi_base is None:  # Dirichlet base
-            a21, a22, r2 = e0, np.ones(n), -p1
+        if bi_base is None:  # Dirichlet base: θ̂ₙ(1) = c_base,ₙ
+            a21, a22, r2 = e0, np.ones(n), c_base - p1
         else:
             a21 = e0 * (m - bi_base)
             a22 = -(m + bi_base)
@@ -410,11 +476,22 @@ class _AxialModes:
 
     def _part_and_deriv(self, zeta: float) -> tuple[np.ndarray, np.ndarray]:
         """Particular solution and its ζ-derivative at a scalar ζ (per mode)."""
-        if self.form == "surface":
+        if self.form in ("surface", "none"):
             zero = np.zeros_like(self.m)
             return zero, zero
         if self.form == "uniform":
             return self._p_const, np.zeros_like(self.m)
+        if self.form == "band":
+            a, b = self.band
+            e1 = np.exp(-self.m * abs(zeta - a))
+            e2 = np.exp(-self.m * abs(zeta - b))
+            if a <= zeta <= b:
+                val = self._c2 * (2.0 - e1 - e2)
+            elif zeta < a:
+                val = self._c2 * (e1 - e2)
+            else:
+                val = self._c2 * (e2 - e1)
+            return val, self._c1 * (e1 - e2)
         beta = 1.0 / self.ell
         decay = math.exp(-beta * zeta)
         val = (self._d_coef + self._e_coef * zeta) * decay
@@ -428,10 +505,20 @@ class _AxialModes:
         homog = self.a_coef[:, None] * np.exp(-m * zeta[None, :]) + self.b_coef[
             :, None
         ] * np.exp(-m * (1.0 - zeta[None, :]))
-        if self.form == "surface":
+        if self.form in ("surface", "none"):
             return homog
         if self.form == "uniform":
             return self._p_const[:, None] + homog
+        if self.form == "band":
+            a, b = self.band
+            e1 = np.exp(-m * np.abs(zeta - a)[None, :])
+            e2 = np.exp(-m * np.abs(zeta - b)[None, :])
+            inside = ((zeta >= a) & (zeta <= b))[None, :]
+            left = (zeta < a)[None, :]
+            part = self._c2[:, None] * np.where(
+                inside, 2.0 - e1 - e2, np.where(left, e1 - e2, e2 - e1)
+            )
+            return part + homog
         beta = 1.0 / self.ell
         decay = np.exp(-beta * zeta)[None, :]
         part = (self._d_coef[:, None] + self._e_coef[:, None] * zeta[None, :]) * decay
@@ -451,6 +538,31 @@ class _AxialModes:
         d1 = p1p - self.m * self.a_coef * self.e0 + self.m * self.b_coef
         return d0, d1
 
+    def _band_part_integral(self, lo: float, hi: float) -> np.ndarray:
+        """∫ θ̂_p dζ over [lo, hi] for the band form: split at the band edges
+        and use the per-region antiderivative A(ζ) = (1/m)(E1 − E2) + 2ζ
+        (the 2ζ term inside the band only), all exponents non-positive."""
+        a, b = self.band
+        m = self.m
+        total = np.zeros_like(m)
+        for p, q, in_band in (
+            (lo, min(hi, a), False),
+            (max(lo, a), min(hi, b), True),
+            (max(lo, b), hi, False),
+        ):
+            if not q > p:
+                continue
+            anti = np.zeros_like(m)
+            for zeta, sign in ((q, 1.0), (p, -1.0)):
+                e1 = np.exp(-m * abs(zeta - a))
+                e2 = np.exp(-m * abs(zeta - b))
+                val = (e1 - e2) / m
+                if in_band:
+                    val = val + 2.0 * zeta
+                anti = anti + sign * val
+            total = total + anti
+        return self._c2 * total
+
     def segment_integral(self, zeta_lo: float, zeta_hi: float) -> np.ndarray:
         """∫ θ̂ₙ dζ over [ζ_lo, ζ_hi], closed form per mode."""
         a, b = zeta_lo, zeta_hi
@@ -458,10 +570,12 @@ class _AxialModes:
         homog = self.a_coef * (np.exp(-m * a) - np.exp(-m * b)) / m + (
             self.b_coef * (np.exp(-m * (1.0 - b)) - np.exp(-m * (1.0 - a))) / m
         )
-        if self.form == "surface":
+        if self.form in ("surface", "none"):
             return homog
         if self.form == "uniform":
             return self._p_const * (b - a) + homog
+        if self.form == "band":
+            return self._band_part_integral(a, b) + homog
         ell = self.ell
         ea, eb = math.exp(-a / ell), math.exp(-b / ell)
         part = self._d_coef * ell * (ea - eb) + self._e_coef * ell * (
@@ -476,23 +590,30 @@ class _ConstantMode:
 
     def __init__(
         self,
-        source: PumpSource,
+        source: PumpSource | None,
         ell: float | None,
         bi_top: float | None,
         bi_base: float | None,
+        band: tuple[float, float] | None = None,
+        top_drive: float = 0.0,
+        base_drive: float = 0.0,
     ) -> None:
-        self.form = source.axial_form
+        # top_drive / base_drive: imposed Dirichlet end values in kelvin
+        # (the constant mode's drive projection is exactly 1); form 'none'
+        # when source is None — the driven S-ladder mode
+        self.form = "none" if source is None else source.axial_form
         self.ell = ell
+        self.band = band
         g2_total = self._g2(1.0)  # Ĝ₂(1); Ĝ₁(1) = 1 for volumetric forms
-        g1_total = 0.0 if self.form == "surface" else 1.0
+        g1_total = 0.0 if self.form in ("surface", "none") else 1.0
         q_s0 = 1.0 if self.form == "surface" else 0.0
         # rows: top condition, base condition on (u₀, v₀)
         if bi_top is None:
-            row1, r1 = (1.0, 0.0), 0.0
+            row1, r1 = (1.0, 0.0), top_drive
         else:
             row1, r1 = (-bi_top, 1.0), -q_s0
         if bi_base is None:
-            row2, r2 = (1.0, 1.0), g2_total
+            row2, r2 = (1.0, 1.0), base_drive + g2_total
         else:
             row2, r2 = (bi_base, 1.0 + bi_base), g1_total + bi_base * g2_total
         det = row1[0] * row2[1] - row1[1] * row2[0]
@@ -506,20 +627,36 @@ class _ConstantMode:
 
     def _g1(self, zeta: np.ndarray | float):
         """Ĝ₁(ζ) = ∫₀^ζ ĝ."""
-        if self.form == "surface":
+        if self.form in ("surface", "none"):
             return np.zeros_like(np.asarray(zeta, dtype=float))
         if self.form == "uniform":
             return np.asarray(zeta, dtype=float)
+        if self.form == "band":
+            a, b = self.band
+            z = np.asarray(zeta, dtype=float)
+            return np.clip((z - a) / (b - a), 0.0, 1.0)
         c_hat = -math.expm1(-1.0 / self.ell)
         return -np.expm1(-np.asarray(zeta, dtype=float) / self.ell) / c_hat
 
     def _g2(self, zeta: np.ndarray | float):
         """Ĝ₂(ζ) = ∫₀^ζ Ĝ₁."""
         z = np.asarray(zeta, dtype=float)
-        if self.form == "surface":
+        if self.form in ("surface", "none"):
             return np.zeros_like(z)
         if self.form == "uniform":
             return z**2 / 2.0
+        if self.form == "band":
+            # 0 below the band; (ζ−a)²/(2(b−a)) inside; ζ − (a+b)/2 above
+            a, b = self.band
+            return np.where(
+                z <= a,
+                0.0,
+                np.where(
+                    z <= b,
+                    np.clip(z - a, 0.0, None) ** 2 / (2.0 * (b - a)),
+                    z - 0.5 * (a + b),
+                ),
+            )
         ell = self.ell
         c_hat = -math.expm1(-1.0 / ell)
         return (z + ell * np.expm1(-z / ell)) / c_hat
@@ -539,10 +676,21 @@ class _ConstantMode:
     def segment_integral(self, zeta_lo: float, zeta_hi: float) -> float:
         a, b = zeta_lo, zeta_hi
         lin = self.u0 * (b - a) + self.v0 * (b**2 - a**2) / 2.0
-        if self.form == "surface":
+        if self.form in ("surface", "none"):
             return lin
         if self.form == "uniform":
             return lin - (b**3 - a**3) / 6.0
+        if self.form == "band":
+            # ∫Ĝ₂ piecewise: 0 | (ζ−a)³/(6(b−a)) | ζ²/2 − (a+b)ζ/2
+            ba, bb = self.band
+            int_g2 = 0.0
+            p, q = max(a, ba), min(b, bb)
+            if q > p:
+                int_g2 += ((q - ba) ** 3 - (p - ba) ** 3) / (6.0 * (bb - ba))
+            p = max(a, bb)
+            if b > p:
+                int_g2 += (b**2 - p**2) / 2.0 - 0.5 * (ba + bb) * (b - p)
+            return lin - int_g2
         ell = self.ell
         c_hat = -math.expm1(-1.0 / ell)
         int_g2 = (
@@ -560,7 +708,7 @@ class CylinderSolution:
     def __init__(
         self,
         spec: CylinderSpec,
-        source: PumpSource,
+        source: PumpSource | None,
         n_modes: int,
         x: np.ndarray,
         modes: _AxialModes,
@@ -572,8 +720,12 @@ class CylinderSolution:
         self._x = x  # positive eigenvalues xₙ
         self._modes = modes
         self._const = const_mode
+        # driven solves (source=None) carry the field in kelvin directly:
+        # the imposed dt_k values enter the per-mode end conditions, Θ = 1
         self._theta_unit = (
-            source.p_w
+            1.0
+            if source is None
+            else source.p_w
             * spec.height_m
             / (math.pi * spec.radius_m**2 * spec.k_z)
         )
@@ -728,19 +880,46 @@ class CylinderSolution:
 
 
 def solve(
-    spec: CylinderSpec, source: PumpSource, n_modes: int = 64
+    spec: CylinderSpec, source: PumpSource | None = None, n_modes: int = 64
 ) -> CylinderSolution:
     """Solve the anchor problem (module docstring) with `n_modes` radial
     basis functions (the Bi_s = 0 constant mode counts as one). Truncation
     is explicit — no silent cap; check `tail_estimate_rel(...)` and the
-    `boundary_power_w()` deficit on unfamiliar configurations."""
+    `boundary_power_w()` deficit on unfamiliar configurations.
+
+    `source=None` is the DRIVEN mode (S-ladder S0/S1): no volumetric or
+    surface deposition — the field is driven by nonzero imposed `dt_k`
+    values on the top/base Dirichlet surfaces, expanded over the active
+    radial basis (uₙ = J₁(xₙ)/(xₙ·N̂ₙ); u₀ = 1) into per-mode homogeneous
+    end-value problems. Fields are in kelvin, linear in the drive. A source
+    and a nonzero drive cannot combine in one call — ΔT is linear, so
+    superpose two solves instead."""
     if n_modes < 4:
         raise ValueError("need at least 4 radial modes")
-    if source.axial_form == "surface" and spec.top.is_dirichlet:
+    dt_top = spec.top.dt_k if spec.top.is_dirichlet else 0.0
+    dt_base = spec.base.dt_k if spec.base.is_dirichlet else 0.0
+    if spec.side.is_dirichlet and spec.side.dt_k != 0.0:
         raise ValueError(
-            "surface-flux source needs a non-Dirichlet top "
-            "(a Dirichlet surface cannot carry a prescribed flux)"
+            "a driven SIDE surface is not supported — no ladder scenario "
+            "needs it (S-ladder record); drive the top/base surfaces"
         )
+    if source is None:
+        if dt_top == 0.0 and dt_base == 0.0:
+            raise ValueError(
+                "source=None needs a nonzero imposed dt_k on the top or "
+                "base Dirichlet surface (the driven S-ladder mode)"
+            )
+    else:
+        if dt_top != 0.0 or dt_base != 0.0:
+            raise ValueError(
+                "a pump source and imposed surface temperatures cannot "
+                "combine in one solve — ΔT is linear, superpose two solves"
+            )
+        if source.axial_form == "surface" and spec.top.is_dirichlet:
+            raise ValueError(
+                "surface-flux source needs a non-Dirichlet top "
+                "(a Dirichlet surface cannot carry a prescribed flux)"
+            )
     r_cyl, height = spec.radius_m, spec.height_m
     k_r, k_z = spec.k_r_w_m_k, spec.k_z
     lam = (height / r_cyl) * math.sqrt(k_r / k_z)
@@ -752,14 +931,47 @@ def solve(
     else:
         x = robin_radial_eigenvalues(spec.side.h_w_m2_k * r_cyl / k_r, n_pos)
     n_hat = 0.5 * (j0(x) ** 2 + j1(x) ** 2)
-    f_hat = _radial_projection(source, x, n_hat, r_cyl)
 
-    ell = None if source.l_abs_m is None else source.l_abs_m / height
+    ell, band = None, None
+    if source is None:
+        f_hat = np.zeros_like(x)
+    else:
+        f_hat = _radial_projection(source, x, n_hat, r_cyl)
+        if source.axial_form == "beer_lambert":
+            ell = source.l_abs_m / height  # side_chord's l_abs is RADIAL
+        if source.axial_form == "band":
+            if source.band_hi_m > height:
+                raise ValueError("band_hi_m exceeds the cylinder height")
+            band = (source.band_lo_m / height, source.band_hi_m / height)
     bi_top = None if spec.top.is_dirichlet else spec.top.h_w_m2_k * height / k_z
     bi_base = None if spec.base.is_dirichlet else spec.base.h_w_m2_k * height / k_z
 
-    modes = _AxialModes(lam * x, f_hat, source, ell, bi_top, bi_base)
+    # imposed-constant drive expanded over the positive modes (exactly zero
+    # for the Bi_s = 0 basis: J₁ vanishes at its own zeros — S0 is carried
+    # entirely, and exactly, by the constant mode)
+    u_pos = j1(x) / (x * n_hat)
+    modes = _AxialModes(
+        lam * x,
+        f_hat,
+        source,
+        ell,
+        bi_top,
+        bi_base,
+        band=band,
+        top_drive=dt_top * u_pos,
+        base_drive=dt_base * u_pos,
+    )
     const_mode = (
-        _ConstantMode(source, ell, bi_top, bi_base) if has_const else None
+        _ConstantMode(
+            source,
+            ell,
+            bi_top,
+            bi_base,
+            band=band,
+            top_drive=dt_top,
+            base_drive=dt_base,
+        )
+        if has_const
+        else None
     )
     return CylinderSolution(spec, source, n_modes, x, modes, const_mode)

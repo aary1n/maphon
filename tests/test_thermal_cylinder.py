@@ -555,3 +555,369 @@ def test_error_paths():
         n_modes=16,
     )
     assert math.isnan(sol.tail_estimate_rel("peak"))
+
+
+# --- band axial form (S-ladder S4; SPEC 2026-07-16 outcome 5) -----------------
+
+
+def test_band_equals_uniform_on_full_height():
+    """band = [0, L] IS the uniform form: the two particular solutions differ
+    by a homogeneous solution only, so the SOLUTIONS agree identically."""
+    band = PumpSource(P, "band", "flood", band_lo_m=0.0, band_hi_m=L)
+    unif = PumpSource(P, "uniform", "flood")
+    s_band = solve(ROBIN_SPEC, band, n_modes=32)
+    s_unif = solve(ROBIN_SPEC, unif, n_modes=32)
+    r = np.linspace(0.0, R, 5)[None, :]
+    z = np.linspace(0.0, L, 7)[:, None]
+    assert np.allclose(s_band.delta_t(r, z), s_unif.delta_t(r, z), rtol=1e-12)
+    assert math.isclose(
+        s_band.volume_average_k(), s_unif.volume_average_k(), rel_tol=1e-12
+    )
+    bp_b, bp_u = s_band.boundary_power_w(), s_unif.boundary_power_w()
+    for k in ("top", "base", "side", "total"):
+        assert math.isclose(bp_b[k], bp_u[k], rel_tol=1e-10)
+
+
+def test_band_deposits_exactly_p():
+    """Flood × interior band, Robin everywhere: Σ boundary fluxes = P at the
+    Robin-side deficit level (anchor-iii class)."""
+    src = PumpSource(P, "band", "flood", band_lo_m=3e-3, band_hi_m=5e-3)
+    bp = solve(ROBIN_SPEC, src, n_modes=64).boundary_power_w()
+    assert abs(P - bp["total"]) / P < 1e-6
+
+
+def test_band_particular_matches_independent_quadrature():
+    """Gaussian × band against a fully DIMENSIONAL independent route:
+    quad-computed radial projections + the textbook Dirichlet-end Green
+    function G(z,s) = sinh(μz_<)·sinh(μ(L−z_>))/(μ·k·sinh(μL)) — evaluated
+    in the overflow-free scaled form e^(−μ(z_>−z_<))·(1−e^(−2μz_<))·
+    (1−e^(−2μ(L−z_>)))/(2μk(1−e^(−2μL))) and quadratured over the band.
+    The module never forms this representation (free-space kernel + 2×2
+    end solve there), so agreement is a nontrivial identity check."""
+    n_modes = 24
+    w = 0.5 * R
+    z_lo, z_hi = 3e-3, 5e-3
+    spec = CylinderSpec(
+        R, L, K, SurfaceBC.dirichlet(), SurfaceBC.dirichlet(), SurfaceBC.dirichlet()
+    )
+    src = PumpSource(
+        P, "band", "gaussian", gaussian_w_m=w, band_lo_m=z_lo, band_hi_m=z_hi
+    )
+    sol = solve(spec, src, n_modes=n_modes)
+    x = jn_zeros(0, n_modes)
+    lam = x / R
+    n_norm = (R**2 / 2.0) * (j0(x) ** 2 + j1(x) ** 2)
+    c_norm = 2.0 / (math.pi * w**2 * (-math.expm1(-2.0 * R**2 / w**2)))
+    f_n = np.array(
+        [
+            quad(
+                lambda r, ln=ln: c_norm
+                * math.exp(-2.0 * r**2 / w**2)
+                * j0(ln * r)
+                * r,
+                0.0,
+                R,
+                limit=200,
+            )[0]
+            / n_norm[i]
+            for i, ln in enumerate(lam)
+        ]
+    )
+    g_band = 1.0 / (z_hi - z_lo)
+    z_pts = np.array([0.15 * L, 0.5 * L, 0.85 * L])
+    r_pts = np.array([0.0, 0.35 * R, 0.7 * R])
+
+    def green(z: float, s: float, mu: float) -> float:
+        z_lt, z_gt = min(z, s), max(z, s)
+        return (
+            math.exp(-mu * (z_gt - z_lt))
+            * (-math.expm1(-2.0 * mu * z_lt))
+            * (-math.expm1(-2.0 * mu * (L - z_gt)))
+            / (2.0 * mu * K * (-math.expm1(-2.0 * mu * L)))
+        )
+
+    ref = np.zeros(3)
+    for i in range(n_modes):
+        mu = lam[i]  # isotropic: μ = λ√(k_r/k_z) = λ
+        for j, z in enumerate(z_pts):
+            pts = [z] if z_lo < z < z_hi else None
+            integral, _ = quad(
+                lambda s, z=z, mu=mu: green(z, s, mu),
+                z_lo,
+                z_hi,
+                points=pts,
+                limit=200,
+            )
+            ref[j] += P * f_n[i] * g_band * integral * j0(lam[i] * r_pts[j])
+    got = np.array([float(sol.delta_t(r_pts[j], z_pts[j])) for j in range(3)])
+    assert np.allclose(got, ref, rtol=1e-8, atol=1e-15)
+
+
+def test_band_validation_bounds():
+    with pytest.raises(ValueError, match="band"):
+        PumpSource(P, "band", "flood")  # missing bounds
+    with pytest.raises(ValueError, match="band"):
+        PumpSource(P, "band", "flood", band_lo_m=-1e-3, band_hi_m=2e-3)
+    with pytest.raises(ValueError, match="band"):
+        PumpSource(P, "band", "flood", band_lo_m=3e-3, band_hi_m=3e-3)
+    with pytest.raises(ValueError, match="band"):
+        PumpSource(P, "uniform", "flood", band_lo_m=1e-3, band_hi_m=2e-3)
+    with pytest.raises(ValueError, match="exceeds"):
+        solve(
+            ROBIN_SPEC,
+            PumpSource(P, "band", "flood", band_lo_m=1e-3, band_hi_m=2.0 * L),
+        )
+
+
+def test_band_segment_integral_closed_form():
+    """Closed-form segment integrals vs dense numeric integration of the
+    field (2πr Jacobian), including windows straddling the band edges;
+    plus additivity across the band edge."""
+    src = PumpSource(P, "band", "flood", band_lo_m=3e-3, band_hi_m=5e-3)
+    sol = solve(ROBIN_SPEC, src, n_modes=48)
+    for z1, z2 in ((0.0, L), (2e-3, 4e-3), (3e-3, 5e-3), (4.5e-3, 7e-3)):
+        r_g = np.linspace(0.0, R, 241)
+        z_g = np.linspace(z1, z2, 241)
+        field = sol.delta_t(r_g[None, :], z_g[:, None])
+        num = np.trapezoid(
+            np.trapezoid(field * r_g[None, :], r_g, axis=1), z_g
+        ) * 2.0 / (R**2 * (z2 - z1))
+        assert math.isclose(sol.volume_average_k(z_lo_m=z1, z_hi_m=z2), num, rel_tol=2e-4)
+    lo, mid, hi = 2e-3, 3e-3, 6e-3
+    whole = sol.volume_average_k(z_lo_m=lo, z_hi_m=hi) * (hi - lo)
+    parts = sol.volume_average_k(z_lo_m=lo, z_hi_m=mid) * (mid - lo) + (
+        sol.volume_average_k(z_lo_m=mid, z_hi_m=hi) * (hi - mid)
+    )
+    assert math.isclose(whole, parts, rel_tol=1e-12)
+
+
+# --- driven-Dirichlet mode (S-ladder S0/S1; SPEC 2026-07-16 outcome 5) --------
+
+
+DT_HOT = 10.0  # K — fields are linear in the drive
+
+
+def test_driven_requires_drive_or_source():
+    spec = CylinderSpec(
+        R, L, K, SurfaceBC.robin(0.0), SurfaceBC.dirichlet(), SurfaceBC.dirichlet()
+    )
+    with pytest.raises(ValueError, match="dt_k"):
+        solve(spec)
+
+
+def test_driven_rejects_source_and_drive_together():
+    spec = CylinderSpec(
+        R,
+        L,
+        K,
+        SurfaceBC.robin(0.0),
+        SurfaceBC.dirichlet(DT_HOT),
+        SurfaceBC.dirichlet(),
+    )
+    with pytest.raises(ValueError, match="superpose"):
+        solve(spec, PumpSource(P, "uniform", "flood"))
+
+
+def test_driven_rejects_robin_dt():
+    with pytest.raises(ValueError, match="Dirichlet"):
+        SurfaceBC(kind="robin", h_w_m2_k=5.0, dt_k=1.0)
+
+
+def test_driven_rejects_side_drive():
+    spec = CylinderSpec(
+        R,
+        L,
+        K,
+        SurfaceBC.dirichlet(DT_HOT),
+        SurfaceBC.dirichlet(DT_HOT),
+        SurfaceBC.dirichlet(),
+    )
+    with pytest.raises(ValueError, match="(?i)side"):
+        solve(spec)
+
+
+S0_SPEC = CylinderSpec(
+    R, L, K, SurfaceBC.robin(0.0), SurfaceBC.dirichlet(DT_HOT), SurfaceBC.dirichlet()
+)
+
+
+def test_s0_exact_linear_profile_machine_precision():
+    """S0 (insulated sides, imposed T_top/T_base): the solver reproduces the
+    closed-form 1-D profile ΔT = ΔT_hot·(1 − z/L) with ZERO truncation error
+    — the ladder's analytic anchor rung."""
+    sol = solve(S0_SPEC, n_modes=16)
+    for zf in (0.0, 0.2, 0.5, 0.8, 1.0):
+        exact = DT_HOT * (1.0 - zf)
+        for rf in (0.0, 0.5, 1.0):
+            assert math.isclose(
+                float(sol.delta_t(rf * R, zf * L)), exact, rel_tol=1e-14, abs_tol=1e-13
+            )
+    assert math.isclose(sol.volume_average_k(), DT_HOT / 2.0, rel_tol=1e-14)
+
+
+def test_s0_conductance_matches_k_pi_r2_over_l():
+    """G_S0 = k_z·πR²/L exactly; net boundary power = 0 (conservation)."""
+    bp = solve(S0_SPEC, n_modes=16).boundary_power_w()
+    g_exact = K * math.pi * R**2 / L
+    assert math.isclose(bp["base"], g_exact * DT_HOT, rel_tol=1e-13)
+    assert math.isclose(bp["top"], -g_exact * DT_HOT, rel_tol=1e-13)
+    assert abs(bp["side"]) < 1e-15 * g_exact * DT_HOT
+    assert abs(bp["total"]) < 1e-12 * g_exact * DT_HOT
+
+
+def test_s0_positive_modes_carry_exactly_zero():
+    """The Bi_s = 0 drive expansion has u_n = J1(x_n)/(x_n N_n) = 0 at the
+    J1 zeros: the field is radially flat to machine precision at every
+    height, whatever n_modes."""
+    sol = solve(S0_SPEC, n_modes=64)
+    for zf in (0.1, 0.5, 0.9):
+        vals = sol.delta_t(np.linspace(0.0, R, 9), zf * L)
+        assert np.max(np.abs(vals - vals[0])) < 1e-12 * DT_HOT
+
+
+S1_SPEC = CylinderSpec(
+    R, L, K, SurfaceBC.dirichlet(), SurfaceBC.dirichlet(DT_HOT), SurfaceBC.dirichlet()
+)
+
+
+def test_s1_interior_matches_independent_series():
+    """S1 (hot imposed top, cold sides+base): interior field vs the textbook
+    series ΔT_hot·Σ [2/(xₙJ₁(xₙ))]·J₀(xₙρ)·sinh(mₙ(1−ζ))/sinh(mₙ), summed
+    in scaled overflow-free form over the same mode count."""
+    n_modes = 96
+    sol = solve(S1_SPEC, n_modes=n_modes)
+    x = jn_zeros(0, n_modes)
+    m = x * (L / R)  # isotropic
+    for rf, zf in ((0.0, 0.3), (0.4, 0.15), (0.6, 0.6), (0.3, 0.9)):
+        # sinh(m(1−ζ))/sinh(m) = e^(−mζ)·(1−e^(−2m(1−ζ)))/(1−e^(−2m))
+        ratio = (
+            np.exp(-m * zf)
+            * (-np.expm1(-2.0 * m * (1.0 - zf)))
+            / (-np.expm1(-2.0 * m))
+        )
+        ref = DT_HOT * float(
+            np.sum(2.0 / (x * j1(x)) * j0(x * rf) * ratio)
+        )
+        assert math.isclose(float(sol.delta_t(rf * R, zf * L)), ref, rel_tol=1e-12)
+
+
+def test_s1_top_inflow_grows_with_n_modes_log_divergence_documented():
+    """Sharp-corner S1 has LOG-DIVERGENT total top inflow (per mode
+    p_top,n ~ 2Λ/x_n; Σ1/x_n diverges — the classic mixed-boundary edge
+    singularity): the truncated inflow grows ~log N, with near-constant
+    increments per doubling — documented so it is never mistaken for slow
+    convergence. Interior scalars stay convergent; net stays ~0."""
+    inflow, net = [], []
+    for n in (32, 64, 128, 256):
+        bp = solve(S1_SPEC, n_modes=n).boundary_power_w()
+        inflow.append(-bp["top"])
+        net.append(abs(bp["total"]))
+    assert inflow[0] < inflow[1] < inflow[2] < inflow[3]
+    d1, d2, d3 = (
+        inflow[1] - inflow[0],
+        inflow[2] - inflow[1],
+        inflow[3] - inflow[2],
+    )
+    assert d1 > 0 and 0.7 < d2 / d1 < 1.3 and 0.7 < d3 / d2 < 1.3
+    assert all(nv < 1e-9 * abs(iv) for nv, iv in zip(net, inflow))
+    # the field observable CONVERGES in contrast (coefficient decay is
+    # Gibbs-class ~1/N² on integrated scalars): halving steps shrink ~4×
+    va = [solve(S1_SPEC, n_modes=n).volume_average_k() for n in (64, 128, 256)]
+    d21, d32 = abs(va[1] - va[0]), abs(va[2] - va[1])
+    assert d32 < 0.5 * d21
+    assert d32 / abs(va[2]) < 1e-4
+
+
+# --- side_chord radial form (S-ladder S4; SPEC 2026-07-16 outcome 5) ----------
+
+
+SIDE_SPEC = CylinderSpec(
+    R, L, K, SurfaceBC.robin(10.0), SurfaceBC.dirichlet(), SurfaceBC.dirichlet()
+)
+
+
+def _side_src(l_abs_m: float, p_w: float = P) -> PumpSource:
+    return PumpSource(
+        p_w,
+        "band",
+        "side_chord",
+        l_abs_m=l_abs_m,
+        band_lo_m=3e-3,
+        band_hi_m=5e-3,
+        beam_width_m=1.2e-3,
+    )
+
+
+def test_side_chord_solve_energy_diagnostic():
+    """Σ boundary fluxes = P: monotone-shrinking deficit, < 1e-6 at N = 64
+    for the mid-grid l_abs; the optically-thin limit sits at quadrature
+    level (small either-sign residual admitted)."""
+    deficits = [
+        abs(P - solve(SIDE_SPEC, _side_src(200e-6), n_modes=n).boundary_power_w()["total"])
+        for n in (64, 128, 256)
+    ]
+    assert deficits[0] < 1e-6
+    assert deficits[0] > deficits[1] > deficits[2]
+    bp = solve(SIDE_SPEC, _side_src(math.inf), n_modes=64).boundary_power_w()
+    assert abs(P - bp["total"]) < 1e-7
+
+
+def test_side_chord_requires_beam_width_and_l_abs():
+    with pytest.raises(ValueError, match="beam_width_m"):
+        PumpSource(P, "band", "side_chord", l_abs_m=1e-4, band_lo_m=3e-3, band_hi_m=5e-3)
+    with pytest.raises(ValueError, match="l_abs_m"):
+        PumpSource(
+            P, "band", "side_chord", band_lo_m=3e-3, band_hi_m=5e-3, beam_width_m=1.2e-3
+        )
+    with pytest.raises(ValueError, match="l_abs_m"):
+        PumpSource(
+            P,
+            "band",
+            "side_chord",
+            l_abs_m=0.0,
+            band_lo_m=3e-3,
+            band_hi_m=5e-3,
+            beam_width_m=1.2e-3,
+        )
+    with pytest.raises(ValueError, match="beam_width_m"):
+        PumpSource(P, "uniform", "flood", beam_width_m=1.2e-3)  # stray width
+
+
+def test_side_chord_forbidden_with_beer_lambert_axial():
+    for axial in ("beer_lambert", "surface"):
+        with pytest.raises(ValueError, match="side_chord"):
+            PumpSource(
+                P,
+                axial,
+                "side_chord",
+                l_abs_m=1e-4,
+                beam_width_m=1.2e-3,
+            )
+
+
+def test_side_chord_beam_width_within_diameter():
+    src = PumpSource(
+        P,
+        "band",
+        "side_chord",
+        l_abs_m=1e-4,
+        band_lo_m=3e-3,
+        band_hi_m=5e-3,
+        beam_width_m=2.5 * R,
+    )
+    with pytest.raises(ValueError, match="exceeds"):
+        solve(SIDE_SPEC, src)
+
+
+def test_side_chord_sharp_labs_converges_at_sized_n_modes():
+    """The sharpest scoping-grid point (l_abs = 5 µm: an entry-rim shell
+    ~ℓ wide) at the sized N = 1024: deficit and tail well inside the
+    ballpark gates, and the band-window average stable vs N = 512."""
+    l_abs = L_ABS_PUMP.l_abs_scoping_grid_m[0]
+    assert l_abs == 5e-6  # the grid's sharpest point, pinned
+    sols = {n: solve(SIDE_SPEC, _side_src(l_abs), n_modes=n) for n in (512, 1024)}
+    bp = sols[1024].boundary_power_w()
+    assert abs(P - bp["total"]) < 1e-7
+    assert sols[1024].tail_estimate_rel("volume_average") < 1e-12
+    va = [s.volume_average_k(z_lo_m=3e-3, z_hi_m=5e-3) for s in sols.values()]
+    assert math.isclose(va[0], va[1], rel_tol=1e-6)
