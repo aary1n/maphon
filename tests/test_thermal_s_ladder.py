@@ -118,3 +118,100 @@ def test_f_side_centroid_moves_outward_as_l_abs_shrinks():
     assert all(b > a for a, b in zip(centroids, centroids[1:]))
     # entry-rim shell: at the sharpest grid point the centroid is near ρ = 1
     assert centroids[-1] > 0.9
+
+
+# --- S4 bracket pair + the report artifact -----------------------------------
+
+
+@pytest.fixture(scope="module")
+def report_text() -> str:
+    from cavity.thermal.report_s_ladder import build_report
+
+    return build_report()
+
+
+def test_s4_upper_bracket_exceeds_m0_lower_across_grid():
+    """The spot upper bracket (larger member per l_abs) exceeds the m = 0
+    lower bracket's insulated-side equatorial peak — the structural
+    bracket ordering, per l_abs."""
+    from cavity.thermal.report_s_ladder import (
+        K_MID,
+        R_M,
+        s4_lower_cell,
+        upper_disc_center_k_per_w,
+        upper_volumetric_k_per_w,
+    )
+
+    disc = upper_disc_center_k_per_w(K_MID, 2.0 * R_M)
+    for l_abs in (5e-6, 200e-6, math.inf):
+        lower = s4_lower_cell(l_abs, side_dirichlet=False)["peak_eq"]
+        members = [disc]
+        if not math.isinf(l_abs):
+            members.append(upper_volumetric_k_per_w(K_MID, 2.0 * R_M, l_abs))
+        assert max(members) > lower
+
+
+def test_spot_estimate_anchored_to_half_space_closed_form():
+    """layered.py members against the half-space closed forms: uniform-flux
+    disc centre P/(π·a·k) and Gaussian centre P/(√(2π)·a·k) — thick-slab
+    agreement ≤0.1%, and the 2R slab sits BELOW (cold far face only
+    removes resistance)."""
+    from cavity.thermal.layered import Layer, delta_t_disk_center, delta_t_gaussian
+    from cavity.thermal.report_s_ladder import A_EQ, K_MID, R_M
+
+    thick = [Layer(0.5, K_MID)]
+    disc_ref = 1.0 / (math.pi * A_EQ * K_MID)
+    disc = delta_t_disk_center(thick, 1.0, A_EQ, n_zeros=2000)
+    assert abs(disc - disc_ref) / disc_ref < 1e-3
+    gauss_ref = 1.0 / (math.sqrt(2.0 * math.pi) * A_EQ * K_MID)
+    gauss = float(delta_t_gaussian(0.0, thick, 1.0, A_EQ))
+    assert abs(gauss - gauss_ref) / gauss_ref < 1e-3
+    assert delta_t_disk_center([Layer(2.0 * R_M, K_MID)], 1.0, A_EQ) < disc
+
+
+def test_report_regenerates_byte_identical(report_text):
+    """The committed artifact IS the generator's output (content-exact pin,
+    the report_margin precedent)."""
+    from pathlib import Path
+
+    committed = (
+        Path(__file__).resolve().parents[1]
+        / "thermal"
+        / "reports"
+        / "s_ladder_ballpark.md"
+    ).read_text(encoding="utf-8")
+    assert committed == report_text
+
+
+def test_report_numbers_match_independent_recomputation(report_text):
+    """Key pinned numbers re-derived from the graded constants by
+    independent arithmetic (scoping-numbers-are-computed rule)."""
+    r = CRYSTAL.diameter_m / 2.0
+    length = CRYSTAL.height_m
+    k_mid = K_PTP.k_mid_w_m_k
+    g_mid = k_mid * math.pi * r**2 / length
+    assert f"{g_mid:.4e}" in report_text  # 2.7941e-04 W/K
+    assert f"{0.01 / g_mid:.3g}" in report_text  # 35.8 K @ 10 mW
+    a_eq = math.sqrt((2.0e-3 / 2.0) * (1.2e-3 / 2.0))  # SM prints, re-keyed
+    assert f"{1.0 / (math.pi * a_eq * k_mid):.0f} K/W" in report_text
+    assert f"{1.0 / (math.sqrt(2.0 * math.pi) * a_eq * k_mid):.0f} K/W" in report_text
+    assert f"a_eq = sqrt((h_b/2)(w_b/2)) = {a_eq*1e3:.3f} mm" in report_text
+
+
+def test_report_carries_verbatim_s4_systematic_sentence(report_text):
+    from cavity.thermal.report_s_ladder import S4_SYSTEMATIC
+
+    assert S4_SYSTEMATIC.startswith(
+        "In side-fire the heat source and the gain region are the same "
+        "illuminated prism;"
+    )
+    assert "structural LOWER bracket on gain-weighted heating" in S4_SYSTEMATIC
+    assert S4_SYSTEMATIC in report_text
+
+
+def test_report_reserves_s3_and_defers_s5_and_states_steady_reading(report_text):
+    assert "S3: label RESERVED" in report_text
+    assert "S5: logged-DEFERRED" in report_text
+    assert "NO SHOT REPETITION RATE IS IN PRINT" in report_text
+    assert "steady-state" in report_text
+    assert "UNSOURCED-SCOPING" in report_text

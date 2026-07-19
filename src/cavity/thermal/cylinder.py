@@ -22,14 +22,31 @@ Governing PDE (steady, axisymmetric, anisotropic):
     k_r · (1/r) ∂/∂r ( r ∂ΔT/∂r ) + k_z ∂²ΔT/∂z² + q̇(r, z) = 0
 
 Boundary conditions — each surface independently Robin (h ≥ 0, ambient =
-bath) or exact Dirichlet (ΔT = 0):
+bath) or exact Dirichlet (imposed constant ΔT = dt_k, default 0):
 
     side  r = R:  −k_r ∂ΔT/∂r = h_side · ΔT        (or ΔT = 0)
     top   z = 0:  +k_z ∂ΔT/∂z = h_top  · ΔT − q_s(r)
-    base  z = L:  −k_z ∂ΔT/∂z = h_base · ΔT        (or ΔT = 0)
+    base  z = L:  −k_z ∂ΔT/∂z = h_base · ΔT        (or ΔT = dt_k)
 
 (q_s ≠ 0 only for the surface-flux source form; a surface-flux source with a
 Dirichlet top is rejected — a Dirichlet surface cannot carry prescribed flux.)
+
+Driven mode (S-ladder S0/S1 — SPEC 2026-07-16 outcome 5, added 2026-07-19):
+`solve(spec, source=None)` with nonzero `dt_k` on the top/base Dirichlet
+surfaces solves the SOURCE-FREE problem driven by imposed end temperatures,
+in kelvin (Θ = 1). The constant drive expands over the active radial basis
+(uₙ = J₁(xₙ)/(xₙ·N̂ₙ); u₀ = 1) into per-mode homogeneous end-value problems
+through the same scaled basis and 2×2 end solve. Bi_s = 0 (S0) is EXACT:
+the positive-mode drive coefficients vanish identically (J₁ at its own
+zeros), the constant mode carries the closed 1-D linear profile with zero
+truncation error — the ladder's analytic anchor. Dirichlet-side S1 carries
+the classic sharp-corner caveat: the imposed value is discontinuous along
+the top rim, so the TOTAL top inflow is LOG-DIVERGENT (per mode ~2Λ/xₙ) —
+`boundary_power_w()` entries grow ~log N there and a total conductance is
+not a well-posed observable of the sharp problem; interior and integrated
+observables converge (Gibbs-class, ~1/N² on integrated scalars). A source
+and a nonzero drive in one call are rejected — superpose two solves.
+Driven SIDE values are rejected (no ladder scenario needs them).
 
 Radial eigenproblem
 -------------------
@@ -62,10 +79,25 @@ deposited power is exactly P. Axial profiles g(z):
 3. 'surface' — exact l_abs → 0 limit: deposition enters the top BC as
    q_s(r) = P·f(r) (makes the layered cross-check solver-exact and gives the
    l_abs → 0 regression bridge).
+4. 'band' (S-ladder S4, 2026-07-19) — g = 1/(z_hi − z_lo) on
+   [band_lo_m, band_hi_m] ⊆ [0, L], zero outside: the beam-height slab of
+   the side-fire geometry (NOT exponential-from-top). Per-mode particular
+   solution in closed form via the free-space Green kernel
+   (f̂ĝ/2mₙ)·∫ₐᵇ mₙ·e^(−mₙ|ζ−s|) ds — piecewise exponentials with
+   non-positive exponents only (overflow-free; no confluent hazard);
+   band = [0, L] reproduces 'uniform' identically (regression bridge).
 
 Radial profiles f(r): 'flood' 1/(πR²) (default — face-scale illumination is
 the regime this anchor targets), 'disc' 1/(πa²)·1{r<a}, 'gaussian'
-∝ e^(−2r²/w²) truncated at R and renormalised.
+∝ e^(−2r²/w²) truncated at R and renormalised, and 'side_chord'
+(S-ladder S4, 2026-07-19) — the azimuthally-averaged (m = 0) Beer-Lambert
+chord deposition of a horizontal side beam of width `beam_width_m`, with
+`l_abs_m` acting ALONG THE CHORD (math.inf = the bleached optically-thin
+limit; profile construction, kink-split graded quadrature, and the
+closed-form thin limit live in `side_deposition.py`). Truncated-
+renormalised like the rest — P is exactly the ABSORBED power. side_chord
+combines only with the 'band'/'uniform' axial forms (chord + axial
+Beer-Lambert would claim two absorption directions at once).
 
 Projection and per-mode axial solution
 --------------------------------------
@@ -164,7 +196,15 @@ D2  Pump entry: AXIAL illumination of the z = 0 end face, Beer-Lambert in
     W20's invasive-LC pump geometry is SIDE-ON — is not axisymmetric about
     the cylinder axis and is outside this eigenbasis: EXCLUDED, a structural
     limitation of this anchor, not a parameter choice (unchanged by the
-    ruling).
+    ruling). (ANNOTATION 2026-07-19, S-ladder S4 — SPEC 2026-07-16
+    outcome 5: the m = 0 AZIMUTHAL SMEAR of side-fire is now representable
+    INSIDE this eigenbasis and BUILT — the 'side_chord' × 'band' source
+    forms above; a structural LOWER bracket on gain-weighted heating, the
+    verbatim systematic riding every S4 output
+    (`report_s_ladder.S4_SYSTEMATIC`). The m > 0 azimuthally-localised
+    content remains structurally outside: DEFERRED with a decision gate,
+    eccentricity-route discipline. The original exclusion text above is
+    preserved verbatim; its scope is now exactly the m > 0 remainder.)
 D3  Radial beam profile: flood (default) / uniform sub-disc / truncated-
     renormalised Gaussian.
 D4  Unabsorbed pump light: truncated-renormalised exponential (see source
