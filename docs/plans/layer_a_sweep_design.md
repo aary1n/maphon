@@ -583,7 +583,7 @@ as drafted; status is recorded here.
 - **Q7 — RESOLVED.** Raw surrogate basis APPROVED; §7.5's intent honoured
   via the composed-space CV gate (§9).
 - **Q8 — OPEN** (a numeric planning choice, deferred to the implementation
-  plan).
+  plan). *2026-07-19: RESOLVED — see the 2026-07-19 addendum.*
 - **Q9 — OPEN** (schedule-blocking; routes to Oxborrow).
 - **Q10 — OPEN** (blocks nothing; rides the Oxborrow channel).
 - **Q11 — OPEN** (schedule-blocking; literature trace first, escalate only
@@ -633,3 +633,30 @@ SPEC.md dated revision block 2026-07-17/18 (Oxborrow-WRITTEN re-base,
   Q2+Q9+Q11+Q13, D7: Q9+Q11+Q13; the unresolved fork exits as a named
   refusal via the design blocker filter, not a sampling TypeError; routes to
   Oxborrow written reply or a caliper, spacer dims on the same caliper list).
+
+---
+
+## Addendum — 2026-07-19: sweep-centre re-definition (Wu build) + Q8 numbers
+
+Dated record; nothing above is edited.
+
+- **Sweep centre re-defined for the Wu build.** §1's pinned centre
+  (Booth gate record `823e67969516bcf2`) remains the record of its date
+  and the §5a solver-correctness anchor. From this date the sweep centre
+  is: *the Wu Phase 1b model (crystal + spacer sub-domains,
+  `GEOM_WU_STO_RING` nominals, canonical materials) whose no-crystal
+  limit reproduces the W2-validated Wu anchor* — where the W2 anchor
+  record does not yet exist (licence-session follow-on; W2 windows
+  drafted, see `docs/w2_wu_anchor_windows.md`). No training solve may
+  cite the Booth centre as the Wu sweep centre. The centre_check pinned
+  record remains Booth-build (its 2026-07-18 docstring note); the
+  Wu-build centre record is created by the first W2-passing solve.
+- **Q8 re-expressed at the Wu operating point (definitions unchanged,
+  ratified 2026-07-19):** f LOO RMSE ≤ 10 % of κc = 10 % × 402.6 kHz ≈
+  40 kHz (κc = f/Q_L, literature at the stated k = 1; supersedes the
+  Booth-era "≈ 26 kHz at the planning point" figure, which was 10 % of
+  the composed 257 kHz). The |δΔf_max| ≤ 5 % of the 5th-percentile
+  Δf_max rule is law-agnostic and stands as written. Q8 status:
+  RESOLVED at these numbers (user-ratified 2026-07-19), subject only to
+  the standing failure path (active learning within budget, then §6
+  overrun discipline).

@@ -61,6 +61,26 @@ class TestRealArchive:
         # 3 pinned files: PRA 2020 + PRL 2021 main + PRL SM (proof copy)
         assert len(report.matched) == 3
 
+    def test_oxborrow_sto_archive_intact(self):
+        """Same read-only guard for the Oxborrow STO-dimensions written
+        correspondence (2026-07-17 — the geometry re-base's written rung
+        and the no-paste supersession record; the R10a rider)."""
+        archive = DEFAULT_ARCHIVE_DIR.parent / "oxborrow_sto_2026-07-17"
+        report = verify_manifest(archive)
+        assert report.ok, report.to_markdown()
+        # 2 pinned files: stogeometry.eml + stogeometry.md
+        assert len(report.matched) == 2
+
+    def test_oxborrow_meeting_notes_archive_intact(self):
+        """Same read-only guard for the 2026-07-16 contemporaneous meeting
+        notes (Oxborrow-VERBAL rung, late-archived 2026-07-19 — the source
+        of the SPEC S-ladder fifth-outcome record)."""
+        archive = DEFAULT_ARCHIVE_DIR.parent / "oxborrow_meeting_notes_2026-07-16"
+        report = verify_manifest(archive)
+        assert report.ok, report.to_markdown()
+        # 2 pinned files: the docx verbatim + its paragraph-faithful transcript
+        assert len(report.matched) == 2
+
 
 class TestManifestParsing:
     def test_crlf_and_comments_tolerated(self, tmp_path):

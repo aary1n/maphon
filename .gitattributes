@@ -21,4 +21,5 @@ refs/singh_2025_raw/** -text
 # byte-stable through checkin/checkout.
 calibration/data/raw/**/*.png filter=lfs diff=lfs merge=lfs -text
 calibration/data/raw/**/*.eml filter=lfs diff=lfs merge=lfs -text
+calibration/data/raw/**/*.docx filter=lfs diff=lfs merge=lfs -text
 calibration/data/** -text
