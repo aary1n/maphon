@@ -1,0 +1,261 @@
+{
+  "workstream": "deuteration-identifiability-design",
+  "status": "experiment-design analysis, NOT evidence of deuteration; non-transferable rig analysis (SPEC 7.T5)",
+  "non_detection_sentence": "No claim that deuteration is detected unless the model comparison genuinely discriminates it",
+  "verdict": "INSUFFICIENTLY IDENTIFIABLE at current metadata: the model ratio band brackets the measured ratio from both sides (T4 verdict geometry-sufficient, low discriminating power). No claim that deuteration is detected unless the model comparison genuinely discriminates it.",
+  "grid_note": "all bands computed on the ratified T2 grid (thickness 0.2-1.0 mm per-sample, spot 300-500 um, h_sub 1e2-1e5, k 0.1-1.0, mapping band) \u2014 Angus-pending unknowns SWEPT, never fixed",
+  "measured": {
+    "ratio_d14_over_h14": 1.342589241683795,
+    "sigma": 0.13168220460403532,
+    "sigma_rel": 0.098080783396482,
+    "grade": "graph-digitized-provisional; superseded_by_raw_data=True"
+  },
+  "scenarios": [
+    {
+      "name": "baseline",
+      "description": "current metadata: thickness/spot/h_sub/k/mapping all swept (the T4 band)",
+      "width_best": 3.989620373662954,
+      "width_worst": 3.989620373662954,
+      "rho_lo_worst": 0.5837504780379333,
+      "rho_hi_worst": 2.3289428003156276,
+      "x_det_at_digitized_sigma": 4.963211770984569,
+      "x_det_at_scoping_sigma": {
+        "0.05": 4.432911526292171,
+        "0.02": 4.155854555898911,
+        "0.01": 4.071041197615259
+      }
+    },
+    {
+      "name": "pin_thickness",
+      "description": "per-sample thickness MEASURED (Angus ask 1, top residual gap): band at each candidate (t_d14, t_h14) pair",
+      "width_best": 1.814584320208394,
+      "width_worst": 3.879035996102511,
+      "rho_lo_worst": 0.5837504780379333,
+      "rho_hi_worst": 2.264389117051192,
+      "x_det_at_digitized_sigma": 4.825641367540123,
+      "x_det_at_scoping_sigma": {
+        "0.05": 4.310039995669457,
+        "0.02": 4.040662495940116,
+        "0.01": 3.9581999960229712
+      }
+    },
+    {
+      "name": "pin_spot",
+      "description": "spot diameter MEASURED (Angus ask 2): band at each candidate w",
+      "width_best": 2.8976637024124323,
+      "width_worst": 3.989620373662954,
+      "rho_lo_worst": 0.5837504780379333,
+      "rho_hi_worst": 2.3289428003156276,
+      "x_det_at_digitized_sigma": 4.963211770984569,
+      "x_det_at_scoping_sigma": {
+        "0.05": 4.432911526292171,
+        "0.02": 4.155854555898911,
+        "0.01": 4.071041197615259
+      }
+    },
+    {
+      "name": "narrow_h_sub_one_decade",
+      "description": "underside coupling narrowed to ONE decade (bond-line thickness + cement-k literature per plan \u00a74.6, or remount empirics) \u2014 both samples in the same decade, per-sample value still free",
+      "width_best": 3.238696568577729,
+      "width_worst": 3.989620373662954,
+      "rho_lo_worst": 0.5837504780379333,
+      "rho_hi_worst": 2.3289428003156276,
+      "x_det_at_digitized_sigma": 4.963211770984569,
+      "x_det_at_scoping_sigma": {
+        "0.05": 4.432911526292171,
+        "0.02": 4.155854555898911,
+        "0.01": 4.071041197615259
+      }
+    },
+    {
+      "name": "pin_k",
+      "description": "k_PTP pinned by an independent measurement (closes the \u00a76T band): band at each candidate k",
+      "width_best": 3.806574816348464,
+      "width_worst": 3.9849170027367466,
+      "rho_lo_worst": 0.5837504780379333,
+      "rho_hi_worst": 2.3261972052890645,
+      "x_det_at_digitized_sigma": 4.957360631337709,
+      "x_det_at_scoping_sigma": {
+        "0.05": 4.4276855585963855,
+        "0.02": 4.150955211184112,
+        "0.01": 4.066241839527293
+      }
+    },
+    {
+      "name": "pin_mapping",
+      "description": "square-to-disc mapping systematic resolved (shape metrology): band at each candidate factor",
+      "width_best": 3.252439811193832,
+      "width_worst": 3.989620373662954,
+      "rho_lo_worst": 0.5837504780379333,
+      "rho_hi_worst": 2.3289428003156276,
+      "x_det_at_digitized_sigma": 4.963211770984569,
+      "x_det_at_scoping_sigma": {
+        "0.05": 4.432911526292171,
+        "0.02": 4.155854555898911,
+        "0.01": 4.071041197615259
+      }
+    },
+    {
+      "name": "pin_thickness_and_spot",
+      "description": "asks 1+2 both answered: thickness pair AND spot pinned",
+      "width_best": 1.6194119388457033,
+      "width_worst": 3.879035996102511,
+      "rho_lo_worst": 0.5837504780379333,
+      "rho_hi_worst": 2.264389117051192,
+      "x_det_at_digitized_sigma": 4.825641367540123,
+      "x_det_at_scoping_sigma": {
+        "0.05": 4.310039995669457,
+        "0.02": 4.040662495940116,
+        "0.01": 3.9581999960229712
+      }
+    },
+    {
+      "name": "all_metadata",
+      "description": "thickness + spot + one-decade h_sub + mapping resolved (k still banded): the realistic best case without new physics data",
+      "width_best": 1.000586548036923,
+      "width_worst": 3.238696568577729,
+      "rho_lo_worst": 0.6991668003173254,
+      "rho_hi_worst": 2.264389117051192,
+      "x_det_at_digitized_sigma": 4.029039213336012,
+      "x_det_at_scoping_sigma": {
+        "0.05": 3.5985517428641436,
+        "0.02": 3.3736422589351345,
+        "0.01": 3.3047924169160496
+      }
+    },
+    {
+      "name": "m0_unconstrained_mounting",
+      "description": "per-sample h_sub free across the full decade prior \u2014 the honest M0 envelope while mounting is unconstrained (the T4 sweep shares h_sub by its committed convention; the glue confound is the orthogonal axis)",
+      "width_best": 114.45190013613794,
+      "width_worst": 114.45190013613794,
+      "rho_lo_worst": 0.13756339223887995,
+      "rho_hi_worst": 15.744391630912661,
+      "x_det_at_digitized_sigma": 142.3817217590787,
+      "x_det_at_scoping_sigma": {
+        "0.05": 127.16877792904216,
+        "0.02": 119.22072930847702,
+        "0.01": 116.78765320014077
+      }
+    },
+    {
+      "name": "m0_mounting_within_1_decade",
+      "description": "per-sample h_sub differing by <= 1 decade (remount empirics or bond-line metrology would deliver this)",
+      "width_best": 21.625994771836474,
+      "width_worst": 21.625994771836474,
+      "rho_lo_worst": 0.3692640406065902,
+      "rho_hi_worst": 7.985702211585331,
+      "x_det_at_digitized_sigma": 26.903409787905105,
+      "x_det_at_scoping_sigma": {
+        "0.05": 24.028883079818304,
+        "0.02": 22.52707788732966,
+        "0.01": 22.06734160391477
+      }
+    },
+    {
+      "name": "m0_mounting_within_half_decade",
+      "description": "per-sample h_sub differing by <= 0.5 decade",
+      "width_best": 8.266823566077521,
+      "width_worst": 8.266823566077521,
+      "rho_lo_worst": 0.5823659944635284,
+      "rho_hi_worst": 4.814316927113268,
+      "x_det_at_digitized_sigma": 10.284185508642288,
+      "x_det_at_scoping_sigma": {
+        "0.05": 9.185359517863912,
+        "0.02": 8.611274547997418,
+        "0.01": 8.435534251099511
+      }
+    }
+  ],
+  "matched_sample_analysis": {
+    "glue_only_band_full_prior": 15.670183118191263,
+    "glue_only_band_one_decade": 5.837675239651668,
+    "glue_only_band_half_decade": 2.615064549388635,
+    "reading": "at FULLY matched geometry the residual band is glue asymmetry alone; remounting the SAME crystal n times converts the h_sub prior into a measured spread (the only way to shrink this band empirically), whereas a second unmatched d14/h14 pair adds a new ratio with its own unconstrained glue asymmetry and does NOT shrink it"
+  },
+  "power_grid": [
+    {
+      "sigma_point_mhz": 0.05,
+      "sigma_point_is_digitized_floor": true,
+      "target_sigma_rel": 0.05,
+      "n_required": 22,
+      "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
+    },
+    {
+      "sigma_point_mhz": 0.05,
+      "sigma_point_is_digitized_floor": true,
+      "target_sigma_rel": 0.02,
+      "n_required": 135,
+      "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
+    },
+    {
+      "sigma_point_mhz": 0.05,
+      "sigma_point_is_digitized_floor": true,
+      "target_sigma_rel": 0.01,
+      "n_required": 537,
+      "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
+    },
+    {
+      "sigma_point_mhz": 0.02,
+      "sigma_point_is_digitized_floor": false,
+      "target_sigma_rel": 0.05,
+      "n_required": 4,
+      "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
+    },
+    {
+      "sigma_point_mhz": 0.02,
+      "sigma_point_is_digitized_floor": false,
+      "target_sigma_rel": 0.02,
+      "n_required": 22,
+      "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
+    },
+    {
+      "sigma_point_mhz": 0.02,
+      "sigma_point_is_digitized_floor": false,
+      "target_sigma_rel": 0.01,
+      "n_required": 86,
+      "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
+    },
+    {
+      "sigma_point_mhz": 0.01,
+      "sigma_point_is_digitized_floor": false,
+      "target_sigma_rel": 0.05,
+      "n_required": 1,
+      "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
+    },
+    {
+      "sigma_point_mhz": 0.01,
+      "sigma_point_is_digitized_floor": false,
+      "target_sigma_rel": 0.02,
+      "n_required": 6,
+      "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
+    },
+    {
+      "sigma_point_mhz": 0.01,
+      "sigma_point_is_digitized_floor": false,
+      "target_sigma_rel": 0.01,
+      "n_required": 22,
+      "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
+    },
+    {
+      "sigma_point_mhz": 0.005,
+      "sigma_point_is_digitized_floor": false,
+      "target_sigma_rel": 0.05,
+      "n_required": 1,
+      "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
+    },
+    {
+      "sigma_point_mhz": 0.005,
+      "sigma_point_is_digitized_floor": false,
+      "target_sigma_rel": 0.02,
+      "n_required": 2,
+      "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
+    },
+    {
+      "sigma_point_mhz": 0.005,
+      "sigma_point_is_digitized_floor": false,
+      "target_sigma_rel": 0.01,
+      "n_required": 6,
+      "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
+    }
+  ]
+}

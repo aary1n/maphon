@@ -169,6 +169,11 @@ _MODULE_OUT_RECIPES: dict[str, tuple[str, str]] = {
     "R-s-ladder": ("cavity.thermal.report_s_ladder", "thermal/reports"),
     "R-ident-3a": ("cavity.thermal.report_3a", "thermal/reports"),
     "R-ident-3a-vol": ("cavity.thermal.report_3a_volumetric", "thermal/reports"),
+    "R-deut-design": ("calibration.deuteration_design", "calibration/reports"),
+    "R-deut-design-json": (
+        "calibration.deuteration_design",
+        "calibration/reports",
+    ),
 }
 _FIGURES_MODULE = ("cavity.figures", "docs/figures")
 _SLOW_IDS = {"R-ident-3a", "R-ident-3a-vol", "R-t4", "R-t5", "R-feed"}
@@ -226,7 +231,12 @@ def regenerate_artifacts(
     results: list[RegenResult] = []
     by_id = {a["id"]: a for a in contract["artifacts"]}
 
+    _modules_ran: set[tuple[str, str]] = set()
+
     def _run_module(module: str, subdir: str) -> None:
+        if (module, subdir) in _modules_ran:
+            return  # one module may produce several contract artifacts
+        _modules_ran.add((module, subdir))
         out = build_dir / subdir
         out.mkdir(parents=True, exist_ok=True)
         proc = subprocess.run(
@@ -234,6 +244,8 @@ def regenerate_artifacts(
             cwd=REPO,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",  # generators print UTF-8; never trust cp1252
         )
         if proc.returncode != 0:
             raise BuildGuardError(

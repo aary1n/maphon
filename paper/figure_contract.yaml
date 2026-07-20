@@ -177,6 +177,24 @@ artifacts:
     claims: [C4]
     required_caveats: ["superseded_by_raw_data=True"]
     notes: "D7 supersession target: on raw-data arrival, archive-copy then regenerate in place with dataset_version + supersedes fields."
+  - id: R-deut-design
+    path: calibration/reports/deuteration_design.md
+    kind: generated
+    generator: calibration.deuteration_design
+    command: "python -m calibration.deuteration_design --out <build_dir>"
+    byte_pinned: true
+    pin_tests: ["tests/test_calibration_deuteration_design.py::TestCommittedArtifacts::test_committed_report_regenerates_identically"]
+    claims: [C19]
+    required_caveats: ["NOT evidence of deuteration", "No claim that deuteration is detected"]
+  - id: R-deut-design-json
+    path: calibration/reports/deuteration_design.json
+    kind: generated
+    generator: calibration.deuteration_design
+    command: "python -m calibration.deuteration_design --out <build_dir>"
+    byte_pinned: true
+    pin_tests: ["tests/test_calibration_deuteration_design.py::TestCommittedArtifacts::test_committed_json_regenerates_identically"]
+    claims: [C19]
+    required_caveats: ["No claim that deuteration is detected"]
   - id: R-t4-addendum
     path: calibration/reports/ratio_test_digitized_addendum_2026-07-16.md
     kind: record

@@ -291,6 +291,29 @@ exposure in `paper/reviewer_attack_surface.md`; artifact contract in
 - **Unlocked by:** Cowley-Semple raw traces (D4–D7 pipeline; supersession per
   D7), thickness, plane, spot.
 
+### C19 — Deuteration identifiability / experiment design (WS3 study)
+- **Strongest wording:** "A design study over the ratified nuisance grid
+  shows the current d14/h14 dataset is insufficiently identifiable for
+  isotope discrimination; the binding limiter is per-sample mounting
+  (glue) asymmetry — the honest M0 envelope with unconstrained mounting
+  spans two orders of magnitude — so mounting control (remount empirics /
+  bond-line metrology) is the gateway measurement, ahead of thickness,
+  spot, and power-plane metadata; guaranteed-detectable intrinsic factors
+  X_det are quantified per metadata scenario."
+- **Prohibited:** any statement that deuteration is detected, suggested,
+  or excluded; using X_det as evidence about the actual samples; fixing
+  any Angus-pending metadata value.
+- **Rung:** derived, planning grade (design analysis on graded bands;
+  digitized-grade measured σ).
+- **Code:** `calibration.deuteration_design`.
+- **Tests:** `tests/test_calibration_deuteration_design.py` (incl. the
+  baseline-band cross-pin against the committed T4 feed and by-hand
+  X_det/power-grid recomputations).
+- **Artifacts:** `calibration/reports/deuteration_design.md`, `.json`.
+- **Chain:** complete at its grade.
+- **Unlocked by (sharper design outputs):** Angus metadata (collapses the
+  scenario ladder to its realised branch); raw traces (σ_rel shrinks).
+
 ## Process / novelty claims
 
 ### C16 — Green-field novelty ("nobody else modelling thermal response")
@@ -502,6 +525,17 @@ claims:
     evidence_chain: "missing: the 2026-07-04 email is not archived in-repo"
     blocker: "email archive; framing + first-paper-boundary ratification"
     unlocked_by: "archive the email; Oxborrow ratification"
+  - id: C19
+    title: Deuteration identifiability / experiment design study
+    headline: false
+    category: [derived, planning-grade]
+    rung: design analysis on graded bands; refuses detection claims
+    artifacts: [calibration/reports/deuteration_design.md, calibration/reports/deuteration_design.json]
+    producing_code: [calibration.deuteration_design]
+    guarding_tests: [tests/test_calibration_deuteration_design.py]
+    evidence_chain: complete
+    blocker: "none at design grade; sharper outputs await Angus metadata + raw traces"
+    unlocked_by: "Angus metadata collapses the scenario ladder; raw traces shrink sigma_rel"
   - id: C17
     title: Booth geometry recovery
     headline: false
