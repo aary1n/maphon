@@ -154,6 +154,17 @@ class ObservableAFeed:
     t3_h14_step: StepTest
 
     def to_json(self) -> str:
+        """Render the canonical observable-a feed.
+
+        Dated note (2026-07-20, audit F1 ratification): pre-versioning the
+        canonical feed with the explicit `dataset_version` key (values
+        unchanged, verified by audit) was RATIFIED retroactively as a
+        declared deviation from feed byte-immutability, to preserve
+        copy-time byte-identity at D7 supersession — the D7 archived copy
+        (`observable_a_feed_digitized_2026-07-14.json`) must now be
+        byte-identical to THIS versioned canonical. No further feed
+        changes before D7 fires.
+        """
         band_lo, band_hi = self.t4_model_ratio_band
         eta_d14 = self.fits["d14"].eta_abs_at_nominal_config
         eta_h14 = self.fits["h14"].eta_abs_at_nominal_config
