@@ -1,0 +1,211 @@
+# Figure / artifact contract — paper-facing generated artifacts
+# Consumed by `python -m publication.build` (WS4) and guarded by
+# tests/test_paper_spine.py. One entry per paper-facing artifact.
+#
+# kind:
+#   generated  - produced by a generator; regeneration must reproduce it
+#                (byte_pinned: true) or satisfy its data pins (value-pinned)
+#   record     - dated immutable record (archives, gate runs, hand-authored
+#                dated notes); NEVER regenerated; verified by hash/manifest
+#                or left as committed history
+# required_caveats: token strings that MUST appear verbatim in the artifact
+# (or its caption source) — the build command greps for them.
+
+schema: figure-contract/v1
+generated: 2026-07-20
+
+artifacts:
+  # --- figures (docs/figures; generator: python -m cavity.figures --out docs/figures)
+  - id: F1
+    path: docs/figures/f1_mode_maps.png
+    kind: generated
+    generator: cavity.figures.f1_mode_maps
+    command: "python -m cavity.figures --out <build_dir>"
+    byte_pinned: false        # data-pinned + render smoke; PDFs strip creation date
+    pin_tests: ["tests/test_figures.py::test_f1_data_pins", "tests/test_figures.py::test_render_smoke_shared_style"]
+    claims: [C3]
+    required_caveats: []
+  - id: F2
+    path: docs/figures/f2_reproduction_table.png
+    kind: generated
+    generator: cavity.figures.f2_reproduction_table
+    command: "python -m cavity.figures --out <build_dir>"
+    byte_pinned: false
+    pin_tests: ["tests/test_figures.py::test_f2_data_pins"]
+    claims: [C3, C3b]
+    required_caveats: []
+  - id: F3
+    path: docs/figures/f3_delta_t_map.png
+    kind: generated
+    generator: cavity.figures.f3_delta_t_map
+    command: "python -m cavity.figures --out <build_dir>"
+    byte_pinned: false
+    pin_tests: ["tests/test_figures.py::test_f3_data_pins"]
+    claims: [C4, C8]
+    required_caveats: []
+    notes: "Illustrative P_ABS_W = 0.05 is a labelled scenario choice, not a graded constant (claim-trace 2026-07-20)."
+  - id: F4
+    path: docs/figures/f4_cavity_arm_envelope.png
+    kind: generated
+    generator: cavity.figures.f4_cavity_arm_envelope
+    command: "python -m cavity.figures --out <build_dir>"
+    byte_pinned: false
+    pin_tests: ["tests/test_figures.py::test_f4_data_pins"]
+    claims: [C11, C12]
+    required_caveats: []
+  - id: F5
+    path: docs/figures/f5_margin_waterfall.png
+    kind: generated
+    generator: cavity.figures.f5_margin_waterfall
+    command: "python -m cavity.figures --out <build_dir>"
+    byte_pinned: false
+    pin_tests: ["tests/test_figures.py::test_f5_data_pins"]
+    claims: [C1, C2]
+    required_caveats: ["UNRATIFIED"]
+  - id: F6
+    path: docs/figures/f6_singh_axis_map.png
+    kind: generated
+    generator: cavity.figures.f6_singh_axis_map
+    command: "python -m cavity.figures --out <build_dir>"
+    byte_pinned: false
+    pin_tests: ["tests/test_figures.py::test_f6_data_pins"]
+    claims: [C12]
+    required_caveats: []
+
+  # --- thermal reports (byte-pinned generated text)
+  - id: R-margin-point
+    path: thermal/reports/q_margin_planning_point.md
+    kind: generated
+    generator: cavity.thermal.report_margin
+    command: "python -m cavity.thermal.report_margin --out <build_dir>"
+    byte_pinned: true
+    pin_tests: ["tests/test_thermal_detuning.py::test_a11_report_status_notes_and_byte_pin"]
+    claims: [C1]
+    required_caveats: ["UNRATIFIED"]
+  - id: R-turnover
+    path: thermal/reports/q_margin_turnover.md
+    kind: generated
+    generator: cavity.thermal.report_turnover
+    command: "python -m cavity.thermal.report_turnover --out <build_dir>"
+    byte_pinned: true
+    pin_tests: ["tests/test_thermal_detuning.py::test_a14_turnover_report_byte_pin"]
+    claims: [C2]
+    required_caveats: ["UNRATIFIED"]
+  - id: R-s-ladder
+    path: thermal/reports/s_ladder_ballpark.md
+    kind: generated
+    generator: cavity.thermal.report_s_ladder
+    command: "python -m cavity.thermal.report_s_ladder --out <build_dir>"
+    byte_pinned: true
+    pin_tests: ["tests/test_thermal_s_ladder.py::test_report_regenerates_byte_identical"]
+    claims: [C6]
+    required_caveats: ["NOT device predictions", "scoping grid"]
+  - id: R-ident-3a
+    path: thermal/reports/identifiability_3a_computed.md
+    kind: generated
+    generator: cavity.thermal.report_3a
+    command: "python -m cavity.thermal.report_3a --out <build_dir>"
+    byte_pinned: false
+    pin_tests: ["tests/test_thermal_identifiability.py::test_r_map_regression_pins"]
+    claims: [C8]
+    required_caveats: []
+  - id: R-ident-3a-vol
+    path: thermal/reports/identifiability_3a_volumetric_computed.md
+    kind: generated
+    generator: cavity.thermal.report_3a_volumetric
+    command: "python -m cavity.thermal.report_3a_volumetric --out <build_dir>"
+    byte_pinned: false
+    pin_tests: ["tests/test_thermal_volumetric.py::test_volumetric_regression_pins"]
+    claims: [C18]
+    required_caveats: []
+  - id: R-ident-3a-narrative
+    path: thermal/reports/identifiability_3a.md
+    kind: record
+    generator: null
+    command: null
+    byte_pinned: false
+    pin_tests: []
+    claims: [C8]
+    required_caveats: []
+    notes: "Dated narrative record; its header advertises the _computed generator but the generator does not produce THIS file (claim-trace 2026-07-20). Cite _computed for numbers."
+  - id: R-ident-3a-vol-narrative
+    path: thermal/reports/identifiability_3a_volumetric.md
+    kind: record
+    generator: null
+    command: null
+    byte_pinned: false
+    pin_tests: []
+    claims: [C18]
+    required_caveats: []
+    notes: "Same narrative/generated distinction as R-ident-3a-narrative."
+
+  # --- calibration reports (generated at digitized grade)
+  - id: R-t3
+    path: calibration/reports/slope_fit_digitized.md
+    kind: generated
+    generator: calibration.slope_fit
+    command: "python -m calibration.slope_fit"
+    byte_pinned: false
+    pin_tests: ["tests/test_calibration_slope_fit.py::TestSlopePins::test_d14_slope"]
+    claims: [C4]
+    required_caveats: ["graph-digitized-provisional"]
+  - id: R-t4
+    path: calibration/reports/ratio_test_digitized.md
+    kind: generated
+    generator: calibration.ratio_test
+    command: "python -m calibration.ratio_test"
+    byte_pinned: false
+    pin_tests: ["tests/test_calibration_ratio_test.py::TestRealSweepVerdict::test_verdict_geometry_sufficient"]
+    claims: [C4]
+    required_caveats: ["graph-digitized-provisional", "geometry-sufficient"]
+  - id: R-t5
+    path: calibration/reports/absolute_fit_digitized.md
+    kind: generated
+    generator: calibration.absolute_fit
+    command: "python -m calibration.absolute_fit"
+    byte_pinned: false
+    pin_tests: ["tests/test_calibration_absolute_fit.py::TestFeedPins::test_d14"]
+    claims: [C4]
+    required_caveats: ["graph-digitized-provisional"]
+  - id: R-feed
+    path: calibration/reports/observable_a_feed.json
+    kind: generated
+    generator: calibration.absolute_fit
+    command: "python -m calibration.absolute_fit"
+    byte_pinned: false
+    pin_tests: ["tests/test_calibration_absolute_fit.py::TestOutputs::test_json_schema"]
+    claims: [C4]
+    required_caveats: ["superseded_by_raw_data=True"]
+    notes: "D7 supersession target: on raw-data arrival, archive-copy then regenerate in place with dataset_version + supersedes fields."
+  - id: R-t4-addendum
+    path: calibration/reports/ratio_test_digitized_addendum_2026-07-16.md
+    kind: record
+    generator: null
+    command: null
+    byte_pinned: false
+    pin_tests: []
+    claims: [C4]
+    required_caveats: []
+    notes: "Dated addendum (CPW via-contact caveat) — immutable record by design."
+
+  # --- one-pager + gate records
+  - id: R-onepager
+    path: docs/supervisor_onepager_2026-07.md
+    kind: record
+    generator: null
+    command: null
+    byte_pinned: false
+    pin_tests: ["tests/test_figures.py::test_captions_pinned_in_onepager"]
+    claims: [C1, C2, C3]
+    required_caveats: []
+    notes: "Hand-authored presentation artifact, caption-token-pinned; no generator (claim-trace 2026-07-20)."
+  - id: R-5a-rejudge
+    path: refs/gate_runs/20260711T132705Z_rejudge/booth_5a_checkpoint.md
+    kind: record
+    generator: cavity.validation.report_5a
+    command: null
+    byte_pinned: true
+    pin_tests: ["tests/test_report_5a.py::test_rejudged_checkpoint_record_regenerates_byte_identical"]
+    claims: [C3, C3b]
+    required_caveats: []
+    notes: "Immutable archived record; byte-pin regenerates FROM its own manifest, never from a fresh solve."
