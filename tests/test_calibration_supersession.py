@@ -31,7 +31,7 @@ def _new_feed(**overrides) -> dict:
     feed = {
         "dataset_version": "cowley_semple_FIXTURE-raw",
         "provenance": "FIXTURE raw-trace refit (synthetic)",
-        "supersedes": "cowley_semple_2026-07-14 (digitized)",
+        "supersedes": "cowley_semple_2026-07-14-digitized",
         "same_acquisition_declaration": DECLARATION,
         "samples": {},
     }
@@ -123,7 +123,7 @@ class TestExecution:
         assert copy_path.read_bytes() == before
         new = json.loads(new_path.read_text(encoding="utf-8"))
         assert new["dataset_version"] == "cowley_semple_FIXTURE-raw"
-        assert new["supersedes"] == "cowley_semple_2026-07-14 (digitized)"
+        assert new["supersedes"] == "cowley_semple_2026-07-14-digitized"
         assert new["same_acquisition_declaration"] == DECLARATION
 
     def test_in_place_refused_without_flag(self):

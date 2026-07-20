@@ -50,6 +50,7 @@ from pathlib import Path
 import numpy as np
 
 from calibration.constants import DIGITIZED_SIGMA_MHZ, EXCITATION
+from calibration.lineshape import D6_MIN_DELTA_AICC
 from calibration.ratio_test import model_ratio_grid
 from calibration.rig_model import SweepResult, sweep_sample
 from calibration.samples import D14, H14, SweepGrid, default_grid
@@ -70,12 +71,36 @@ SIGMA_REL_SCOPING: tuple[float, ...] = (0.05, 0.02, 0.01)
 
 
 def x_det(rho_lo: float, rho_hi: float, sigma_rel: float) -> float:
-    """Smallest guaranteed-detectable intrinsic multiplier (see module
-    docstring). Diverges as σ_rel → 0.5 (the ±2σ interval swallows the
-    ratio); refuse beyond it."""
+    """Smallest guaranteed-detectable intrinsic ENHANCEMENT multiplier
+    (see module docstring). Diverges as σ_rel → 0.5 (the ±2σ interval
+    swallows the ratio); refuse beyond it."""
     if not 0 <= sigma_rel < 0.5:
         raise ValueError(f"sigma_rel {sigma_rel} outside [0, 0.5)")
     return rho_hi / (rho_lo * (1.0 - 2.0 * sigma_rel))
+
+
+def x_det_suppression(rho_lo: float, rho_hi: float, sigma_rel: float) -> float:
+    """Guaranteed-detectable SUPPRESSION, expressed as the factor 1/X > 1:
+    detection requires X·ρ_true < r − 2σ at the worst true ρ = ρ_hi, i.e.
+    1/X > ρ_hi·(1 + 2σ_rel)/ρ_lo. NOT the reciprocal of the enhancement
+    condition — the σ term enters with the opposite sign
+    (adversarial-review correction, 2026-07-20)."""
+    if not 0 <= sigma_rel < 0.5:
+        raise ValueError(f"sigma_rel {sigma_rel} outside [0, 0.5)")
+    return rho_hi * (1.0 + 2.0 * sigma_rel) / rho_lo
+
+
+def x_compatibility_range(
+    rho_lo: float, rho_hi: float, measured: float, sigma: float
+) -> tuple[float, float]:
+    """ENVELOPE-DERIVED COMPATIBILITY RANGE for X, not a confidence
+    interval (independent-derivation fold-in, 2026-07-20): every X in
+    [(r − 2σ)/ρ_hi, (r + 2σ)/ρ_lo] can reproduce the measured ratio for
+    SOME admissible nuisance setting. Sweep grids are bounds, not priors
+    — no probabilistic reading (including Bayes factors over the sweep
+    box, or the T4 feed's descriptive fraction_within_2sigma) survives
+    reparameterisation of the grid."""
+    return ((measured - 2.0 * sigma) / rho_hi, (measured + 2.0 * sigma) / rho_lo)
 
 
 @dataclass(frozen=True)
@@ -148,6 +173,8 @@ class DesignStudy:
     matched_glue_one_decade_width: float
     matched_glue_half_decade_width: float
     power_grid_table: tuple[dict, ...]
+    visits_at_n8: tuple[dict, ...]
+    aicc_thresholds_n8: dict
     verdict: str
     grid_note: str
 
@@ -375,18 +402,36 @@ def run_design_study(grid: SweepGrid | None = None) -> DesignStudy:
     matched_one = matched_glue_band(result_d14, max_decades=1.0)
     matched_half = matched_glue_band(result_d14, max_decades=0.5)
 
-    # Power-grid arithmetic: WLS slope σ_b = σ_point/(SD(P)·√N) for a
-    # uniform grid of N points across the span; σ_rel(r) ≈ √2·σ_b/|b|
-    # for two samples with comparable relative slope errors. Solved for
-    # N at each (σ_point, target σ_rel), using the d14 measured span
-    # and slope scale from the live fit.
+    # Power-grid arithmetic (adversarial-review re-derivation,
+    # 2026-07-20): for N equally spaced levels spanning ΔP with r
+    # independent visits per level, the EXACT endpoint-grid moment is
+    #   S_xx = r · ΔP² · N(N+1) / (12(N−1)),
+    # σ_slope = σ_point/√S_xx, and the ratio's relative error combines
+    # BOTH measured slopes: σ_rel(R)² = σ_slope² · (1/s_d² + 1/s_h²).
+    # N is solved exactly with N ≥ 3 enforced (a slope from fewer points
+    # has no estimable residual).
     span_mw = max(EXCITATION.powers_h14_mw) - min(EXCITATION.powers_h14_mw)
-    sd_p = span_mw / math.sqrt(12.0)
-    slope_scale = abs(fits.fits["d14"].slope_mhz_per_mw)
+    slope_d = abs(fits.fits["d14"].slope_mhz_per_mw)
+    slope_h = abs(fits.fits["h14"].slope_mhz_per_mw)
+    inv_s2 = 1.0 / slope_d**2 + 1.0 / slope_h**2
+
+    def _sxx(n: int, r: int = 1) -> float:
+        return r * span_mw**2 * n * (n + 1) / (12.0 * (n - 1))
+
+    def _sigma_rel_ratio(sigma_point: float, n: int, r: int = 1) -> float:
+        return math.sqrt(sigma_point**2 / _sxx(n, r) * inv_s2)
+
     table = []
     for sigma_point_mhz in (DIGITIZED_SIGMA_MHZ, 0.02, 0.01, 0.005):
         for target in SIGMA_REL_SCOPING:
-            n_req = 2.0 * (sigma_point_mhz / (sd_p * slope_scale * target)) ** 2
+            n_req = next(
+                (
+                    n
+                    for n in range(3, 100_001)
+                    if _sigma_rel_ratio(sigma_point_mhz, n) <= target
+                ),
+                None,
+            )
             table.append(
                 {
                     "sigma_point_mhz": sigma_point_mhz,
@@ -394,13 +439,38 @@ def run_design_study(grid: SweepGrid | None = None) -> DesignStudy:
                         sigma_point_mhz == DIGITIZED_SIGMA_MHZ
                     ),
                     "target_sigma_rel": target,
-                    "n_required": int(math.ceil(n_req)),
+                    "n_required": n_req,
                     "d6_note": (
                         "D6 additionally requires >= 8 independent power "
                         "points before ANY nonlinear power model is claimable"
                     ),
                 }
             )
+    visits = tuple(
+        {
+            "n_levels": 8,
+            "visits_per_level": r,
+            "sigma_rel_ratio_at_digitized_floor": _sigma_rel_ratio(
+                DIGITIZED_SIGMA_MHZ, 8, r
+            ),
+        }
+        for r in (1, 2, 3)
+    )
+    # ΔAICc >= 4 translated into required chi-square improvements at the
+    # D6 minimum N = 8 (computed from the aicc() convention, not quoted):
+    from calibration.lineshape import aicc as _aicc
+
+    def _needed_dchi2(k_alt: int, n: int = 8) -> float:
+        # AICc_alt <= AICc_lin - 4 with equal chi2 baseline offsets
+        penalty_lin = _aicc(n, 2, chi2=0.0)
+        penalty_alt = _aicc(n, k_alt, chi2=0.0)
+        return D6_MIN_DELTA_AICC + (penalty_alt - penalty_lin)
+
+    aicc_thresholds = {
+        "n": 8,
+        "quadratic_dchi2": _needed_dchi2(3),
+        "piecewise_searched_breakpoint_dchi2": _needed_dchi2(4),
+    }
 
     return DesignStudy(
         measured_ratio=measured,
@@ -411,6 +481,8 @@ def run_design_study(grid: SweepGrid | None = None) -> DesignStudy:
         matched_glue_one_decade_width=matched_one,
         matched_glue_half_decade_width=matched_half,
         power_grid_table=tuple(table),
+        visits_at_n8=visits,
+        aicc_thresholds_n8=aicc_thresholds,
         verdict=(
             "INSUFFICIENTLY IDENTIFIABLE at current metadata: the model "
             "ratio band brackets the measured ratio from both sides "
@@ -442,17 +514,50 @@ def to_json(study: DesignStudy) -> str:
             "sigma_rel": study.sigma_rel_digitized,
             "grade": "graph-digitized-provisional; superseded_by_raw_data=True",
         },
+        "x_range_semantics": (
+            "x_compat = envelope-derived compatibility range, NOT a "
+            "confidence interval; x_det/x_det_suppression = smallest "
+            "GUARANTEED-detectable enhancement / suppression factors. "
+            "Sweep grids are bounds, not priors: no probabilistic reading "
+            "(Bayes factors over the sweep box, or the T4 feed's "
+            "descriptive fraction_within_2sigma) survives grid "
+            "reparameterisation."
+        ),
         "scenarios": [
             {
                 **asdict(s),
                 "x_det_at_digitized_sigma": s.x_det_at(
                     min(study.sigma_rel_digitized, 0.49)
                 ),
+                "x_det_suppression_at_digitized_sigma": x_det_suppression(
+                    s.rho_lo_worst,
+                    s.rho_hi_worst,
+                    min(study.sigma_rel_digitized, 0.49),
+                ),
                 "x_det_at_scoping_sigma": {
                     str(sr): s.x_det_at(sr) for sr in SIGMA_REL_SCOPING
                 },
+                "x_compat_at_digitized_sigma": x_compatibility_range(
+                    s.rho_lo_worst,
+                    s.rho_hi_worst,
+                    study.measured_ratio,
+                    study.measured_sigma,
+                ),
             }
             for s in study.scenarios
+        ],
+        "power_grid_visits_at_n8": list(study.visits_at_n8),
+        "aicc_thresholds_at_n8": study.aicc_thresholds_n8,
+        "statistical_structure_notes": [
+            "profile-likelihood framing: the common scale A (power plane x "
+            "shared absorption x shared |df/dT|) profiles out analytically, "
+            "leaving ONE scale-free contrast from the two slopes; M0 "
+            "carries ~7-8 effective unknowns against it (M1 adds one "
+            "identifiable relative multiplier X)",
+            "matched-pair design inequality: a factor X is "
+            "design-resolvable only if |log X| > eps_g + 2*sigma_ell "
+            "(hard geometry-mismatch bound + statistical error); no number "
+            "of power points rescues a failed geometry condition",
         ],
         "matched_sample_analysis": {
             "glue_only_band_full_prior": study.matched_glue_full_width,
@@ -498,21 +603,42 @@ def render_report(study: DesignStudy) -> str:
         "(T5: 98–99% of the sweep admits η_abs ≤ 1). X is identifiable "
         "only to the model-ratio band ρ ∈ [ρ_lo, ρ_hi]:",
         "",
-        "    X_det = ρ_hi / (ρ_lo · (1 − 2σ_rel))",
+        "    X_det = ρ_hi / (ρ_lo · (1 − 2σ_rel))     (enhancement)",
+        "    1/X  > ρ_hi · (1 + 2σ_rel) / ρ_lo        (suppression — NOT",
+        "                                              the reciprocal: the",
+        "                                              σ term flips sign)",
         "",
         "is the smallest multiplier GUARANTEED to force the pre-registered "
-        "intrinsic-effect-required verdict wherever the true nuisances sit.",
+        "intrinsic-effect-required verdict wherever the true nuisances sit. "
+        "The complementary X_compat = [(r−2σ)/ρ_hi, (r+2σ)/ρ_lo] is the "
+        "ENVELOPE-DERIVED COMPATIBILITY RANGE — not a confidence interval: "
+        "sweep grids are bounds, not priors, and no probabilistic reading "
+        "(Bayes factors over the sweep box, or T4's descriptive "
+        "fraction_within_2sigma) survives grid reparameterisation.",
+        "",
+        "Profile-likelihood framing (independent-derivation fold-in, "
+        "2026-07-20): the common scale A (power plane × shared absorption × "
+        "shared |df/dT|) profiles out analytically, leaving ONE scale-free "
+        "contrast from the two slopes against M0's ~7–8 effective unknowns; "
+        "M1 adds one identifiable relative multiplier X.",
         "",
         "## Scenario ladder — what each future measurement buys",
         "",
         "| scenario | band factor ρ_hi/ρ_lo (best–worst over true values) | "
-        "X_det @ digitized σ | X_det @ σ_rel=0.02 |",
-        "|---|---|---|---|",
+        "X_det @ digitized σ | X_det @ σ_rel=0.02 | X_compat @ digitized σ |",
+        "|---|---|---|---|---|",
     ]
     for s in study.scenarios:
+        compat = x_compatibility_range(
+            s.rho_lo_worst,
+            s.rho_hi_worst,
+            study.measured_ratio,
+            study.measured_sigma,
+        )
         lines.append(
             f"| {s.name} | {s.width_best:.2f} – {s.width_worst:.2f} | "
-            f"{s.x_det_at(s_dig):.2f} | {s.x_det_at(0.02):.2f} |"
+            f"{s.x_det_at(s_dig):.2f} | {s.x_det_at(0.02):.2f} | "
+            f"[{compat[0]:.3f}, {compat[1]:.3f}] |"
         )
     dominant = max(
         (
@@ -546,9 +672,13 @@ def render_report(study: DesignStudy) -> str:
         "",
         "## Matched-sample geometry",
         "",
-        "At FULLY matched geometry (equal thickness, equal lateral size, "
-        "same mapping, same spot) the residual band is per-sample glue "
-        "asymmetry alone:",
+        "DEFINITION (disambiguated 2026-07-20): the numbers below are "
+        "SAME-CRYSTAL mounting-pair ratios, computed on the d14 geometry — "
+        "Θ(d14, mount 1)/Θ(d14, mount 2) at equal everything except h_sub. "
+        "This is the matched-pair LIMIT: what glue asymmetry alone can "
+        "manufacture when geometry is perfectly matched. (The CURRENT "
+        "unequal pair with per-sample mounting is the m0_* scenario rows "
+        "above — a different, wider object.)",
         "",
         f"- glue-only band, full h_sub prior (3 decades): "
         f"×{study.matched_glue_full_width:.2f}",
@@ -557,38 +687,77 @@ def render_report(study: DesignStudy) -> str:
         f"- constrained to 0.5 decade: "
         f"×{study.matched_glue_half_decade_width:.2f}",
         "",
-        "**Remount-same-crystal vs a second unmatched pair:** remounting the "
-        "SAME crystal n times measures the h_sub spread directly — it is the "
-        "only route that shrinks the glue confound φ empirically. A second "
-        "unmatched d14/h14 pair adds one more ratio carrying its own "
-        "unconstrained φ′ and does not shrink the confound. Repetition "
-        "under different mounting conditions is therefore MORE informative "
-        "than an additional unmatched pair for the M0/M1 question.",
+        "Matched-pair design inequality (independent-derivation fold-in): a "
+        "factor X is design-resolvable only if |log X| > ε_g + 2σ_ℓ, with "
+        "ε_g the hard residual geometry/absorption-mismatch bound and σ_ℓ "
+        "the statistical error on the log contrast — no number of power "
+        "points rescues a failed geometry condition.",
+        "",
+        "**Remount-same-crystal vs a second unmatched pair:** CONTROLLED "
+        "remounting/cross-over of the same crystal(s) over standardised "
+        "mount positions measures the h_sub spread directly — the only "
+        "route that shrinks the glue confound φ empirically (an "
+        "uncontrolled remount merely resamples it). A second unmatched "
+        "d14/h14 pair adds one more ratio carrying its own unconstrained "
+        "φ′ and does not shrink the confound. Controlled repetition under "
+        "different mounting conditions is therefore MORE informative than "
+        "an additional unmatched pair for the M0/M1 question. "
+        "Time-resolved heating/cooling traces rank immediately behind it: "
+        "the normalised transient removes the unknown amplitude and "
+        "constrains h_i/diffusivity/settling orthogonally to the steady "
+        "slope (introducing ρc_p; check 3c).",
         "",
         "## Power grid (per sample)",
         "",
-        "WLS arithmetic on a uniform grid across the current span "
+        "Exact endpoint-grid WLS arithmetic across the current span "
         f"({min(EXCITATION.powers_h14_mw):.2f}–"
-        f"{max(EXCITATION.powers_h14_mw):.2f} mW): required N per "
-        "(per-point σ, target σ_rel on the ratio):",
+        f"{max(EXCITATION.powers_h14_mw):.2f} mW): "
+        "S_xx = r·ΔP²·N(N+1)/(12(N−1)), σ_slope = σ_point/√S_xx, and "
+        "σ_rel(R)² combines BOTH measured slopes "
+        "(re-derived 2026-07-20; the earlier draft's span/√12 single-slope "
+        "shortcut and N<3 rows are retired). Required N (one visit per "
+        "level, N ≥ 3 enforced):",
         "",
         "| σ_point (MHz) | target σ_rel | N required | note |",
         "|---|---|---|---|",
     ]
     for row in study.power_grid_table:
         note = "digitized floor" if row["sigma_point_is_digitized_floor"] else ""
+        n_txt = str(row["n_required"]) if row["n_required"] else "unreachable"
         lines.append(
             f"| {row['sigma_point_mhz']:.3f} | {row['target_sigma_rel']:.2f} "
-            f"| {row['n_required']} | {note} |"
+            f"| {n_txt} | {note} |"
         )
     lines += [
         "",
-        "Riders: D6 (user-ratified 2026-07-20) requires ≥ 8 independent "
-        "power points AND ΔAICc ≥ 4 before any nonlinear power model is "
-        "claimable; acquire interleaved ascending/descending with ≥ 2 "
-        "repeats at an anchor power so drift/hysteresis (settling, plan §6) "
-        "is testable. Time-resolved traces decide check 3c, orthogonal to "
-        "this table.",
+        "Repeat visits at the D6 minimum grid (N = 8 levels, digitized "
+        "floor):",
+        "",
+    ]
+    for v in study.visits_at_n8:
+        lines.append(
+            f"- r = {v['visits_per_level']} visit(s)/level → σ_rel(R) ≈ "
+            f"{v['sigma_rel_ratio_at_digitized_floor']:.3f} (nominal 1/√r; "
+            "correlated drift/hysteresis prevents the full gain)"
+        )
+    lines += [
+        "",
+        f"ΔAICc ≥ {D6_MIN_DELTA_AICC:g} at N = 8 translates to required "
+        "χ² improvements over linear of "
+        f"≥ {study.aicc_thresholds_n8['quadratic_dchi2']:.1f} (quadratic) "
+        "and ≥ "
+        f"{study.aicc_thresholds_n8['piecewise_searched_breakpoint_dchi2']:.2f} "
+        "(piecewise with a searched breakpoint, k = 4).",
+        "",
+        "Acquisition protocol riders: D6 (user-ratified 2026-07-20) "
+        "requires ≥ 8 independent power LEVELS (repeats at one level do "
+        "not count) AND ΔAICc ≥ 4 before any nonlinear power model is "
+        "claimable. Acquire THREE blocks — one ascending, one descending, "
+        "one randomised/interleaved — with d14 and h14 interleaved and the "
+        "settling duration chosen from a MEASURED time trace, so monotone "
+        "drift separates from direction-dependent hysteresis (plan §6 "
+        "steady-state check). Time-resolved traces additionally decide "
+        "check 3c, orthogonal to this table.",
         "",
         "## What this study does NOT do",
         "",

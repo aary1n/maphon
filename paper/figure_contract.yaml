@@ -41,9 +41,9 @@ artifacts:
     command: "python -m cavity.figures --out <build_dir>"
     byte_pinned: false
     pin_tests: ["tests/test_figures.py::test_f3_data_pins"]
-    claims: [C4, C8]
+    claims: [C6]
     required_caveats: []
-    notes: "Illustrative P_ABS_W = 0.05 is a labelled scenario choice, not a graded constant (claim-trace 2026-07-20)."
+    notes: "MASER-crystal worked-example ΔT map (the §7.T1 cylinder anchor, end-fire, l_abs from the UNSOURCED-SCOPING grid) — not a calibration figure. Illustrative P_ABS_W = 0.05 is a labelled scenario choice, not a graded constant (claim-trace 2026-07-20; claim link corrected C4/C8 → C6 same day)."
   - id: F4
     path: docs/figures/f4_cavity_arm_envelope.png
     kind: generated

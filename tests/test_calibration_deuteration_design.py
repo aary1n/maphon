@@ -87,9 +87,10 @@ class TestCrossPins:
         base = by_name["baseline"]
         assert base.x_det_at(0.01) < base.x_det_at(0.05) < base.x_det_at(0.20)
 
-    def test_power_grid_row_recomputed(self, study):
-        """One row re-derived from the closed WLS form:
-        N = 2 (sigma_point / (SD(P) * |slope| * target))^2, SD = span/sqrt(12)."""
+    def test_power_grid_row_recomputed_exact_sxx(self, study):
+        """One row re-derived by hand from the EXACT endpoint-grid form
+        (adversarial-review re-derivation): S_xx = ΔP²·N(N+1)/(12(N−1)),
+        σ_rel(R)² = σ_point²/S_xx · (1/s_d² + 1/s_h²), both live slopes."""
         from calibration.constants import EXCITATION
         from calibration.slope_fit import fit_all
 
@@ -100,12 +101,73 @@ class TestCrossPins:
             and r["target_sigma_rel"] == SIGMA_REL_SCOPING[0]
         )
         span = max(EXCITATION.powers_h14_mw) - min(EXCITATION.powers_h14_mw)
-        slope = abs(fit_all().fits["d14"].slope_mhz_per_mw)
-        n = 2.0 * (
-            DIGITIZED_SIGMA_MHZ
-            / ((span / math.sqrt(12.0)) * slope * row["target_sigma_rel"])
-        ) ** 2
-        assert row["n_required"] == math.ceil(n)
+        fits = fit_all()
+        inv_s2 = (
+            1.0 / fits.fits["d14"].slope_mhz_per_mw ** 2
+            + 1.0 / fits.fits["h14"].slope_mhz_per_mw ** 2
+        )
+
+        def sigma_rel(n):
+            sxx = span**2 * n * (n + 1) / (12.0 * (n - 1))
+            return math.sqrt(DIGITIZED_SIGMA_MHZ**2 / sxx * inv_s2)
+
+        target = row["target_sigma_rel"]
+        n = row["n_required"]
+        assert n >= 3
+        assert sigma_rel(n) <= target
+        assert n == 3 or sigma_rel(n - 1) > target
+        # cross-pin against the independent derivation (2026-07-20):
+        # digitized floor, targets 0.05/0.02/0.01 -> N = 28/186/750
+        floors = {
+            r["target_sigma_rel"]: r["n_required"]
+            for r in study.power_grid_table
+            if r["sigma_point_is_digitized_floor"]
+        }
+        assert floors == {0.05: 28, 0.02: 186, 0.01: 750}
+
+    def test_visits_at_n8_scale_as_inverse_sqrt_r(self, study):
+        v = {row["visits_per_level"]: row for row in study.visits_at_n8}
+        s1 = v[1]["sigma_rel_ratio_at_digitized_floor"]
+        s3 = v[3]["sigma_rel_ratio_at_digitized_floor"]
+        assert s3 == pytest.approx(s1 / math.sqrt(3.0), rel=1e-12)
+        # absolute cross-pin vs the independent derivation: sigma_R =
+        # sigma_rel * R = 0.115 / 0.0663 at r = 1 / 3
+        assert s1 * study.measured_ratio == pytest.approx(0.115, abs=0.001)
+        assert s3 * study.measured_ratio == pytest.approx(0.0663, abs=0.001)
+
+    def test_aicc_thresholds_at_n8(self, study):
+        th = study.aicc_thresholds_n8
+        assert th["n"] == 8
+        assert th["quadratic_dchi2"] == pytest.approx(9.6, abs=0.01)
+        assert th["piecewise_searched_breakpoint_dchi2"] == pytest.approx(
+            18.93, abs=0.01
+        )
+
+    def test_suppression_is_not_reciprocal_of_enhancement(self, study):
+        from calibration.deuteration_design import (
+            x_det,
+            x_det_suppression,
+        )
+
+        lo, hi, sr = 0.584, 2.329, 0.098
+        assert x_det_suppression(lo, hi, sr) == pytest.approx(
+            hi * (1 + 2 * sr) / lo
+        )
+        assert x_det_suppression(lo, hi, sr) != pytest.approx(x_det(lo, hi, sr))
+
+    def test_x_compat_matches_independent_derivation(self, by_name, study):
+        from calibration.deuteration_design import x_compatibility_range
+
+        base = by_name["baseline"]
+        lo, hi = x_compatibility_range(
+            base.rho_lo_worst,
+            base.rho_hi_worst,
+            study.measured_ratio,
+            study.measured_sigma,
+        )
+        # independent-derivation values: [0.463, 2.751]
+        assert lo == pytest.approx(0.463, abs=0.001)
+        assert hi == pytest.approx(2.751, abs=0.001)
 
 
 class TestStructure:

@@ -79,10 +79,16 @@ def plan_feed_supersession(
     if not canonical_path.is_file():
         raise SupersessionError(f"canonical feed missing: {canonical_path}")
     old = json.loads(canonical_path.read_text(encoding="utf-8"))
-    old_dataset = str(old.get("dataset", old.get("dataset_version", "")))
+    # D7 requires BOTH files to carry the explicit dataset_version key
+    # (adversarial-review fix, 2026-07-20: the display-string "dataset"
+    # fallback is retired; the digitized feed was regenerated with the
+    # version key via its generator in the same changeset).
+    old_dataset = str(old.get("dataset_version", ""))
     if not old_dataset:
         raise SupersessionError(
-            "old feed carries no dataset identity — refuse to supersede blind"
+            "old feed carries no dataset_version — D7 requires the explicit "
+            "version key on both sides; regenerate the canonical feed via "
+            "its generator before superseding"
         )
 
     if new_feed.get("dataset_version") != new_dataset_version:

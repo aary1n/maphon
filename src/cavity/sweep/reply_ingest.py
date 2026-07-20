@@ -36,6 +36,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 
 from cavity.provenance.constants import GEOM_WU_STO_RING
 from cavity.sweep.dofs import (
@@ -59,6 +60,7 @@ __all__ = [
     "classify_q2",
     "classify_q9",
     "ingest_reply",
+    "build_d2_escape_hatch",
 ]
 
 
@@ -84,7 +86,11 @@ class ReplyItemError(ValueError):
 # --- sanity windows (unit-slip guards, not physics constraints) ---------
 # A transcription in mm instead of m is the likeliest silent corruption;
 # these windows catch three-orders-of-magnitude slips while accepting any
-# physically plausible bench value.
+# physically plausible bench value. STATUS: TRANSCRIPTION GUARDS at
+# planning tier — deliberately ungraded (they bound transcription error,
+# not physics; a genuine value outside them would surface as a refusal to
+# investigate, never a silent clamp). Adversarial-review annotation,
+# 2026-07-20.
 _HEIGHT_WINDOW_M = (1e-3, 20e-3)  # STO ring height ~8.5/8.6 mm
 _P_TUNE_WINDOW_M = (5e-3, 60e-3)  # internal height ~15-18 mm class
 _OFFSET_WINDOW_M = (-10e-3, 10e-3)  # crystal axial offset within the bore
@@ -162,12 +168,29 @@ class IngestOutcome:
 class MintInstruction:
     """What the HUMAN changeset would append to
     `cavity.sweep.resolutions.RATIFIED_RESOLUTIONS`. Data, not code: this
-    module never writes it anywhere."""
+    module never writes it anywhere.
+
+    FIXTURE HARDENING (adversarial-review fix, 2026-07-20): a fixture
+    instruction is marked as such, its provenance is FIXTURE-prefixed,
+    and `validate_contract` NEVER constructs a production-shaped
+    (mock=False) resolution from fixture data — the key-contract check
+    runs through a mock instance instead. A determined caller copying
+    fields out of a fixture instruction therefore copies a
+    FIXTURE-prefixed provenance string into any hand-built resolution —
+    the lie becomes visible in the register diff, which the human
+    changeset review is the final gate on."""
 
     question_id: str
     payload: dict
     rung: Rung
     provenance: str
+    fixture: bool = False
+
+    def __post_init__(self) -> None:
+        if self.fixture and not self.provenance.upper().startswith("FIXTURE"):
+            object.__setattr__(
+                self, "provenance", f"FIXTURE (resolves nothing): {self.provenance}"
+            )
 
     def as_mock_resolution(self) -> SentinelResolution:
         """The ONLY resolution object a dry run may instantiate for
@@ -183,9 +206,14 @@ class MintInstruction:
 
     def validate_contract(self) -> None:
         """Prove the payload satisfies the committed
-        `SentinelResolution` contract WITHOUT keeping the object: the
-        real (non-mock) instance is constructed and discarded. Nothing is
-        registered — registration is a human changeset by design."""
+        `SentinelResolution` key contract WITHOUT keeping the object.
+        Fixture instructions validate through a MOCK instance only — no
+        production-shaped resolution is ever constructed from fixture
+        data. Nothing is registered either way — registration is a human
+        changeset by design."""
+        if self.fixture:
+            self.as_mock_resolution()
+            return
         SentinelResolution(
             question_id=self.question_id,
             payload=dict(self.payload),
@@ -296,18 +324,38 @@ def classify_q2(
 
     form = item.get("form")
     if form == "internal_height":
+        raw = {k: item.get(k) for k in ("nominal_m", "min_m", "max_m")}
+        missing = sorted(k for k, v in raw.items() if v is None)
+        if missing:
+            # One-ended / nominal-less answers are PARTIAL per the plan's
+            # §1.2 table ("one end only … PARTIAL — sentinel stays"), never
+            # an error and never completed with invented values
+            # (adversarial-review fix, 2026-07-20).
+            return IngestOutcome(
+                "Q2",
+                ReplyClass.PARTIAL,
+                None,
+                None,
+                notes=(
+                    f"internal-height answer missing {missing}: the defined "
+                    "value(s) may land as dated rung annotations; "
+                    "concrete-proposal follow-up asks for the rest (we "
+                    "propose, he ratifies) — no invented completion",
+                ),
+                provenance=f"{archive_ref}: {quote!r}",
+            )
         nominal = _require_window(
-            _require_finite(item.get("nominal_m"), "Q2 nominal_m"),
+            _require_finite(raw["nominal_m"], "Q2 nominal_m"),
             _P_TUNE_WINDOW_M,
             "Q2 nominal_m",
         )
         lo = _require_window(
-            _require_finite(item.get("min_m"), "Q2 min_m"),
+            _require_finite(raw["min_m"], "Q2 min_m"),
             _P_TUNE_WINDOW_M,
             "Q2 min_m",
         )
         hi = _require_window(
-            _require_finite(item.get("max_m"), "Q2 max_m"),
+            _require_finite(raw["max_m"], "Q2 max_m"),
             _P_TUNE_WINDOW_M,
             "Q2 max_m",
         )
@@ -325,46 +373,49 @@ def classify_q2(
                 ),
                 provenance=f"{archive_ref}: {quote!r} (gap form, deferred)",
             )
-        lo = p_tune_from_gap(item.get("gap_min_m"), q13_height_m)
-        hi = p_tune_from_gap(item.get("gap_max_m"), q13_height_m)
-        nominal = (
-            p_tune_from_gap(item["gap_nominal_m"], q13_height_m)
-            if item.get("gap_nominal_m") is not None
-            else 0.5 * (lo + hi)
-        )
-        notes.append(
-            "gap-form conversion: p_tune = deck_clearance (3.0 mm) + h(Q13) "
-            f"= {q13_height_m} m + g — derivation recorded verbatim per plan "
-            "§1.2; midpoint nominal is a labelled reading when he states "
-            "only the travel ends"
-        )
-    elif form == "screw_turns":
-        if item.get("pitch_m") is None:
+        if item.get("gap_nominal_m") is None:
+            # FULL requires nominal + both ends (plan §1.2 table); a
+            # midpoint nominal would be OUR invention, not his statement
+            # (adversarial-review fix, 2026-07-20).
             return IngestOutcome(
                 "Q2",
                 ReplyClass.PARTIAL,
                 None,
                 None,
                 notes=(
-                    "screw-turns answer without a stated pitch: mechanism "
-                    "colour only (plan §1.2 conversion 3); follow-up asks "
-                    "the pitch",
+                    "gap-form travel ends stated but NO nominal: FULL "
+                    "requires nominal + both ends; follow-up proposes the "
+                    "recorded as-operated 15 mm print as the nominal FOR "
+                    "HIM TO RATIFY (D3 keeps the print as record either "
+                    "way) — never a silently invented midpoint",
                 ),
-                provenance=f"{archive_ref}: {quote!r}",
+                provenance=f"{archive_ref}: {quote!r} (gap ends only)",
             )
-        pitch = _require_finite(item["pitch_m"], "Q2 pitch_m")
-        turns = _require_finite(item.get("turns"), "Q2 turns")
-        if pitch <= 0 or turns <= 0:
-            raise ReplyItemError("Q2 screw form needs pitch_m > 0 and turns > 0")
-        nominal = _require_window(
-            _require_finite(item.get("nominal_m"), "Q2 nominal_m"),
-            _P_TUNE_WINDOW_M,
-            "Q2 nominal_m",
-        )
-        lo, hi = nominal - 0.5 * pitch * turns, nominal + 0.5 * pitch * turns
+        lo = p_tune_from_gap(item.get("gap_min_m"), q13_height_m)
+        hi = p_tune_from_gap(item.get("gap_max_m"), q13_height_m)
+        nominal = p_tune_from_gap(item["gap_nominal_m"], q13_height_m)
         notes.append(
-            "screw-turns conversion with HIS stated pitch: travel read as "
-            "± turns·pitch/2 about the stated nominal — conversion recorded"
+            "gap-form conversion: p_tune = deck_clearance (3.0 mm) + h(Q13) "
+            f"= {q13_height_m} m + g — derivation recorded verbatim per plan "
+            "§1.2"
+        )
+    elif form == "screw_turns":
+        # Conversion 3 gives travel only when pitch AND an explicit
+        # reference/range are all his; a symmetric ±turns·pitch/2 reading
+        # was OUR convention, not ratified — retired (adversarial-review
+        # fix, 2026-07-20). Screw answers are mechanism colour: PARTIAL.
+        return IngestOutcome(
+            "Q2",
+            ReplyClass.PARTIAL,
+            None,
+            None,
+            notes=(
+                "screw-turns answer: mechanism colour only. If the reply's "
+                "OWN arithmetic states explicit min/max heights, transcribe "
+                "them as the internal_height form; no symmetric-about-"
+                "nominal reading is ever applied on our side",
+            ),
+            provenance=f"{archive_ref}: {quote!r}",
         )
     else:
         return IngestOutcome(
@@ -444,8 +495,14 @@ def classify_q9(item: dict | None, *, archive_ref: str) -> IngestOutcome:
                 ),
                 provenance=f"{archive_ref}: {quote!r}",
             )
+        if item.get("nominal_m") is None:
+            raise ReplyItemError(
+                "Q9 informal-slack form requires an explicit nominal_m from "
+                "the transcriber (0.0 only when the reply itself says "
+                "centred/mid-height) — no physical default is ever assumed"
+            )
         centre = _require_window(
-            _require_finite(item.get("nominal_m", 0.0), "Q9 nominal_m"),
+            _require_finite(item["nominal_m"], "Q9 nominal_m"),
             _OFFSET_WINDOW_M,
             "Q9 nominal_m",
         )
@@ -608,14 +665,24 @@ def ingest_reply(
     transcription: dict,
     *,
     fixture: bool,
-    q13_height_for_gap_form: float | None = None,
 ) -> DryRunReport:
     """Classify a transcribed reply and produce the §5 structured report.
 
-    `fixture=True` marks synthetic transcriptions: their MintInstructions
-    still validate the payload CONTRACT, but `as_mock_resolution` is the
-    only resolution object a fixture can yield, and the report is labelled.
-    A REAL reply's mint remains a human changeset either way.
+    `fixture=True` marks synthetic transcriptions: outcomes are DOWNGRADED
+    to PLANNING_ASSUMPTION, mint instructions are fixture-marked with
+    FIXTURE-prefixed provenance, and `as_mock_resolution` is the only
+    resolution object a fixture can yield. `fixture=False` requires the
+    cited archive directory to EXIST in the repo with a MANIFEST.sha256
+    (plan §0: archive before reading numbers; the hash verification itself
+    rides the calibration CI integrity gate — cavity cannot import
+    calibration across the one-way boundary). A REAL reply's mint remains
+    a human changeset either way.
+
+    Gap-form Q2 height source (adversarial-review fix, 2026-07-20): the
+    conversion consumes a resolved height ONLY from (a) this same reply's
+    FULL Q13 outcome, or (b) an already-RATIFIED non-mock Q13 in
+    `cavity.sweep.resolutions` — never a caller-supplied float, so the
+    evidence-favoured fork branch has no path in.
     """
     archive_ref = str(transcription.get("archive", "")).strip()
     if not archive_ref:
@@ -629,18 +696,46 @@ def ingest_reply(
             "fixture transcriptions must mark the archive ref with 'FIXTURE' "
             "so no synthetic value can masquerade as an archived reply"
         )
+    if not fixture:
+        repo_root = Path(__file__).resolve().parents[3]
+        archive_dir = repo_root / archive_ref
+        if not (archive_dir.is_dir() and (archive_dir / "MANIFEST.sha256").is_file()):
+            raise ReplyItemError(
+                f"non-fixture ingest requires an existing committed archive "
+                f"with MANIFEST.sha256 at {archive_ref!r} (plan §0 step "
+                "zero); archive the reply before transcribing it"
+            )
 
     items = transcription.get("items", {})
     q13 = classify_q13(items.get("Q13"), archive_ref=archive_ref)
-    # If THIS reply resolves Q13 fully, its height may serve the gap-form
-    # conversion (same-reply coupling the plan anticipates); an externally
-    # supplied resolved height is also accepted. Never the fork.
-    height = q13_height_for_gap_form
-    if height is None and q13.classification is ReplyClass.FULL:
+    height: float | None = None
+    if q13.classification is ReplyClass.FULL:
         height = q13.payload["sto_height_m"]  # type: ignore[index]
+    else:
+        ratified_q13 = ratified_resolutions().get("Q13")
+        if ratified_q13 is not None and not ratified_q13.mock:
+            height = float(ratified_q13.payload["sto_height_m"])
     q2 = classify_q2(items.get("Q2"), archive_ref=archive_ref, q13_height_m=height)
     q9 = classify_q9(items.get("Q9"), archive_ref=archive_ref)
     outcomes = (q13, q2, q9)
+
+    if fixture:
+        # Fixture data never carries a supervisor rung — downgrade every
+        # outcome to PLANNING_ASSUMPTION (adversarial-review fix).
+        outcomes = tuple(
+            IngestOutcome(
+                question_id=o.question_id,
+                classification=o.classification,
+                rung=Rung.PLANNING_ASSUMPTION if o.rung is not None else None,
+                payload=o.payload,
+                notes=o.notes
+                + (("rung downgraded: FIXTURE data (resolves nothing)",)
+                   if o.rung is not None
+                   else ()),
+                provenance=o.provenance,
+            )
+            for o in outcomes
+        )
 
     mints: list[MintInstruction] = []
     for o in outcomes:
@@ -651,8 +746,9 @@ def ingest_reply(
                 payload=o.payload,
                 rung=o.rung,
                 provenance=o.provenance,
+                fixture=fixture,
             )
-            mi.validate_contract()  # constructs + discards; registers nothing
+            mi.validate_contract()  # key contract only; registers nothing
             mints.append(mi)
 
     # Hypothetical post-mint state, computed with MOCK stand-ins so the
@@ -685,3 +781,87 @@ def ingest_reply(
         prohibited=prohibited,
         newly_licensed=_LEGAL_IMMEDIATELY,
     )
+
+
+def build_d2_escape_hatch(
+    *,
+    proposal_text: str,
+    proposed_nominal_m: float,
+    proposed_min_m: float,
+    proposed_max_m: float,
+    followup_dates: tuple[str, ...],
+    followup_archive_refs: tuple[str, ...],
+    no_reply_as_of: str,
+    elapsed_days: float,
+) -> MintInstruction:
+    """The ARMED D2 escape hatch (user-ratified 2026-07-20), mechanised
+    as a validated transaction (adversarial-review fix): fires only after
+    the concrete-proposal follow-up went unanswered. Produces the
+    PLANNING_ASSUMPTION (mock=False) Q2 mint instruction whose provenance
+    preserves VERBATIM (i) the exact proposal, (ii) the follow-up date(s)
+    and archive path(s) — each of which must exist committed with a
+    manifest — and (iii) the recorded absence of a reply with elapsed
+    time. Registration remains the human changeset; a later real answer
+    supersedes in place with a dated note, never a silent edit."""
+    if not proposal_text.strip():
+        raise ReplyItemError("D2: the exact proposal text is required verbatim")
+    if not followup_dates or not all(d.strip() for d in followup_dates):
+        raise ReplyItemError("D2: follow-up date(s) required")
+    if not no_reply_as_of.strip():
+        raise ReplyItemError("D2: the no-reply-as-of date is required")
+    if not elapsed_days > 0:
+        raise ReplyItemError("D2: elapsed_days must be > 0")
+    if not followup_archive_refs:
+        raise ReplyItemError("D2: follow-up archive path(s) required")
+    repo_root = Path(__file__).resolve().parents[3]
+    for ref in followup_archive_refs:
+        archive_dir = repo_root / ref
+        if not (
+            archive_dir.is_dir() and (archive_dir / "MANIFEST.sha256").is_file()
+        ):
+            raise ReplyItemError(
+                f"D2: follow-up archive {ref!r} must exist committed with a "
+                "MANIFEST.sha256 before the escape hatch may fire"
+            )
+    nominal = _require_window(
+        _require_finite(proposed_nominal_m, "D2 nominal"),
+        _P_TUNE_WINDOW_M,
+        "D2 nominal",
+    )
+    lo = _require_window(
+        _require_finite(proposed_min_m, "D2 min"), _P_TUNE_WINDOW_M, "D2 min"
+    )
+    hi = _require_window(
+        _require_finite(proposed_max_m, "D2 max"), _P_TUNE_WINDOW_M, "D2 max"
+    )
+    if not (lo < hi):
+        raise ReplyItemError(f"D2 travel inverted: [{lo}, {hi}]")
+    if not (lo <= nominal <= hi):
+        raise ReplyItemError(f"D2 nominal {nominal} outside [{lo}, {hi}]")
+    provenance = (
+        "D2 ESCAPE HATCH (user-ratified 2026-07-20; planning assumption, "
+        "supersede-in-place on a real answer). "
+        f"Proposal sent, verbatim: {proposal_text!r}. Proposed band read "
+        "under the D5 uniform convention. Follow-up(s): "
+        f"{', '.join(followup_dates)} (archives: "
+        f"{', '.join(followup_archive_refs)}). No reply recorded as of "
+        f"{no_reply_as_of} ({elapsed_days:g} days elapsed)."
+    )
+    mi = MintInstruction(
+        question_id="Q2",
+        payload={
+            "p_tune_nominal": nominal,
+            "p_tune_min": lo,
+            "p_tune_max": hi,
+            "mechanism": (
+                "screw-suspended ceiling / 26-mm piston on a brass screw "
+                "(supervisor-written 2026-07-17; in print, Wu 2020 + PRL SM); "
+                "travel band = the D2 proposed band, unconfirmed"
+            ),
+        },
+        rung=Rung.PLANNING_ASSUMPTION,
+        provenance=provenance,
+        fixture=False,
+    )
+    mi.validate_contract()
+    return mi

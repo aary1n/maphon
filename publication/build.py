@@ -390,14 +390,51 @@ def check_contract(contract: dict) -> ContractCheck:
             if target.suffix in {".md", ".json", ".yaml", ".txt"}:
                 haystack = target.read_text(encoding="utf-8")
             elif artifact.get("generator"):
+                # Binary artifact: check the generator's RUNTIME caption
+                # object when one exists — a real render input, not a dead
+                # comment (adversarial-review fix); source text is the
+                # fallback for caption-less generators.
                 mod = importlib.import_module(artifact["generator"])
-                haystack = Path(mod.__file__).read_text(encoding="utf-8")
+                haystack = getattr(mod, "CAPTION", "") or Path(
+                    mod.__file__
+                ).read_text(encoding="utf-8")
             else:
                 problems.append(f"{aid}: caveat {token!r} unverifiable")
                 continue
             if token.lower() not in haystack.lower():
                 problems.append(f"{aid}: required caveat {token!r} absent")
     return ContractCheck(ok=not problems, problems=tuple(problems))
+
+
+def run_pin_tests(contract: dict) -> ContractCheck:
+    """EXECUTE the contract's declared pin tests (adversarial-review fix:
+    a pin that is only greppable is not a check). One pytest run over the
+    unique node ids; any failure is a contract problem."""
+    node_ids: list[str] = []
+    for artifact in contract["artifacts"]:
+        for entry in artifact.get("pin_tests", []):
+            if entry not in node_ids:
+                node_ids.append(entry)
+    if not node_ids:
+        return ContractCheck(ok=True, problems=())
+    proc = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "--tb=line", *node_ids],
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if proc.returncode == 0:
+        return ContractCheck(ok=True, problems=())
+    tail = (proc.stdout or "").strip().splitlines()[-15:]
+    return ContractCheck(
+        ok=False,
+        problems=(
+            "pin-test execution FAILED (pytest exit "
+            f"{proc.returncode}): " + " | ".join(tail),
+        ),
+    )
 
 
 # --- stage 6: sentinels -------------------------------------------------
@@ -448,6 +485,7 @@ class ClaimStatus:
     missing_chain: tuple[str, ...]
     supervisor_unratified: tuple[str, ...]
     planning_grade: tuple[str, ...]
+    headline_unratified: tuple[str, ...] = ()
 
 
 def load_claims() -> list[dict]:
@@ -479,6 +517,11 @@ def claim_status(claims: list[dict]) -> ClaimStatus:
         planning_grade=tuple(
             c["id"] for c in claims if "planning-grade" in c["category"]
         ),
+        headline_unratified=tuple(
+            c["id"]
+            for c in claims
+            if c["headline"] and "supervisor-unratified" in c.get("category", [])
+        ),
     )
 
 
@@ -497,6 +540,60 @@ class BuildVerdicts:
     headline_ready: bool
 
 
+def derive_scientific_validation() -> str:
+    """Derived from the committed records at call time — never hardcoded
+    prose and never inferred from test results (adversarial-review fix,
+    2026-07-20). Unreadable records surface as UNKNOWN, loudly."""
+    parts: list[str] = []
+    try:
+        gate = json.loads(
+            (
+                REPO
+                / "refs/gate_runs/20260711T132705Z_rejudge/gate_report.json"
+            ).read_text(encoding="utf-8")
+        )
+        parts.append(
+            f"SS5a Booth anchor: {gate['n_pass']} pass / {gate['n_fail']} "
+            f"fail / {gate['n_deferred']} deferred; phase1_complete = "
+            f"{gate['phase1_complete']}"
+        )
+    except (OSError, KeyError, ValueError) as exc:
+        parts.append(f"SS5a gate record UNREADABLE ({exc!r})")
+    w2_records = sorted((REPO / "refs" / "gate_runs").glob("*wu_anchor*"))
+    parts.append(
+        "W2 Wu anchor: "
+        + (
+            f"record(s) present: {[p.name for p in w2_records]}"
+            if w2_records
+            else "NO solve record exists (no gate row binds wu_ring)"
+        )
+    )
+    try:
+        feed = json.loads(
+            (REPO / "calibration/reports/observable_a_feed.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        parts.append(f"Layer B calibration grade: {feed['provenance']}")
+    except (OSError, KeyError, ValueError) as exc:
+        parts.append(f"calibration feed UNREADABLE ({exc!r})")
+    layer_a_records = sorted((REPO / "refs" / "gate_runs").glob("*layer_a*"))
+    parts.append(
+        "Layer A/C population: "
+        + (
+            f"record(s): {[p.name for p in layer_a_records]}"
+            if layer_a_records
+            else "no committed campaign record"
+        )
+    )
+    status = (
+        "PARTIAL"
+        if not w2_records or not layer_a_records
+        else "SEE COMPONENTS"
+    )
+    return f"{status}: " + "; ".join(parts)
+
+
 def compose_verdicts(
     archives: ArchiveStatus,
     regen: list[RegenResult],
@@ -504,35 +601,46 @@ def compose_verdicts(
     sentinels: SentinelStatus,
     claims: ClaimStatus,
 ) -> BuildVerdicts:
-    regen_bad = [
-        r for r in regen if r.matches_committed is False or (not r.regenerated and "skipped" not in r.detail)
+    regen_fail = [
+        r
+        for r in regen
+        if r.matches_committed is False
+        or (not r.regenerated and "skipped" not in r.detail)
     ]
-    repro = (
-        "PASS"
-        if archives.ok and contract_check.ok and not regen_bad
-        else "FAIL: "
-        + "; ".join(
+    regen_skipped = [
+        r for r in regen if not r.regenerated and "skipped" in r.detail
+    ]
+    if not archives.ok or not contract_check.ok or regen_fail:
+        repro = "FAIL: " + "; ".join(
             ([archives.detail] if not archives.ok else [])
-            + [f"{r.artifact_id}: {r.detail}" for r in regen_bad]
+            + [f"{r.artifact_id}: {r.detail}" for r in regen_fail]
             + list(contract_check.problems)
         )
-    )
-    validation = (
-        "PARTIAL: SS5a Booth anchor GREEN (5/0/1) but phase1_complete FALSE "
-        "(confinement row deferred); W2 Wu-anchor UNSOLVED (no gate row binds "
-        "wu_ring); Layer B calibration at graph-digitized grade "
-        "(superseded_by_raw_data pending); Layer A/C population NOT RUN. "
-        "This verdict is read from the committed gate/report records, "
-        "never from test results."
-    )
+    elif regen_skipped:
+        # A skip is not a failure, but it is NOT the advertised full check
+        # either (adversarial-review fix): only a no-skip build earns PASS.
+        repro = "PARTIAL (skipped: " + ", ".join(
+            r.artifact_id for r in regen_skipped
+        ) + ")"
+    else:
+        repro = "PASS"
+    validation = derive_scientific_validation()
     ratification = (
         "PENDING: " + ", ".join(claims.supervisor_unratified)
         if claims.supervisor_unratified
         else "no unratified claims"
     )
-    headline_ready = not claims.headline_blocked and repro == "PASS"
     unresolved_any = sorted(
         {q for v in sentinels.unresolved_by_mode.values() for q in v}
+    )
+    # Readiness gate (adversarial-review fix): headline chains complete AND
+    # full reproducibility PASS AND no unresolved blocker sentinel AND no
+    # supervisor-unratified HEADLINE claim.
+    headline_ready = (
+        not claims.headline_blocked
+        and repro == "PASS"
+        and not unresolved_any
+        and not claims.headline_unratified
     )
     if headline_ready:
         readiness = "READY (all headline chains complete)"
@@ -545,12 +653,17 @@ def compose_verdicts(
             )
         if unresolved_any:
             reasons.append("unresolved sentinels: " + ", ".join(unresolved_any))
+        if claims.headline_unratified:
+            reasons.append(
+                "supervisor-unratified HEADLINE claims: "
+                + ", ".join(claims.headline_unratified)
+            )
         if claims.supervisor_unratified:
             reasons.append(
                 "supervisor-unratified: " + ", ".join(claims.supervisor_unratified)
             )
         if repro != "PASS":
-            reasons.append("artifact reproducibility not PASS")
+            reasons.append(f"artifact reproducibility: {repro.split(':')[0]}")
         readiness = "REFUSED — " + "; ".join(reasons)
     return BuildVerdicts(
         artifact_reproducibility=repro,
@@ -643,6 +756,7 @@ def run_build(
     build_root: Path,
     include_figures: bool = True,
     include_slow: bool = True,
+    run_pins: bool = True,
     draft: bool = False,
 ) -> tuple[Path, BuildVerdicts]:
     stamp_dir = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -660,6 +774,17 @@ def run_build(
     )
     index = artifact_index(contract, build_dir)
     contract_check = check_contract(contract)
+    if run_pins:
+        pins = run_pin_tests(contract)
+        contract_check = ContractCheck(
+            ok=contract_check.ok and pins.ok,
+            problems=contract_check.problems + pins.problems,
+        )
+    else:
+        # not running the pins is a skip, not a pass — surface it
+        regen = regen + [
+            RegenResult("pin-tests", False, None, "skipped (--skip-pin-tests)")
+        ]
     sentinels = sentinel_status()
     claims = claim_status(load_claims())
     verdicts = compose_verdicts(archives, regen, contract_check, sentinels, claims)
@@ -730,16 +855,31 @@ def main(argv: list[str] | None = None) -> int:
         help="label outputs as DRAFT (permitted despite blockers; does not "
         "change the readiness verdict)",
     )
+    parser.add_argument(
+        "--skip-pin-tests",
+        action="store_true",
+        help="skip executing the contract's pin tests (build reports the "
+        "skip; reproducibility caps at PARTIAL)",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="exit 3 unless publication readiness is READY (the "
+        "readiness-sensitive exit for automation)",
+    )
     args = parser.parse_args(argv)
     build_dir, verdicts = run_build(
         build_root=Path(args.build_root),
         include_figures=not args.skip_figures,
         include_slow=not args.skip_slow,
+        run_pins=not args.skip_pin_tests,
         draft=args.draft,
     )
     print((build_dir / "build_report.md").read_text(encoding="utf-8"))
     print(f"[build directory: {build_dir}]")
-    return 0 if verdicts.artifact_reproducibility == "PASS" else 1
+    if args.strict and not verdicts.headline_ready:
+        return 3
+    return 0 if verdicts.artifact_reproducibility.startswith(("PASS", "PARTIAL")) else 1
 
 
 if __name__ == "__main__":

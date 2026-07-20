@@ -9,6 +9,7 @@ from calibration.reply_schema import (
     GradedField,
     MissingFieldsReport,
     PowerPlane,
+    PowerPlaneField,
     ReplyMetadata,
     RigMetadata,
     SampleMetadata,
@@ -67,15 +68,28 @@ class TestRecords:
                 ),
             )
 
-    def test_power_plane_requires_quote(self):
-        """Resolving the OPEN power-plane ask without wording would be an
-        invented answer — refused at the schema level."""
+    def test_power_plane_is_a_graded_structured_field(self):
+        """Resolving the OPEN power-plane ask without grade+wording would
+        be an invented answer; OTHER must preserve his actual wording
+        (adversarial-review fix)."""
         with pytest.raises(SchemaError, match="quote"):
-            RigMetadata(power_plane=PowerPlane.AT_SAMPLE)
-        RigMetadata(
-            power_plane=PowerPlane.AT_SAMPLE,
-            power_plane_quote="measured right at the sample position",
+            PowerPlaneField(plane=PowerPlane.AT_SAMPLE)
+        with pytest.raises(SchemaError, match="other_text"):
+            PowerPlaneField(
+                plane=PowerPlane.OTHER,
+                grade=Grade.COLLABORATOR_CONFIRMED,
+                quote="somewhere odd",
+            )
+        with pytest.raises(SchemaError, match="bare"):
+            PowerPlaneField(plane=PowerPlane.UNKNOWN, quote="stray")
+        ok = PowerPlaneField(
+            plane=PowerPlane.OTHER,
+            grade=Grade.COLLABORATOR_CONFIRMED,
+            quote="I measure it after the beamsplitter pickoff",
+            other_text="after the beamsplitter pickoff",
         )
+        assert ok.present
+        RigMetadata(power_plane=ok)
 
     def test_reply_requires_archive_and_fixture_marker(self):
         rig = RigMetadata()
@@ -130,8 +144,11 @@ class TestMissingFieldsReport:
                 ),
             ),
             rig=RigMetadata(
-                power_plane=PowerPlane.DIODE_OUTPUT,
-                power_plane_quote="powers are the diode output",
+                power_plane=PowerPlaneField(
+                    plane=PowerPlane.DIODE_OUTPUT,
+                    grade=Grade.COLLABORATOR_CONFIRMED,
+                    quote="powers are the diode output",
+                ),
             ),
         )
         report = missing_fields_report(meta)

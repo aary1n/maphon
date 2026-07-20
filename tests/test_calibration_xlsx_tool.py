@@ -114,6 +114,50 @@ class TestReader:
         with pytest.raises(XlsxError, match="quoting"):
             sheet_to_csv_text(grid)
 
+    def test_extract_trace_csv_records_mapping_and_workbook_sha(self, tmp_path):
+        """The graded conversion entry point (plan §1.2): pinned
+        sheet/column mapping + workbook SHA-256 in the derived header."""
+        import hashlib
+
+        from calibration.raw_ingest import load_trace
+        from calibration.tools.xlsx_to_csv import extract_trace_csv
+
+        rows = (
+            '<row r="1">'
+            '<c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row>'
+            '<row r="2"><c r="A2"><v>1448.0</v></c><c r="B2"><v>1.0</v></c></row>'
+            '<row r="3"><c r="A3"><v>1449.0</v></c><c r="B3"><v>0.95</v></c></row>'
+            '<row r="4"><c r="A4"><v>1450.0</v></c><c r="B4"><v>0.99</v></c></row>'
+        )
+        path = _write_xlsx(tmp_path / "traces.xlsx", _sheet_xml(rows))
+        text = extract_trace_csv(
+            path,
+            sheet_name="data",
+            freq_column=0,
+            signal_column=1,
+            skip_rows=1,
+            header={
+                "dataset_version": "FIXTURE-XLSX",
+                "grade": "fixture",
+                "source_archive": "FIXTURE: none",
+                "source_member": "traces.xlsx::data",
+                "source_sha256": "0" * 64,
+                "sample_id": "d14",
+                "optical_power_mw": "3.81",
+                "power_plane": "unknown",
+                "freq_unit": "MHz",
+                "parser": "xlsx fixture v1",
+            },
+        )
+        assert "# xlsx_sheet: data" in text
+        assert "# xlsx_freq_column: 0" in text
+        expected_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+        assert f"# xlsx_workbook_sha256: {expected_sha}" in text
+        out = tmp_path / "trace.csv"
+        out.write_text(text, encoding="utf-8")
+        record = load_trace(out)
+        assert record.freq_hz[0] == pytest.approx(1448.0e6)
+
     def test_sparse_cells_become_empty(self, tmp_path):
         rows = (
             '<row r="1"><c r="A1"><v>1</v></c><c r="C1"><v>3</v></c></row>'

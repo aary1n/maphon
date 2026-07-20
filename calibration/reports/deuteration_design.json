@@ -10,6 +10,7 @@
     "sigma_rel": 0.098080783396482,
     "grade": "graph-digitized-provisional; superseded_by_raw_data=True"
   },
+  "x_range_semantics": "x_compat = envelope-derived compatibility range, NOT a confidence interval; x_det/x_det_suppression = smallest GUARANTEED-detectable enhancement / suppression factors. Sweep grids are bounds, not priors: no probabilistic reading (Bayes factors over the sweep box, or the T4 feed's descriptive fraction_within_2sigma) survives grid reparameterisation.",
   "scenarios": [
     {
       "name": "baseline",
@@ -19,11 +20,16 @@
       "rho_lo_worst": 0.5837504780379333,
       "rho_hi_worst": 2.3289428003156276,
       "x_det_at_digitized_sigma": 4.963211770984569,
+      "x_det_suppression_at_digitized_sigma": 4.772230557069809,
       "x_det_at_scoping_sigma": {
         "0.05": 4.432911526292171,
         "0.02": 4.155854555898911,
         "0.01": 4.071041197615259
-      }
+      },
+      "x_compat_at_digitized_sigma": [
+        0.46339688219455777,
+        2.751096078395858
+      ]
     },
     {
       "name": "pin_thickness",
@@ -33,11 +39,16 @@
       "rho_lo_worst": 0.5837504780379333,
       "rho_hi_worst": 2.264389117051192,
       "x_det_at_digitized_sigma": 4.825641367540123,
+      "x_det_suppression_at_digitized_sigma": 4.639953774744286,
       "x_det_at_scoping_sigma": {
         "0.05": 4.310039995669457,
         "0.02": 4.040662495940116,
         "0.01": 3.9581999960229712
-      }
+      },
+      "x_compat_at_digitized_sigma": [
+        0.47660749839724914,
+        2.751096078395858
+      ]
     },
     {
       "name": "pin_spot",
@@ -47,11 +58,16 @@
       "rho_lo_worst": 0.5837504780379333,
       "rho_hi_worst": 2.3289428003156276,
       "x_det_at_digitized_sigma": 4.963211770984569,
+      "x_det_suppression_at_digitized_sigma": 4.772230557069809,
       "x_det_at_scoping_sigma": {
         "0.05": 4.432911526292171,
         "0.02": 4.155854555898911,
         "0.01": 4.071041197615259
-      }
+      },
+      "x_compat_at_digitized_sigma": [
+        0.46339688219455777,
+        2.751096078395858
+      ]
     },
     {
       "name": "narrow_h_sub_one_decade",
@@ -61,11 +77,16 @@
       "rho_lo_worst": 0.5837504780379333,
       "rho_hi_worst": 2.3289428003156276,
       "x_det_at_digitized_sigma": 4.963211770984569,
+      "x_det_suppression_at_digitized_sigma": 4.772230557069809,
       "x_det_at_scoping_sigma": {
         "0.05": 4.432911526292171,
         "0.02": 4.155854555898911,
         "0.01": 4.071041197615259
-      }
+      },
+      "x_compat_at_digitized_sigma": [
+        0.46339688219455777,
+        2.751096078395858
+      ]
     },
     {
       "name": "pin_k",
@@ -75,11 +96,16 @@
       "rho_lo_worst": 0.5837504780379333,
       "rho_hi_worst": 2.3261972052890645,
       "x_det_at_digitized_sigma": 4.957360631337709,
+      "x_det_suppression_at_digitized_sigma": 4.766604565533508,
       "x_det_at_scoping_sigma": {
         "0.05": 4.4276855585963855,
         "0.02": 4.150955211184112,
         "0.01": 4.066241839527293
-      }
+      },
+      "x_compat_at_digitized_sigma": [
+        0.4639438264399491,
+        2.751096078395858
+      ]
     },
     {
       "name": "pin_mapping",
@@ -89,11 +115,16 @@
       "rho_lo_worst": 0.5837504780379333,
       "rho_hi_worst": 2.3289428003156276,
       "x_det_at_digitized_sigma": 4.963211770984569,
+      "x_det_suppression_at_digitized_sigma": 4.772230557069809,
       "x_det_at_scoping_sigma": {
         "0.05": 4.432911526292171,
         "0.02": 4.155854555898911,
         "0.01": 4.071041197615259
-      }
+      },
+      "x_compat_at_digitized_sigma": [
+        0.46339688219455777,
+        2.751096078395858
+      ]
     },
     {
       "name": "pin_thickness_and_spot",
@@ -103,11 +134,16 @@
       "rho_lo_worst": 0.5837504780379333,
       "rho_hi_worst": 2.264389117051192,
       "x_det_at_digitized_sigma": 4.825641367540123,
+      "x_det_suppression_at_digitized_sigma": 4.639953774744286,
       "x_det_at_scoping_sigma": {
         "0.05": 4.310039995669457,
         "0.02": 4.040662495940116,
         "0.01": 3.9581999960229712
-      }
+      },
+      "x_compat_at_digitized_sigma": [
+        0.47660749839724914,
+        2.751096078395858
+      ]
     },
     {
       "name": "all_metadata",
@@ -117,11 +153,16 @@
       "rho_lo_worst": 0.6991668003173254,
       "rho_hi_worst": 2.264389117051192,
       "x_det_at_digitized_sigma": 4.029039213336012,
+      "x_det_suppression_at_digitized_sigma": 3.874004361836932,
       "x_det_at_scoping_sigma": {
         "0.05": 3.5985517428641436,
         "0.02": 3.3736422589351345,
         "0.01": 3.3047924169160496
-      }
+      },
+      "x_compat_at_digitized_sigma": [
+        0.47660749839724914,
+        2.2969535312074085
+      ]
     },
     {
       "name": "m0_unconstrained_mounting",
@@ -131,11 +172,16 @@
       "rho_lo_worst": 0.13756339223887995,
       "rho_hi_worst": 15.744391630912661,
       "x_det_at_digitized_sigma": 142.3817217590787,
+      "x_det_suppression_at_digitized_sigma": 136.9029641892746,
       "x_det_at_scoping_sigma": {
         "0.05": 127.16877792904216,
         "0.02": 119.22072930847702,
         "0.01": 116.78765320014077
-      }
+      },
+      "x_compat_at_digitized_sigma": [
+        0.06854662014102633,
+        11.674280669839213
+      ]
     },
     {
       "name": "m0_mounting_within_1_decade",
@@ -145,11 +191,16 @@
       "rho_lo_worst": 0.3692640406065902,
       "rho_hi_worst": 7.985702211585331,
       "x_det_at_digitized_sigma": 26.903409787905105,
+      "x_det_suppression_at_digitized_sigma": 25.868183789736367,
       "x_det_at_scoping_sigma": {
         "0.05": 24.028883079818304,
         "0.02": 22.52707788732966,
         "0.01": 22.06734160391477
-      }
+      },
+      "x_compat_at_digitized_sigma": [
+        0.1351446377389366,
+        4.349065910273215
+      ]
     },
     {
       "name": "m0_mounting_within_half_decade",
@@ -159,12 +210,43 @@
       "rho_lo_worst": 0.5823659944635284,
       "rho_hi_worst": 4.814316927113268,
       "x_det_at_digitized_sigma": 10.284185508642288,
+      "x_det_suppression_at_digitized_sigma": 9.888456629200284,
       "x_det_at_scoping_sigma": {
         "0.05": 9.185359517863912,
         "0.02": 8.611274547997418,
         "0.01": 8.435534251099511
-      }
+      },
+      "x_compat_at_digitized_sigma": [
+        0.2241698768100925,
+        2.7576363767105927
+      ]
     }
+  ],
+  "power_grid_visits_at_n8": [
+    {
+      "n_levels": 8,
+      "visits_per_level": 1,
+      "sigma_rel_ratio_at_digitized_floor": 0.08548481186747642
+    },
+    {
+      "n_levels": 8,
+      "visits_per_level": 2,
+      "sigma_rel_ratio_at_digitized_floor": 0.06044689015994883
+    },
+    {
+      "n_levels": 8,
+      "visits_per_level": 3,
+      "sigma_rel_ratio_at_digitized_floor": 0.04935467914331203
+    }
+  ],
+  "aicc_thresholds_at_n8": {
+    "n": 8,
+    "quadratic_dchi2": 9.6,
+    "piecewise_searched_breakpoint_dchi2": 18.933333333333337
+  },
+  "statistical_structure_notes": [
+    "profile-likelihood framing: the common scale A (power plane x shared absorption x shared |df/dT|) profiles out analytically, leaving ONE scale-free contrast from the two slopes; M0 carries ~7-8 effective unknowns against it (M1 adds one identifiable relative multiplier X)",
+    "matched-pair design inequality: a factor X is design-resolvable only if |log X| > eps_g + 2*sigma_ell (hard geometry-mismatch bound + statistical error); no number of power points rescues a failed geometry condition"
   ],
   "matched_sample_analysis": {
     "glue_only_band_full_prior": 15.670183118191263,
@@ -177,49 +259,49 @@
       "sigma_point_mhz": 0.05,
       "sigma_point_is_digitized_floor": true,
       "target_sigma_rel": 0.05,
-      "n_required": 22,
+      "n_required": 28,
       "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
     },
     {
       "sigma_point_mhz": 0.05,
       "sigma_point_is_digitized_floor": true,
       "target_sigma_rel": 0.02,
-      "n_required": 135,
+      "n_required": 186,
       "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
     },
     {
       "sigma_point_mhz": 0.05,
       "sigma_point_is_digitized_floor": true,
       "target_sigma_rel": 0.01,
-      "n_required": 537,
+      "n_required": 750,
       "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
     },
     {
       "sigma_point_mhz": 0.02,
       "sigma_point_is_digitized_floor": false,
       "target_sigma_rel": 0.05,
-      "n_required": 4,
+      "n_required": 3,
       "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
     },
     {
       "sigma_point_mhz": 0.02,
       "sigma_point_is_digitized_floor": false,
       "target_sigma_rel": 0.02,
-      "n_required": 22,
+      "n_required": 28,
       "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
     },
     {
       "sigma_point_mhz": 0.02,
       "sigma_point_is_digitized_floor": false,
       "target_sigma_rel": 0.01,
-      "n_required": 86,
+      "n_required": 119,
       "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
     },
     {
       "sigma_point_mhz": 0.01,
       "sigma_point_is_digitized_floor": false,
       "target_sigma_rel": 0.05,
-      "n_required": 1,
+      "n_required": 3,
       "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
     },
     {
@@ -233,21 +315,21 @@
       "sigma_point_mhz": 0.01,
       "sigma_point_is_digitized_floor": false,
       "target_sigma_rel": 0.01,
-      "n_required": 22,
+      "n_required": 28,
       "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
     },
     {
       "sigma_point_mhz": 0.005,
       "sigma_point_is_digitized_floor": false,
       "target_sigma_rel": 0.05,
-      "n_required": 1,
+      "n_required": 3,
       "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
     },
     {
       "sigma_point_mhz": 0.005,
       "sigma_point_is_digitized_floor": false,
       "target_sigma_rel": 0.02,
-      "n_required": 2,
+      "n_required": 3,
       "d6_note": "D6 additionally requires >= 8 independent power points before ANY nonlinear power model is claimable"
     },
     {

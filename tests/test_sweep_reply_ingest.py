@@ -64,7 +64,11 @@ def _complete_fixture() -> dict:
 
 
 class TestCompleteFixture:
-    def test_all_three_full_with_supervisor_rung(self):
+    def test_all_three_full_but_downgraded_to_planning_rung(self):
+        """Fixture data NEVER carries a supervisor rung (adversarial-review
+        hardening 2026-07-20): outcomes are downgraded to
+        PLANNING_ASSUMPTION and mint instructions are fixture-marked with
+        FIXTURE-prefixed provenance."""
         report = ingest_reply(_complete_fixture(), fixture=True)
         assert [o.classification for o in report.outcomes] == [
             ReplyClass.FULL,
@@ -72,9 +76,12 @@ class TestCompleteFixture:
             ReplyClass.FULL,
         ]
         assert all(
-            o.rung is Rung.SUPERVISOR_CONFIRMED for o in report.outcomes
+            o.rung is Rung.PLANNING_ASSUMPTION for o in report.outcomes
         )
         assert len(report.mint_instructions) == 3
+        for mi in report.mint_instructions:
+            assert mi.fixture
+            assert mi.provenance.upper().startswith("FIXTURE")
 
     def test_fixture_resolves_nothing_real(self):
         """THE guarantee: after a full fixture ingest, the ratified
@@ -244,13 +251,44 @@ class TestQ2Rules:
             "form": "gap",
             "gap_min_m": 5e-3,
             "gap_max_m": 10e-3,
-            "quote": "FIXTURE: gap 5-10 mm",
+            "gap_nominal_m": 6.4e-3,
+            "quote": "FIXTURE: gap 5-10 mm, usually 6.4",
         }
         report = ingest_reply(fx, fixture=True)
         q2 = {o.question_id: o for o in report.outcomes}["Q2"]
         assert q2.classification is ReplyClass.FULL
         assert q2.payload["p_tune_min"] == pytest.approx(3e-3 + 8.6e-3 + 5e-3)
         assert q2.payload["p_tune_max"] == pytest.approx(3e-3 + 8.6e-3 + 10e-3)
+        assert q2.payload["p_tune_nominal"] == pytest.approx(
+            3e-3 + 8.6e-3 + 6.4e-3
+        )
+
+    def test_gap_ends_without_nominal_is_partial_never_midpoint(self):
+        """FULL requires nominal + both ends (plan §1.2); a midpoint
+        nominal would be OUR invention (adversarial-review fix)."""
+        fx = _complete_fixture()
+        fx["items"]["Q2"] = {
+            "form": "gap",
+            "gap_min_m": 5e-3,
+            "gap_max_m": 10e-3,
+            "quote": "FIXTURE: gap 5-10 mm",
+        }
+        report = ingest_reply(fx, fixture=True)
+        q2 = {o.question_id: o for o in report.outcomes}["Q2"]
+        assert q2.classification is ReplyClass.PARTIAL
+        assert any("never a silently invented midpoint" in n for n in q2.notes)
+
+    def test_one_ended_internal_height_is_partial_not_error(self):
+        out = classify_q2(
+            {
+                "form": "internal_height",
+                "min_m": 12e-3,
+                "quote": "can screw it down to 12 mm",
+            },
+            archive_ref=ARCHIVE,
+        )
+        assert out.classification is ReplyClass.PARTIAL
+        assert any("no invented completion" in n for n in out.notes)
 
     def test_inverted_travel_refused(self):
         with pytest.raises(ReplyItemError, match="inverted"):
@@ -283,12 +321,23 @@ class TestQ2Rules:
         assert out.classification is ReplyClass.PARTIAL
         assert any("D2" in n for n in out.notes)
 
-    def test_screw_turns_without_pitch_is_partial(self):
-        out = classify_q2(
+    def test_screw_turns_always_partial_no_symmetric_reading(self):
+        """The ±turns·pitch/2 symmetric reading was OUR convention, not
+        ratified — retired (adversarial-review fix). Screw answers are
+        mechanism colour regardless of stated pitch."""
+        for item in (
             {"form": "screw_turns", "turns": 10, "quote": "x"},
-            archive_ref=ARCHIVE,
-        )
-        assert out.classification is ReplyClass.PARTIAL
+            {
+                "form": "screw_turns",
+                "turns": 10,
+                "pitch_m": 0.5e-3,
+                "nominal_m": 15e-3,
+                "quote": "x",
+            },
+        ):
+            out = classify_q2(item, archive_ref=ARCHIVE)
+            assert out.classification is ReplyClass.PARTIAL
+            assert any("no symmetric" in n for n in out.notes)
 
     def test_gap_depth_rider_lands_in_payload_with_h1_note(self):
         out = classify_q2(
@@ -333,6 +382,20 @@ class TestQ9Rules:
             archive_ref=ARCHIVE,
         )
         assert out.classification is ReplyClass.PARTIAL
+
+    def test_informal_slack_without_explicit_nominal_refused(self):
+        """No physical default: the transcriber must state the nominal
+        (0.0 only when the reply itself says centred) — adversarial-review
+        fix for the silent 0.0 default."""
+        with pytest.raises(ReplyItemError, match="nominal_m"):
+            classify_q9(
+                {
+                    "informal_slack_m": 1e-3,
+                    "slack_covers_both": True,
+                    "quote": "give or take a millimetre",
+                },
+                archive_ref=ARCHIVE,
+            )
 
     def test_uniform_band_requires_quote_and_positive_slack(self):
         with pytest.raises(ReplyItemError):
@@ -393,3 +456,73 @@ class TestTranscriptionGuards:
             ingest_reply({"archive": ARCHIVE, "items": {}}, fixture=True),
             DryRunReport,
         )
+
+    def test_non_fixture_requires_existing_manifested_archive(self):
+        """Plan §0 step zero, enforced: a real ingest must cite a
+        committed archive directory carrying MANIFEST.sha256."""
+        with pytest.raises(ReplyItemError, match="MANIFEST"):
+            ingest_reply(
+                {
+                    "archive": "calibration/data/raw/does_not_exist_2099-01-01/",
+                    "items": {},
+                },
+                fixture=False,
+            )
+
+
+class TestD2EscapeHatch:
+    """The armed D2 transaction (adversarial-review fix: mechanised, not
+    narrated). Uses a real committed archive dir purely to exercise the
+    existence validation; the produced instruction is a test-local object
+    that registers nothing."""
+
+    REAL_ARCHIVE = "calibration/data/raw/oxborrow_tuning_2026-07-16"
+
+    def _kwargs(self, **over):
+        base = dict(
+            proposal_text=(
+                "TEST-ONLY (not a real proposal): shall I take usable travel "
+                "as gap 5-10 mm on the current build?"
+            ),
+            proposed_nominal_m=15e-3,
+            proposed_min_m=12e-3,
+            proposed_max_m=20e-3,
+            followup_dates=("2026-07-25",),
+            followup_archive_refs=(self.REAL_ARCHIVE,),
+            no_reply_as_of="2026-08-10",
+            elapsed_days=16.0,
+        )
+        base.update(over)
+        return base
+
+    def test_complete_escape_hatch_mints_planning_assumption(self):
+        from cavity.sweep.reply_ingest import build_d2_escape_hatch
+
+        mi = build_d2_escape_hatch(**self._kwargs())
+        assert mi.question_id == "Q2"
+        assert mi.rung is Rung.PLANNING_ASSUMPTION
+        assert not mi.fixture
+        for token in ("D2 ESCAPE HATCH", "TEST-ONLY", "2026-07-25", "No reply"):
+            assert token in mi.provenance
+        # still nothing registered
+        assert [r.question_id for r in RATIFIED_RESOLUTIONS] == ["Q11"]
+
+    @pytest.mark.parametrize(
+        "over,match",
+        [
+            ({"proposal_text": " "}, "proposal"),
+            ({"followup_dates": ()}, "date"),
+            ({"no_reply_as_of": ""}, "no-reply"),
+            ({"elapsed_days": 0.0}, "elapsed"),
+            (
+                {"followup_archive_refs": ("calibration/data/raw/nope/",)},
+                "MANIFEST",
+            ),
+            ({"proposed_min_m": 21e-3}, "inverted"),
+        ],
+    )
+    def test_incomplete_escape_hatch_refused(self, over, match):
+        from cavity.sweep.reply_ingest import build_d2_escape_hatch
+
+        with pytest.raises(ReplyItemError, match=match):
+            build_d2_escape_hatch(**self._kwargs(**over))

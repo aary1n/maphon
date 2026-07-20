@@ -48,6 +48,7 @@ from pathlib import Path
 
 import numpy as np
 
+from calibration.constants import EXCITATION
 from calibration.reply_schema import PowerPlane
 
 _HEADER_RE = re.compile(r"^#\s*([A-Za-z0-9_]+)\s*:\s*(.*)$")
@@ -82,7 +83,12 @@ class RawIngestError(ValueError):
 
 @dataclass(frozen=True)
 class TraceRecord:
-    """One loaded spectrum trace + its provenance header."""
+    """One loaded spectrum trace + its provenance header.
+
+    `mw_power` and the acquisition-protocol keys (settling time, sweep
+    direction, dwell, order — plan §2) ride the header verbatim; the two
+    most load-bearing get typed accessors (adversarial-review fix,
+    2026-07-20)."""
 
     dataset_version: str
     grade: str
@@ -96,10 +102,23 @@ class TraceRecord:
     signal: np.ndarray
     header: dict[str, str]
     path: Path
+    mw_power_dbm: float | None = None
+    source_verified: bool = False
 
     @property
     def is_fixture(self) -> bool:
         return self.grade == "fixture" or "FIXTURE" in self.dataset_version.upper()
+
+    @property
+    def acquisition_metadata(self) -> dict[str, str]:
+        keys = (
+            "settling_time_s",
+            "sweep_direction",
+            "dwell_per_point_s",
+            "trace_order",
+            "repeat_index",
+        )
+        return {k: self.header[k] for k in keys if k in self.header}
 
 
 def _parse_header_and_body(text: str, origin: str) -> tuple[dict[str, str], str]:
@@ -190,8 +209,17 @@ def load_trace(path: Path) -> TraceRecord:
         raise RawIngestError(
             f"{path.name}: optical_power_mw not a number"
         ) from None
-    if not (power == power and 0 < power < 1e4):
-        raise RawIngestError(f"{path.name}: implausible optical_power_mw {power}")
+    # Unit-slip guard derived from the graded source (adversarial-review
+    # fix: was a bare 10 W literal): the rig diode is EXCITATION
+    # .max_power_mw = 15 mW; two orders of magnitude of headroom admits
+    # any plausible future source while catching a W-vs-mW transcription.
+    power_ceiling_mw = 100.0 * EXCITATION.max_power_mw
+    if not (power == power and 0 < power < power_ceiling_mw):
+        raise RawIngestError(
+            f"{path.name}: implausible optical_power_mw {power} "
+            f"(unit-slip guard: ceiling {power_ceiling_mw} mW = 100 x the "
+            "graded diode maximum)"
+        )
     plane_raw = header["power_plane"].strip().lower().replace("_", "-")
     try:
         plane = PowerPlane(plane_raw)
@@ -200,6 +228,42 @@ def load_trace(path: Path) -> TraceRecord:
             f"{path.name}: power_plane {header['power_plane']!r} not one of "
             f"{[p.value for p in PowerPlane]}"
         ) from None
+    mw_power = None
+    if "mw_power_dbm" in header:
+        try:
+            mw_power = float(header["mw_power_dbm"])
+        except ValueError:
+            raise RawIngestError(
+                f"{path.name}: mw_power_dbm not a number"
+            ) from None
+    # Source-hash VERIFICATION (adversarial-review fix, 2026-07-20): a
+    # syntactically valid sha is not provenance — for non-fixture grades
+    # the named archive member must exist in the repo and hash-match.
+    source_verified = False
+    if (
+        header["grade"] != "fixture"
+        and "FIXTURE" not in header["dataset_version"].upper()
+    ):
+        repo_root = _PACKAGE_DIR.parent
+        member = (
+            repo_root
+            / header["source_archive"].strip("/\\")
+            / header["source_member"]
+        )
+        if not member.is_file():
+            raise RawIngestError(
+                f"{path.name}: source member "
+                f"{header['source_archive']}/{header['source_member']} not "
+                "found in the repo — archive the raw attachment first "
+                "(plan §0 step zero)"
+            )
+        actual = hashlib.sha256(member.read_bytes()).hexdigest()
+        if actual != header["source_sha256"].lower():
+            raise RawIngestError(
+                f"{path.name}: source_sha256 does not match the archived "
+                f"member ({actual[:12]}… on disk)"
+            )
+        source_verified = True
     return TraceRecord(
         dataset_version=header["dataset_version"],
         grade=header["grade"],
@@ -213,31 +277,42 @@ def load_trace(path: Path) -> TraceRecord:
         signal=signal,
         header=header,
         path=path,
+        mw_power_dbm=mw_power,
+        source_verified=source_verified,
     )
 
 
 def load_dataset(root: Path, dataset_version: str) -> tuple[TraceRecord, ...]:
     """Load every trace of ONE named dataset version under `root`
     (recursive). The version is EXPLICIT — no 'latest' resolution exists
-    by design (plan §1.3). Files of other versions are ignored; zero
-    matches is an error."""
+    by design (plan §1.3). Selection parses each candidate's FULL header
+    and compares the parsed dataset_version for exact equality
+    (adversarial-review fix: no substring sniffing). Files without any
+    trace header are ignored; zero matches is an error."""
     traces = []
     for path in sorted(root.rglob("*.csv")):
         try:
-            text_head = path.read_text(encoding="utf-8")[:4096]
+            text = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
             continue
-        if f"dataset_version: {dataset_version}" not in text_head:
+        if not text.lstrip().startswith("#"):
+            continue  # not a trace-contract file
+        try:
+            header, _ = _parse_header_and_body(text, origin=path.name)
+        except RawIngestError:
+            continue  # carries comments but not the trace contract
+        if header["dataset_version"] != dataset_version:
             continue
         traces.append(load_trace(path))
     if not traces:
         raise RawIngestError(
             f"no traces of dataset_version {dataset_version!r} under {root}"
         )
-    keys = {(t.sample_id, t.optical_power_mw) for t in traces}
+    keys = {(t.sample_id, t.optical_power_mw, t.mw_power_dbm) for t in traces}
     if len(keys) != len(traces):
         raise RawIngestError(
-            f"duplicate (sample, power) traces in {dataset_version!r}"
+            f"duplicate (sample, optical power, MW power) traces in "
+            f"{dataset_version!r}"
         )
     return tuple(traces)
 

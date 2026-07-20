@@ -50,7 +50,15 @@ exposure in `paper/reviewer_attack_surface.md`; artifact contract in
   Q2/Q9/Q13, Phase 1b engine, W2 anchor, licence, 209-solve campaign);
   (ii) `PLANNING_C0 = 190` is a report-local literal in
   `cavity/thermal/report_margin.py`, not a graded constant in
-  `provenance/constants.py` (claim-trace finding, 2026-07-20).
+  `provenance/constants.py` (claim-trace finding, 2026-07-20; confirmed
+  by the final adversarial review as its BLOCKER 4). **Deliberate
+  deferral (2026-07-20):** promoting it into the provenance module
+  creates a new graded planning-import constant — a §6-discipline
+  changeset that wants user ratification, not a side effect of a
+  publication-layer pass. Until then the literal stays disclosed here,
+  pinned by `test_paper_spine.py::TestResultRegisterStaleness::
+  test_planning_c0_flagged_as_ungraded`, and blocks headline readiness
+  through this chain entry.
 - **Unlocked by:** Oxborrow replies (Q13/Q2/Q9) → W2 pass → Layer A campaign
   → Layer C; plus ratification (below).
 
@@ -89,10 +97,14 @@ exposure in `paper/reviewer_attack_surface.md`; artifact contract in
 
 ### C3 — §5a Booth anchor GREEN (5 pass / 0 fail / 1 deferred)
 - **Strongest wording:** "The forward model reproduces Booth's TE01δ anchor:
-  f to 4 s.f., Q₀ to +0.02% (faithful branch), V_mode to +0.21% after
-  correcting her print's partial-revolution normalisation, wall split inside
-  the committed window. Phase 1 is NOT complete — the confinement row is
-  deferred to the Layer A trajectory."
+  f to 4 s.f., Q₀ to +0.02% (faithful branch), and V_mode to +0.21% against
+  the Booth-implied value under an INFERRED partial-revolution
+  normalisation of her print (mechanism read from the reference model;
+  Booth-side confirmation PENDING — see C3b), wall split inside the
+  committed window. Phase 1 is NOT complete — the confinement row is
+  deferred to the Layer A trajectory." *(Wording carries C3b's caveat
+  inline — adversarial-review fix 2026-07-20: the V_mode clause is not
+  independently reusable without the pending-confirmation rider.)*
 - **Prohibited:** "Phase 1 complete"; "model fully validated"; quoting the
   canonical-branch Q₀ as having passed the ±1% Booth window (it never did —
   branch delta −3.10% is documented).

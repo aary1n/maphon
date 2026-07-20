@@ -161,6 +161,11 @@ class ObservableAFeed:
         payload = {
             "workstream": "layer-b-calibration/observable-a",
             "dataset": "cowley_semple_2026-07-14 (digitized)",
+            # Explicit D7 version key (plan §1.3 naming convention), added
+            # 2026-07-20 so the supersession transaction's requirement that
+            # BOTH files carry dataset_version is satisfiable; the legacy
+            # "dataset" display string above is unchanged.
+            "dataset_version": "cowley_semple_2026-07-14-digitized",
             "provenance": self.provenance,
             "df_dt_source": self.df_dt_source,
             "samples": {name: asdict(fit) for name, fit in self.fits.items()},

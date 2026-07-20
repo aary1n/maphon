@@ -114,12 +114,48 @@ class SampleMetadata:
 
 
 @dataclass(frozen=True)
+class PowerPlaneField:
+    """The power-measurement plane as a GRADED structured field
+    (adversarial-review fix, 2026-07-20): plan §2 makes every slot
+    nullable-with-grade, and OTHER must preserve the collaborator's
+    actual wording. UNKNOWN = the standing open ask (fully bare)."""
+
+    plane: PowerPlane = PowerPlane.UNKNOWN
+    grade: Grade | None = None
+    quote: str = ""
+    other_text: str = ""
+
+    def __post_init__(self) -> None:
+        if self.plane is PowerPlane.UNKNOWN:
+            if self.grade is not None or self.quote or self.other_text:
+                raise SchemaError(
+                    "UNKNOWN power plane must be fully bare — it IS the "
+                    "open Angus ask"
+                )
+            return
+        if self.grade is None or not self.quote.strip():
+            raise SchemaError(
+                "a stated power plane requires grade + verbatim quote "
+                "(resolving the open ask without wording would be an "
+                "invented answer)"
+            )
+        if self.plane is PowerPlane.OTHER and not self.other_text.strip():
+            raise SchemaError(
+                "OTHER power plane requires other_text (his actual wording "
+                "for where the power was measured)"
+            )
+
+    @property
+    def present(self) -> bool:
+        return self.plane is not PowerPlane.UNKNOWN
+
+
+@dataclass(frozen=True)
 class RigMetadata:
     """Shared-rig slots (plan §2)."""
 
     wavelength_nm: GradedField = field(default_factory=GradedField)
-    power_plane: PowerPlane = PowerPlane.UNKNOWN
-    power_plane_quote: str = ""
+    power_plane: PowerPlaneField = field(default_factory=PowerPlaneField)
     power_calibration: GradedField = field(default_factory=GradedField)
     spot_diameter_m: GradedField = field(default_factory=GradedField)
     settling_time_s: GradedField = field(default_factory=GradedField)
@@ -134,17 +170,6 @@ class RigMetadata:
     cpw_termination: GradedField = field(default_factory=GradedField)
     glass_thickness_m: GradedField = field(default_factory=GradedField)
     bond_line_thickness_m: GradedField = field(default_factory=GradedField)
-
-    def __post_init__(self) -> None:
-        if self.power_plane is not PowerPlane.UNKNOWN and not (
-            self.power_plane_quote.strip()
-        ):
-            raise SchemaError(
-                "a stated power plane requires the verbatim quote "
-                "(the plane is currently an OPEN Angus ask — resolving it "
-                "without wording would be an invented answer)"
-            )
-
 
 @dataclass(frozen=True)
 class ReplyMetadata:
@@ -236,7 +261,7 @@ def missing_fields_report(meta: ReplyMetadata) -> MissingFieldsReport:
         if isinstance(getattr(meta.rig, f.name), GradedField)
         and not getattr(meta.rig, f.name).present
     )
-    if meta.rig.power_plane is PowerPlane.UNKNOWN:
+    if not meta.rig.power_plane.present:
         missing_rig = ("power_plane",) + missing_rig
     missing_per_sample = {
         s.sample_id: tuple(

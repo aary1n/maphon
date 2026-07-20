@@ -10,9 +10,19 @@ REFUSALS (never silently coerced):
 - formula cells without a cached value (we never evaluate formulas);
 - unknown/rich cell types; shared-string indices out of range;
 - sheets that don't exist.
-Dates are NOT decoded (returned as their raw serial numbers with a
-warning list entry) — a date-typed axis would be a transcription problem
-to resolve by asking for a plain export, not by guessing an epoch.
+Dates are NOT decoded and NOT detected (style/number-format inspection is
+deliberately out of this reader's scope): a date-typed axis surfaces as
+implausible raw serial numbers, which the derived-header unit and
+plausibility checks in `calibration.raw_ingest` refuse downstream — the
+correct resolution is asking for a plain values export, never guessing an
+epoch. (Docstring corrected 2026-07-20: an earlier draft promised a
+per-cell date warning this reader does not implement.)
+
+`extract_trace_csv` is the graded conversion entry point: it glues
+`read_sheet` to `calibration.raw_ingest.render_trace_csv`, recording the
+pinned sheet/column mapping and the source workbook's SHA-256 in the
+derived header (plan §1.2's "pinned sheet/column mapping recorded in the
+derived header").
 """
 
 from __future__ import annotations
@@ -132,9 +142,6 @@ def read_sheet(path: Path, sheet_name: str) -> SheetGrid:
                     value = shared[idx]
                 elif ctype in ("n", ""):
                     value = float(value_el.text or "nan")
-                    if cell.get("s") is not None:
-                        # styles can hide date formats; flag, don't decode
-                        pass
                 elif ctype == "str":
                     value = value_el.text or ""
                 elif ctype == "b":
@@ -150,6 +157,65 @@ def read_sheet(path: Path, sheet_name: str) -> SheetGrid:
         for r in range(max_row + 1)
     )
     return SheetGrid(name=sheet_name, rows=rows, warnings=tuple(warnings))
+
+
+def extract_trace_csv(
+    path: Path,
+    *,
+    sheet_name: str,
+    freq_column: int,
+    signal_column: int,
+    skip_rows: int,
+    header: dict[str, str],
+) -> str:
+    """Graded conversion entry point (plan §1.2): one (sheet, columns)
+    mapping → one derived trace CSV via `raw_ingest.render_trace_csv`.
+    The mapping and the source workbook's SHA-256 are recorded in the
+    derived header; non-numeric cells in the mapped columns refuse."""
+    import hashlib
+
+    import numpy as np
+
+    from calibration.raw_ingest import render_trace_csv
+
+    grid = read_sheet(path, sheet_name)
+    freq_vals: list[float] = []
+    signal_vals: list[float] = []
+    for row_index, row in enumerate(grid.rows):
+        if row_index < skip_rows:
+            continue
+        try:
+            f_val = row[freq_column]
+            s_val = row[signal_column]
+        except IndexError:
+            raise XlsxError(
+                f"row {row_index + 1}: mapped column out of range"
+            ) from None
+        if f_val is None and s_val is None:
+            continue  # trailing blank row
+        if not isinstance(f_val, float) or not isinstance(s_val, float):
+            raise XlsxError(
+                f"row {row_index + 1}: non-numeric cell in mapped columns "
+                f"({f_val!r}, {s_val!r}) — ask for a values-only export"
+            )
+        freq_vals.append(f_val)
+        signal_vals.append(s_val)
+    workbook_sha = hashlib.sha256(path.read_bytes()).hexdigest()
+    full_header = dict(header)
+    full_header.update(
+        {
+            "xlsx_sheet": sheet_name,
+            "xlsx_freq_column": str(freq_column),
+            "xlsx_signal_column": str(signal_column),
+            "xlsx_skip_rows": str(skip_rows),
+            "xlsx_workbook_sha256": workbook_sha,
+        }
+    )
+    return render_trace_csv(
+        header=full_header,
+        freq=np.asarray(freq_vals),
+        signal=np.asarray(signal_vals),
+    )
 
 
 def sheet_to_csv_text(grid: SheetGrid) -> str:

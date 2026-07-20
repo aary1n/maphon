@@ -1,6 +1,7 @@
 {
   "workstream": "layer-b-calibration/observable-a",
   "dataset": "cowley_semple_2026-07-14 (digitized)",
+  "dataset_version": "cowley_semple_2026-07-14-digitized",
   "provenance": "graph-digitized-provisional; superseded_by_raw_data=True",
   "df_dt_source": "provenance.DF_SPIN_DT (raw-data re-grade 2026-07-07): point -109 kHz/K, band [-120, -64] kHz/K. Prompt band '-50 to -108 kHz/K' overruled as stale (ratification condition 3, 2026-07-14).",
   "samples": {

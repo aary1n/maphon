@@ -117,8 +117,41 @@ class TestVerdictComposition:
         assert verdicts.artifact_reproducibility.startswith("FAIL")
 
     def test_synthetic_ready_state_flips_verdict(self):
-        """A synthetic all-complete claim set DOES produce READY — the
-        refusal is driven by the data, not hardcoded."""
+        """A synthetic all-complete claim set with ALL sentinels resolved
+        DOES produce READY — the refusal is data-driven, not hardcoded.
+        (Adversarial-review re-scope: readiness now ALSO requires no
+        unresolved sentinel and no unratified headline claim, so the
+        synthetic state must resolve the sentinels too.)"""
+        from publication.build import SentinelStatus
+
+        archives, regen, contract, _ = self._clean_inputs()
+        resolved_sentinels = SentinelStatus(
+            unresolved_by_mode={"baseline-d8": (), "degraded-d7": ()},
+            fork_state="Q13 resolved",
+            ratified=("Q2", "Q9", "Q11", "Q13"),
+            named_items={},
+        )
+        synthetic = [
+            {
+                "id": "S1",
+                "headline": True,
+                "category": ["derived"],
+                "evidence_chain": "complete",
+            }
+        ]
+        verdicts = compose_verdicts(
+            archives,
+            regen,
+            contract,
+            resolved_sentinels,
+            claim_status(synthetic),
+        )
+        assert verdicts.headline_ready
+        assert verdicts.publication_readiness.startswith("READY")
+
+    def test_live_sentinels_block_readiness_even_with_complete_chains(self):
+        """Negative pin (adversarial-review BLOCKER fix): complete
+        headline chains do NOT suffice while Q2/Q9/Q13 are open."""
         archives, regen, contract, sentinels = self._clean_inputs()
         synthetic = [
             {
@@ -131,15 +164,43 @@ class TestVerdictComposition:
         verdicts = compose_verdicts(
             archives, regen, contract, sentinels, claim_status(synthetic)
         )
-        assert verdicts.headline_ready
-        assert verdicts.publication_readiness.startswith("READY")
+        assert not verdicts.headline_ready
+        assert "unresolved sentinels" in verdicts.publication_readiness
 
-    def test_skipped_regeneration_is_not_a_failure(self):
+    def test_unratified_headline_blocks_readiness(self):
+        from publication.build import SentinelStatus
+
+        archives, regen, contract, _ = self._clean_inputs()
+        resolved = SentinelStatus(
+            unresolved_by_mode={"baseline-d8": (), "degraded-d7": ()},
+            fork_state="Q13 resolved",
+            ratified=("Q2", "Q9", "Q11", "Q13"),
+            named_items={},
+        )
+        synthetic = [
+            {
+                "id": "S1",
+                "headline": True,
+                "category": ["derived", "supervisor-unratified"],
+                "evidence_chain": "complete",
+            }
+        ]
+        verdicts = compose_verdicts(
+            archives, regen, contract, resolved, claim_status(synthetic)
+        )
+        assert not verdicts.headline_ready
+        assert "unratified HEADLINE" in verdicts.publication_readiness
+
+    def test_skipped_regeneration_caps_at_partial(self):
+        """A skip is not a failure but is NOT the advertised full check
+        either (adversarial-review fix): reproducibility caps at PARTIAL
+        and readiness therefore stays refused."""
         archives, _, contract, sentinels = self._clean_inputs()
         regen = [RegenResult("X", False, None, "skipped (--skip-figures)")]
         claims = claim_status(load_claims())
         verdicts = compose_verdicts(archives, regen, contract, sentinels, claims)
-        assert verdicts.artifact_reproducibility == "PASS"
+        assert verdicts.artifact_reproducibility.startswith("PARTIAL")
+        assert not verdicts.headline_ready
 
 
 class TestCheapRegeneration:
@@ -201,6 +262,8 @@ class TestDraftMode:
             build_root=tmp_path / "root",
             include_figures=False,
             include_slow=False,
+            run_pins=False,  # executing the full pin set inside a test
+            # would recurse pytest; the skip is surfaced as PARTIAL
             draft=True,
         )
         assert (build_dir / "DRAFT").is_file()

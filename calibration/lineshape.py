@@ -108,6 +108,12 @@ class SpectrumFit:
     fit_window_hz: tuple[float, float]
     sigma_source: str
     notes: tuple[str, ...] = field(default=())
+    converged: bool = True
+    #: provenance carried from a TraceRecord via `fit_trace` — None means
+    #: a bare-array (synthetic/anchor) fit that must never be presented
+    #: as a dataset result (adversarial-review fix, 2026-07-20)
+    dataset_version: str | None = None
+    grade: str | None = None
 
 
 def fit_spectrum(
@@ -126,10 +132,16 @@ def fit_spectrum(
     sig = np.asarray(signal, dtype=float)
     if freq.shape != sig.shape or freq.ndim != 1:
         raise LineshapeError("freq and signal must be equal-length 1-D")
+    if sigma is not None:
+        sigma = np.broadcast_to(
+            np.asarray(sigma, dtype=float), freq.shape
+        ).copy()
     if window_hz is not None:
         lo, hi = window_hz
         mask = (freq >= lo) & (freq <= hi)
         freq, sig = freq[mask], sig[mask]
+        if sigma is not None:
+            sigma = sigma[mask]  # window sigma WITH the data (review fix)
     if model not in _MODELS:
         raise LineshapeError(f"unknown model {model!r}; have {sorted(_MODELS)}")
     func, names = _MODELS[model]
@@ -205,19 +217,26 @@ def fit_spectrum(
         fwhm = voigt_effective_fwhm(
             abs(params["fwhm_g"]), abs(params["fwhm_l"])
         )
-        # first-order error propagation through the O-L form
-        dg = 0.2166 * 2 * abs(params["fwhm_g"])
+        # First-order propagation J·Cov·Jᵀ over the (fwhm_g, fwhm_l)
+        # sub-covariance INCLUDING the cross-term (adversarial-review
+        # fix, 2026-07-20: the diagonal-only hypot understated or
+        # overstated the width uncertainty depending on the correlation).
         denom = 2 * math.sqrt(
             0.2166 * params["fwhm_l"] ** 2 + params["fwhm_g"] ** 2
         )
         d_dg = (2 * abs(params["fwhm_g"])) / denom if denom else 0.0
-        d_dl = 0.5346 + (0.2166 * 2 * abs(params["fwhm_l"])) / denom if denom else 0.5346
-        fwhm_sigma = math.hypot(
-            d_dg * sig_params["fwhm_g"], d_dl * sig_params["fwhm_l"]
+        d_dl = (
+            0.5346 + (0.2166 * 2 * abs(params["fwhm_l"])) / denom
+            if denom
+            else 0.5346
         )
-        del dg
+        ig, il = names.index("fwhm_g"), names.index("fwhm_l")
+        jac = np.array([d_dg, d_dl])
+        sub_cov = pcov[np.ix_([ig, il], [ig, il])]
+        fwhm_sigma = float(math.sqrt(max(jac @ sub_cov @ jac, 0.0)))
         notes.append(
-            "voigt effective FWHM via Olivero-Longbothum; the fitted "
+            "voigt effective FWHM via Olivero-Longbothum (sigma via "
+            "J.Cov.J^T incl. the g-l cross-term); the fitted "
             "(fwhm_g, fwhm_l) pair is the record"
         )
     else:
@@ -241,6 +260,41 @@ def fit_spectrum(
         fit_window_hz=(float(freq.min()), float(freq.max())),
         sigma_source=sigma_source,
         notes=tuple(notes),
+    )
+
+
+def fit_trace(
+    record,
+    *,
+    model: str = "lorentzian",
+    sigma: np.ndarray | float | None = None,
+    window_hz: tuple[float, float] | None = None,
+    p0: dict[str, float] | None = None,
+) -> SpectrumFit:
+    """PRODUCTION entry point: fit a loaded `TraceRecord` (never bare
+    arrays) so dataset_version and grade travel with the fit output
+    (adversarial-review fix, 2026-07-20 — `fit_spectrum` stays available
+    for synthetic anchors, whose outputs carry dataset_version=None and
+    must never be presented as dataset results)."""
+    from dataclasses import replace
+
+    from calibration.raw_ingest import TraceRecord
+
+    if not isinstance(record, TraceRecord):
+        raise LineshapeError(
+            "fit_trace requires a raw_ingest.TraceRecord — bare arrays go "
+            "through fit_spectrum and carry no dataset provenance"
+        )
+    fit = fit_spectrum(
+        record.freq_hz,
+        record.signal,
+        model=model,
+        sigma=sigma,
+        window_hz=window_hz,
+        p0=p0,
+    )
+    return replace(
+        fit, dataset_version=record.dataset_version, grade=record.grade
     )
 
 
@@ -285,6 +339,9 @@ class PowerModelFit:
     chi2_dof: float
     aicc: float
     breakpoint: float | None = None
+    #: full parameter covariance (unscaled WLS), for downstream
+    #: correlated-error propagation (adversarial-review fix)
+    covariance: tuple[tuple[float, ...], ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -342,6 +399,7 @@ def fit_power_models(
         k_params=2,
         params=tuple(float(b) for b in beta),
         sigma_params=tuple(float(s) for s in np.sqrt(np.diag(cov))),
+        covariance=tuple(tuple(float(x) for x in row) for row in cov),
         chi2=chi2,
         chi2_dof=chi2 / (n - 2),
         aicc=aicc(n, 2, chi2=chi2),
