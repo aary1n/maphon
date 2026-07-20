@@ -53,6 +53,8 @@ from calibration.reply_schema import PowerPlane
 
 _HEADER_RE = re.compile(r"^#\s*([A-Za-z0-9_]+)\s*:\s*(.*)$")
 
+_PACKAGE_DIR = Path(__file__).resolve().parent
+
 REQUIRED_HEADER_KEYS: tuple[str, ...] = (
     "dataset_version",
     "grade",

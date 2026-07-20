@@ -167,3 +167,55 @@ class TestRenderer:
         a = render_trace_csv(header=_header(), freq=freq, signal=signal)
         b = render_trace_csv(header=_header(), freq=freq, signal=signal)
         assert a == b
+
+
+class TestSourceVerification:
+    """The NON-fixture source-verification branch, exercised against the
+    REAL committed cowley_semple_2026-07-14 archive (audit F2 regression,
+    2026-07-20: `_PACKAGE_DIR` was undefined and every load reaching this
+    branch died with NameError before the hash check ran).
+
+    The spectrum body stays synthetic — no value here can enter a
+    production fit — but the provenance header names a genuinely archived
+    member with its manifest-pinned hash, so the SHA-256 verification
+    actually executes. `dataset_version` deliberately carries no FIXTURE
+    token — not even as a substring ("NONFIXTURE" would trip the guard,
+    which errs toward the fixture side): that is the branch condition
+    under test."""
+
+    ARCHIVE = "calibration/data/raw/cowley_semple_2026-07-14"
+    MEMBER = "thermal.eml"
+
+    def _manifest_sha(self) -> str:
+        from pathlib import Path
+
+        from calibration.integrity import MANIFEST_NAME, parse_manifest
+
+        repo_root = Path(__file__).resolve().parents[1]
+        manifest = parse_manifest(repo_root / self.ARCHIVE / MANIFEST_NAME)
+        return manifest[self.MEMBER]
+
+    def _real_header(self, sha: str, member: str | None = None) -> dict[str, str]:
+        return _header(
+            dataset_version="verification-branch-audit-f2-2026-07-20",
+            grade="raw-derived",
+            source_archive=self.ARCHIVE,
+            source_member=member or self.MEMBER,
+            source_sha256=sha,
+        )
+
+    def test_verifies_against_committed_archive_member(self, tmp_path):
+        header = self._real_header(self._manifest_sha())
+        record = load_trace(_write_trace(tmp_path, header=header))
+        assert record.source_verified is True
+        assert not record.is_fixture
+
+    def test_hash_mismatch_refused(self, tmp_path):
+        header = self._real_header("1" * 64)
+        with pytest.raises(RawIngestError, match="does not match"):
+            load_trace(_write_trace(tmp_path, header=header))
+
+    def test_missing_member_refused(self, tmp_path):
+        header = self._real_header(self._manifest_sha(), member="no_such_member.csv")
+        with pytest.raises(RawIngestError, match="not found"):
+            load_trace(_write_trace(tmp_path, header=header))
