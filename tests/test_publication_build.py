@@ -81,6 +81,11 @@ class TestLiveStages:
         assert set(status.unresolved_by_mode["degraded-d7"]) == {"Q9", "Q13"}
         assert status.ratified == ("Q11",)
         assert "OPEN" in status.fork_state
+        assert "8.5/8.6 mm" in status.fork_state
+        # F3 ruling (2026-07-20): the favoured branch is never named in a
+        # publication-facing artifact — the build report renders candidates
+        # + pending discriminator only.
+        assert "favoured" not in status.fork_state.lower()
 
     def test_claim_status_live(self):
         claims = load_claims()

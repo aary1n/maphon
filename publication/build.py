@@ -457,10 +457,14 @@ def sentinel_status() -> SentinelStatus:
     unresolved = {m.value: ctx.unresolved(m) for m in DesignMode}
     return SentinelStatus(
         unresolved_by_mode=unresolved,
+        # F3 ruling (user, 2026-07-20): no favoured branch is named in any
+        # publication-facing artifact — the fork line renders candidates
+        # and the pending discriminator only (negative-pinned in
+        # tests/test_publication_build.py).
         fork_state=(
-            f"Q13 fork OPEN: candidates {STO_HEIGHT_FORK.candidates}, "
-            f"evidence-favoured {STO_HEIGHT_FORK.evidence_favoured} "
-            "(never silently selected)"
+            "Q13 fork OPEN: candidates "
+            + "/".join(f"{c * 1e3:g}" for c in STO_HEIGHT_FORK.candidates)
+            + " mm, discriminator pending Oxborrow reply"
             if any("Q13" in v for v in unresolved.values())
             else "Q13 resolved"
         ),
