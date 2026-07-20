@@ -81,6 +81,34 @@ class TestRealArchive:
         # 2 pinned files: the docx verbatim + its paragraph-faithful transcript
         assert len(report.matched) == 2
 
+    def test_oxborrow_tuning_archive_intact(self):
+        """Same read-only guard for the Oxborrow 2026-07-16 tuning-mechanism
+        email (STO tuning correspondence). Coverage gap found and closed
+        2026-07-20: this archive had a manifest but no integrity test."""
+        archive = DEFAULT_ARCHIVE_DIR.parent / "oxborrow_tuning_2026-07-16"
+        report = verify_manifest(archive)
+        assert report.ok, report.to_markdown()
+        # 3 pinned files: stotuningmech.eml + stotuningmech.md + images/image.png
+        assert len(report.matched) == 3
+
+    def test_verify_all_covers_every_archive_dir(self):
+        """The generic walk and the on-disk archive set must agree, so a
+        newly-committed archive cannot silently escape verification."""
+        from calibration.integrity import DEFAULT_RAW_ROOT, verify_all
+
+        on_disk = {
+            p.name
+            for p in DEFAULT_RAW_ROOT.iterdir()
+            if p.is_dir()
+        }
+        reports = verify_all()
+        assert set(reports) == on_disk, (
+            "raw archive without a MANIFEST.sha256 (or stray dir): "
+            f"{sorted(on_disk ^ set(reports))}"
+        )
+        for name, report in reports.items():
+            assert report.ok, f"{name}: {report.to_markdown()}"
+
 
 class TestManifestParsing:
     def test_crlf_and_comments_tolerated(self, tmp_path):

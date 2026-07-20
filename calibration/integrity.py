@@ -185,8 +185,44 @@ def require_intact(
     )
 
 
+DEFAULT_RAW_ROOT = _PACKAGE_DIR / "data" / "raw"
+
+
+def iter_raw_archives(raw_root: Path = DEFAULT_RAW_ROOT) -> tuple[Path, ...]:
+    """Every immutable raw-archive directory (identified by its
+    MANIFEST.sha256), sorted. The generic walk exists so that verification
+    coverage cannot silently lag behind newly-committed archives — the
+    per-archive tests in tests/test_calibration_integrity.py remain the
+    named record, and `test_verify_all_covers_every_archive` pins that the
+    two views agree."""
+    return tuple(
+        sorted(p.parent for p in raw_root.glob(f"*/{MANIFEST_NAME}"))
+    )
+
+
+def verify_all(raw_root: Path = DEFAULT_RAW_ROOT) -> dict[str, IntegrityReport]:
+    """Verify EVERY raw archive under `raw_root`, both directions each.
+    Pure check — no writes, no raise (callers inspect `.ok` per archive;
+    the publication build command consumes this)."""
+    return {
+        archive.name: verify_manifest(archive)
+        for archive in iter_raw_archives(raw_root)
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     args = list(sys.argv[1:] if argv is None else argv)
+    if args and args[0] == "--all":
+        reports = verify_all()
+        bad = {name: r for name, r in reports.items() if not r.ok}
+        for name, report in sorted(reports.items()):
+            verdict = "INTACT" if report.ok else "FAILED"
+            print(f"{verdict}: {name} ({len(report.matched)} files)")
+        if bad:
+            for name, report in sorted(bad.items()):
+                print(report.to_markdown(), file=sys.stderr)
+            return 1
+        return 0
     archive_dir = Path(args[0]) if args else DEFAULT_ARCHIVE_DIR
     try:
         report = require_intact(archive_dir)
