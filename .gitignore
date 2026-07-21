@@ -85,6 +85,14 @@ outputs/
 # into an excluded directory, so `!calibration/data/**` alone is inert.
 !calibration/data/
 !calibration/data/**
+# AND viz/data/: the committed presentation-layer bundle set (viz/PLAN.md
+# R1 — bundles are committed so the viewer works from a bare clone over
+# file://; git-lfs is FORBIDDEN for this directory for the same reason).
+# Hash-pinned in tests/test_viz_bundles.py; regenerated via
+# `python -m cavity.viz.export`. Directory AND contents both negated
+# (same reason as calibration/data/ above).
+!viz/data/
+!viz/data/**
 
 # --- Jupyter ---------------------------------------------------------------
 .ipynb_checkpoints/
