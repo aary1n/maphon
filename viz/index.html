@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>maphon viz — thermal visualisation (presentation layer, not evidence)</title>
+<style>
+  /* Plain light surface matching the _style figure surfaces (viz/PLAN.md §5
+     item 5); ink tokens from src/cavity/figures/_style.py. No theming
+     machinery. */
+  :root {
+    --ink: #0b0b0b;
+    --ink-muted: #52514e;
+    --grid: #d9d8d4;
+    --band: #c8c7c2;
+    --surface: #ffffff;
+    --fail: #e34948;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: Georgia, "Times New Roman", "DejaVu Serif", serif;
+    font-size: 15px;
+    line-height: 1.45;
+  }
+  header.app {
+    padding: 14px 22px 10px;
+    border-bottom: 1px solid var(--grid);
+  }
+  header.app h1 { margin: 0; font-size: 20px; font-weight: 600; }
+  header.app .positioning {
+    color: var(--ink-muted);
+    font-size: 12.5px;
+    margin-top: 2px;
+  }
+  nav.tabs {
+    display: flex;
+    gap: 4px;
+    padding: 8px 22px 0;
+    border-bottom: 1px solid var(--grid);
+  }
+  nav.tabs button {
+    font: inherit;
+    font-size: 13.5px;
+    background: none;
+    border: 1px solid var(--grid);
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    padding: 6px 14px;
+    cursor: pointer;
+    color: var(--ink);
+  }
+  nav.tabs button[aria-selected="true"] {
+    border-color: var(--band);
+    background: var(--surface);
+    font-weight: 600;
+    position: relative;
+    top: 1px;
+  }
+  nav.tabs button:disabled {
+    color: var(--ink-muted);
+    cursor: not-allowed;
+    background: #f6f6f4;
+  }
+  main { padding: 16px 22px 40px; }
+  section.tab-panel[hidden] { display: none; }
+  .placeholder-note { color: var(--ink-muted); font-size: 14px; max-width: 60ch; }
+
+  /* ---- V1 layout ---- */
+  #v1-layout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 26px;
+    align-items: flex-start;
+  }
+  #v1-plot-col { flex: 0 0 auto; }
+  #v1-controls-col { flex: 1 1 340px; min-width: 320px; max-width: 560px; }
+  #v1-canvas { display: block; }
+  #v1-plot-status {
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    margin-top: 4px;
+    min-height: 1.2em;
+  }
+  #v1-invalid {
+    border: 1px solid var(--band);
+    background: #f6f6f4;
+    color: var(--ink-muted);
+    padding: 14px 16px;
+    font-size: 13.5px;
+    max-width: 46ch;
+  }
+  #v1-invalid strong { color: var(--ink); }
+
+  fieldset.ctl {
+    border: 1px solid var(--grid);
+    border-radius: 6px;
+    margin: 0 0 12px;
+    padding: 8px 12px 10px;
+  }
+  fieldset.ctl legend {
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    padding: 0 6px;
+  }
+  .stepper { display: flex; align-items: center; gap: 8px; }
+  .stepper button {
+    font: inherit;
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--band);
+    border-radius: 5px;
+    background: var(--surface);
+    cursor: pointer;
+    color: var(--ink);
+  }
+  .stepper button:disabled { color: var(--grid); cursor: not-allowed; }
+  .stepper .value { font-size: 14px; flex: 1; }
+  .ctl .source {
+    color: var(--ink-muted);
+    font-size: 11.5px;
+    margin-top: 4px;
+  }
+  .flagchips { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px; }
+  .flagchip {
+    font-size: 11px;
+    color: var(--ink-muted);
+    border: 1px solid var(--grid);
+    border-radius: 4px;
+    padding: 1px 6px;
+    background: #fbfbfa;
+  }
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  .slider-row input[type="range"] { flex: 1; accent-color: #52514e; }
+  .slider-row .readout { font-size: 14px; min-width: 9ch; text-align: right; }
+  .slider-note { color: var(--ink-muted); font-size: 11.5px; margin-top: 3px; }
+
+  table.readouts { border-collapse: collapse; font-size: 13.5px; width: 100%; }
+  table.readouts td { padding: 2px 8px 2px 0; }
+  table.readouts td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.readouts tr.total td { border-top: 1px solid var(--grid); }
+  .panel-note { color: var(--ink-muted); font-size: 11.5px; margin-top: 4px; }
+
+  #v1-flagstrip {
+    margin-top: 18px;
+    border-top: 1px solid var(--grid);
+    padding-top: 10px;
+  }
+  #v1-flagstrip .flagchips .flagchip { font-size: 12px; }
+  #v1-caption-details { margin-top: 8px; }
+  #v1-caption-details summary {
+    cursor: pointer;
+    font-size: 12.5px;
+    color: var(--ink-muted);
+  }
+  #v1-caption {
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    max-width: 100ch;
+    margin: 6px 0 0;
+  }
+  #boot-error {
+    color: var(--fail);
+    font-size: 14px;
+    padding: 14px 22px;
+    white-space: pre-wrap;
+  }
+  footer.app {
+    border-top: 1px solid var(--grid);
+    color: var(--ink-muted);
+    font-size: 11.5px;
+    padding: 10px 22px 16px;
+  }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <h1>maphon — thermal visualisation</h1>
+  <div class="positioning">Presentation layer, not evidence — rendering only
+    (viz/PLAN.md; VIZ_SCOPE §3). Never in the claims register, never referenced
+    by publication.build.</div>
+</header>
+
+<nav class="tabs" id="tabbar">
+  <button type="button" data-tab="v1" aria-selected="true">V1 — ΔT(r, z) heatmap</button>
+  <button type="button" data-tab="v2" disabled
+    title="Phase 3 — not yet built">V2 — Bessel modes</button>
+  <button type="button" data-tab="v3" disabled
+    title="Phase 4 — entry condition: WP3 regeneration merged">V3 — margin / turnover</button>
+  <button type="button" data-tab="v4" disabled
+    title="Phase 5 — not yet built">V4 — 3D cutaway</button>
+  <button type="button" data-tab="v5" disabled
+    title="Phase 6 — not yet built">V5 — S-ladder</button>
+</nav>
+
+<div id="boot-error" hidden></div>
+
+<main>
+  <section class="tab-panel" id="tab-v1">
+    <div id="v1-layout">
+      <div id="v1-plot-col">
+        <canvas id="v1-canvas" width="600" height="720"></canvas>
+        <div id="v1-plot-status"></div>
+      </div>
+      <div id="v1-controls-col">
+        <div id="v1-steppers"></div>
+        <fieldset class="ctl">
+          <legend>absorbed power P (continuous — exact linearity)</legend>
+          <div class="slider-row">
+            <input type="range" id="v1-p-slider" min="0" step="0.1">
+            <span class="readout" id="v1-p-readout"></span>
+          </div>
+          <div class="slider-note" id="v1-p-note"></div>
+        </fieldset>
+        <fieldset class="ctl">
+          <legend>mode count N (partial sum — exact prefix identity)</legend>
+          <div class="slider-row">
+            <input type="range" id="v1-n-slider" min="1" step="1">
+            <span class="readout" id="v1-n-readout"></span>
+          </div>
+          <div class="slider-note" id="v1-n-note"></div>
+        </fieldset>
+        <fieldset class="ctl">
+          <legend>field readouts</legend>
+          <table class="readouts" id="v1-readouts"></table>
+        </fieldset>
+        <fieldset class="ctl">
+          <legend>energy diagnostic (boundary flux vs P)</legend>
+          <table class="readouts" id="v1-energy"></table>
+          <div class="panel-note" id="v1-energy-note"></div>
+        </fieldset>
+      </div>
+    </div>
+    <div id="v1-flagstrip"></div>
+  </section>
+
+  <section class="tab-panel" id="tab-v2" hidden>
+    <p class="placeholder-note">V2 — Bessel-mode viewer. Not yet built
+      (viz/PLAN.md Phase 3).</p>
+  </section>
+  <section class="tab-panel" id="tab-v3" hidden>
+    <p class="placeholder-note">V3 — margin / turnover. Not yet built
+      (viz/PLAN.md Phase 4; entry condition: WP3 regeneration merged).</p>
+  </section>
+  <section class="tab-panel" id="tab-v4" hidden>
+    <p class="placeholder-note">V4 — 3D cutaway. Not yet built
+      (viz/PLAN.md Phase 5).</p>
+  </section>
+  <section class="tab-panel" id="tab-v5" hidden>
+    <p class="placeholder-note">V5 — S-ladder. Not yet built
+      (viz/PLAN.md Phase 6).</p>
+  </section>
+</main>
+
+<footer class="app" id="app-footer"></footer>
+
+<!-- Data + app: classic scripts, IIFE-namespaced (viz/PLAN.md §5 — ES modules
+     are blocked on file:// in Chromium; no bundler, no npm, no network).
+     Scenario/basis bundles load on demand by script-tag injection from the
+     manifest. -->
+<script src="data/index.js"></script>
+<script src="app/data.js"></script>
+<script src="app/heatmap.js"></script>
+<script src="app/main.js"></script>
+</body>
+</html>
