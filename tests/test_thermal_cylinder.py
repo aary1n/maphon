@@ -918,6 +918,134 @@ def test_side_chord_beam_width_within_diameter():
         solve(SIDE_SPEC, src)
 
 
+# --- modal decomposition accessor (viz seam; viz/PLAN.md §2) ------------------
+
+
+def _worked_example_config() -> tuple[CylinderSpec, PumpSource]:
+    """The F3/worked-example Robin-side graded stack (same construction as
+    test_maser_worked_example_graded_inputs)."""
+    h_eff = h_top_with_radiation(
+        H_CONV_AIR.h_band_hi_w_m2_k, EMISSIVITY_PTP.eps_nominal, 300.0
+    )
+    spec = CylinderSpec(
+        CRYSTAL.diameter_m / 2.0,
+        CRYSTAL.height_m,
+        K_PTP.k_mid_w_m_k,
+        SurfaceBC.robin(h_eff),
+        SurfaceBC.robin(h_eff),
+        SurfaceBC.dirichlet(),
+    )
+    src = PumpSource(
+        1.0, "beer_lambert", "flood", l_abs_m=L_ABS_PUMP.l_abs_scoping_grid_m[5]
+    )
+    return spec, src
+
+
+BI0_SPEC = CylinderSpec(
+    R, L, K, SurfaceBC.robin(0.0), SurfaceBC.robin(5.0), SurfaceBC.dirichlet()
+)
+
+
+def _f3_grids(spec: CylinderSpec) -> tuple[np.ndarray, np.ndarray]:
+    """The F3 sampling grid (121 r × 161 z) scaled to the spec's cylinder."""
+    return (
+        np.linspace(0.0, spec.radius_m, 121),
+        np.linspace(0.0, spec.height_m, 161),
+    )
+
+
+def test_modal_decomposition_reconstruction_parity():
+    """§2 test group 1: einsum of the returned factor matrices == delta_t on
+    the F3 grid at machine precision, for (a) the Robin-side worked-example
+    config, (b) a Bi_s = 0 config (constant mode present), (c) a driven
+    S0-style solve. atol floor at 1e-12·peak covers the Dirichlet-zero rows
+    (both routes compute ~0 there with independent rounding)."""
+    spec_a, src_a = _worked_example_config()
+    cases = (
+        (solve(spec_a, src_a, n_modes=64), spec_a),
+        (solve(BI0_SPEC, BL_FLOOD, n_modes=64), BI0_SPEC),
+        (solve(S0_SPEC, n_modes=16), S0_SPEC),
+    )
+    for sol, spec in cases:
+        r, z = _f3_grids(spec)
+        dec = sol.modal_decomposition(r, z)
+        recon = np.einsum("ni,nj->ij", dec["theta_k"], dec["radial_basis"])
+        exact = sol.delta_t(r[None, :], z[:, None])
+        scale = float(np.abs(exact).max())
+        np.testing.assert_allclose(recon, exact, rtol=1e-12, atol=1e-12 * scale)
+
+
+def test_modal_decomposition_truncation_identity():
+    """§2 test group 2: the first-N row partial sum == the n_modes = N
+    solution on the same grid, N ∈ {4, 16} (the mode-count-slider licence) —
+    per-mode axial problems are independent, so the identity is exact. Run
+    on a Robin-side config and a Bi_s = 0 config (the constant mode counts
+    as one mode in both the row count and solve()'s n_modes)."""
+    for spec, src in ((ROBIN_SPEC, BL_FLOOD), (BI0_SPEC, BL_FLOOD)):
+        full = solve(spec, src, n_modes=64)
+        r, z = _f3_grids(spec)
+        dec = full.modal_decomposition(r, z)
+        for n in (4, 16):
+            partial = np.einsum(
+                "ni,nj->ij", dec["theta_k"][:n], dec["radial_basis"][:n]
+            )
+            small = solve(spec, src, n_modes=n).delta_t(r[None, :], z[:, None])
+            scale = float(np.abs(small).max())
+            np.testing.assert_allclose(
+                partial, small, rtol=1e-12, atol=1e-12 * scale
+            )
+
+
+def test_modal_decomposition_conventions():
+    """§2 test group 3: x_n ascending; shapes consistent; x_n[0] == 0 iff
+    Robin side with h = 0; f_hat matches the flood closed form
+    f̂ₙ = (J₁(xₙ)/xₙ)/N̂ₙ for a spot value; f̂₀ = 1 for a sourced
+    constant-mode solve and f_hat ≡ 0 for a driven solve."""
+    r = np.linspace(0.0, R, 7)
+    z = np.linspace(0.0, L, 9)
+
+    # Robin h > 0 side: no constant mode, x from the root equation
+    sol = solve(ROBIN_SPEC, BL_FLOOD, n_modes=16)
+    dec = sol.modal_decomposition(r, z)
+    assert dec["x_n"].shape == dec["f_hat"].shape == (16,)
+    assert dec["theta_k"].shape == (16, 9)
+    assert dec["radial_basis"].shape == (16, 7)
+    assert np.all(np.diff(dec["x_n"]) > 0)
+    assert dec["x_n"][0] > 0.0
+    x1 = robin_radial_eigenvalues(10.0 * R / K, 1)[0]
+    n_hat_1 = 0.5 * (j0(x1) ** 2 + j1(x1) ** 2)
+    assert math.isclose(dec["f_hat"][0], (j1(x1) / x1) / n_hat_1, rel_tol=1e-12)
+    assert math.isclose(dec["x_n"][0], x1, rel_tol=1e-12)
+
+    # Bi_s = 0 side: constant mode first (x₀ = 0 exactly, f̂₀ = 1, ones row)
+    dec0 = solve(BI0_SPEC, BL_FLOOD, n_modes=16).modal_decomposition(r, z)
+    assert dec0["x_n"][0] == 0.0
+    assert dec0["f_hat"][0] == 1.0
+    assert np.all(dec0["radial_basis"][0] == 1.0)
+    assert np.all(np.diff(dec0["x_n"]) > 0)
+    # positive flood projections vanish on the J₁-zero basis — to the
+    # rounding of J₁ evaluated at its computed zeros (~1e-15), not exactly
+    assert np.max(np.abs(dec0["f_hat"][1:])) < 1e-13
+
+    # Dirichlet side: x are the J₀ zeros, no constant mode
+    spec_d = CylinderSpec(
+        R, L, K, SurfaceBC.dirichlet(), SurfaceBC.robin(0.0), SurfaceBC.dirichlet()
+    )
+    dec_d = solve(spec_d, BL_FLOOD, n_modes=8).modal_decomposition(r, z)
+    np.testing.assert_allclose(dec_d["x_n"], jn_zeros(0, 8), rtol=1e-15)
+
+    # driven solve: Θ = 1 (kelvin rows), f_hat identically zero
+    dec_s0 = solve(S0_SPEC, n_modes=8).modal_decomposition(r, z)
+    assert np.all(dec_s0["f_hat"] == 0.0)
+    assert dec_s0["x_n"][0] == 0.0  # insulated side keeps the constant mode
+
+    # domain checks match delta_t's
+    with pytest.raises(ValueError):
+        sol.modal_decomposition(np.array([1.1 * R]), z)
+    with pytest.raises(ValueError):
+        sol.modal_decomposition(r, np.array([-0.1 * L]))
+
+
 def test_side_chord_sharp_labs_converges_at_sized_n_modes():
     """The sharpest scoping-grid point (l_abs = 5 µm: an entry-rim shell
     ~ℓ wide) at the sized N = 1024: deficit and tail well inside the

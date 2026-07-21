@@ -800,6 +800,56 @@ class CylinderSolution:
         out = self._theta_unit * field.reshape(shape)
         return float(out) if out.ndim == 0 else out
 
+    def modal_decomposition(self, r_m, z_m) -> dict:
+        """Per-mode factor matrices of the solution on a product grid (viz
+        seam, viz/PLAN.md §2; rendering-layer consumer — SPEC-neutral, no
+        new physics).
+
+        Returns {
+          "x_n":          (n,) float64 — eigenvalues xₙ, ascending;
+                          x_n[0] == 0.0 iff the Bi_s = 0 constant mode is
+                          present (it counts as one mode, matching solve()'s
+                          n_modes convention),
+          "theta_k":      (n, n_z) float64 — DIMENSIONAL per-mode axial
+                          profiles Θ·θ̂ₙ(z/L) in kelvin (Θ = 1 for driven
+                          solves),
+          "radial_basis": (n, n_r) float64 — J₀(xₙ·r/R); row of ones for
+                          x₀ = 0,
+          "f_hat":        (n,) float64 — dimensionless radial projections
+                          f̂ₙ (f̂₀ = 1 for the constant mode; zeros for
+                          driven solves),
+        }
+        Invariant: np.einsum('ni,nj->ij', theta_k, radial_basis) equals
+        delta_t(r[None, :], z[:, None]) exactly; the first-N row partial
+        sum equals the n_modes = N solution exactly (modes are independent).
+        """
+        r = np.atleast_1d(np.asarray(r_m, dtype=float)).ravel()
+        z = np.atleast_1d(np.asarray(z_m, dtype=float)).ravel()
+        rho = r / self.spec.radius_m
+        zeta = z / self.spec.height_m
+        if np.any((rho < 0.0) | (rho > 1.0 + 1e-12)):
+            raise ValueError("r outside the cylinder [0, R]")
+        if np.any((zeta < 0.0) | (zeta > 1.0 + 1e-12)):
+            raise ValueError("z outside the cylinder [0, L]")
+        theta = self._theta_unit * self._modes.value(zeta)  # (n_pos, n_z)
+        radial = j0(np.outer(self._x, rho))  # (n_pos, n_r)
+        x = np.array(self._x)
+        f_hat = np.array(self._modes.f_hat)
+        if self._const is not None:
+            theta = np.vstack(
+                [self._theta_unit * self._const.value(zeta)[None, :], theta]
+            )
+            radial = np.vstack([np.ones((1, rho.size)), radial])
+            x = np.concatenate(([0.0], x))
+            f0 = 0.0 if self.source is None else 1.0
+            f_hat = np.concatenate(([f0], f_hat))
+        return {
+            "x_n": x,
+            "theta_k": theta,
+            "radial_basis": radial,
+            "f_hat": f_hat,
+        }
+
     @property
     def peak_k(self) -> float:
         """ΔT(0, 0) — the illuminated-face centre. Documented assumption:
