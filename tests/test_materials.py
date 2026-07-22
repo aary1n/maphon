@@ -102,3 +102,93 @@ class TestMaterialSpec:
 class TestMu0Constant:
     def test_mu_0_matches_4pi_e_minus_7(self):
         assert MU_0 == pytest.approx(4.0 * math.pi * 1.0e-7, rel=1e-15)
+
+
+class TestCrystalDielectric:
+    """SPEC §5b crystal material (2026-07-22): eps_r enters only via the
+    Q11 resolution payload at call sites; tan_delta deliberately
+    ungraded = 0 (the spacer precedent)."""
+
+    def test_no_default_epsilon(self):
+        from cavity.forward_model import CrystalDielectric
+
+        with pytest.raises(TypeError):
+            CrystalDielectric()  # epsilon_r_real is required
+
+    def test_rejects_non_positive_epsilon(self):
+        from cavity.forward_model import CrystalDielectric
+
+        with pytest.raises(ValueError, match="positive"):
+            CrystalDielectric(epsilon_r_real=0.0)
+
+    def test_lossless_defaults_and_complex_eps(self):
+        from cavity.forward_model import CrystalDielectric
+
+        crystal = CrystalDielectric(epsilon_r_real=3.0)
+        assert crystal.tan_delta == 0.0
+        assert crystal.mu_r == 1.0
+        assert crystal.sigma == 0.0
+        spec = MaterialSpec(crystal=crystal)
+        assert spec.crystal_complex_eps_r == complex(3.0, 0.0)
+
+    def test_complex_eps_raises_without_crystal(self):
+        with pytest.raises(ValueError, match="no crystal material"):
+            _ = MaterialSpec().crystal_complex_eps_r
+
+    def test_q11_payload_is_the_epsilon_source(self):
+        # The W2-class call sites read eps_r from RESOLUTION_Q11 — pin
+        # that the payload value round-trips into the material.
+        from cavity.forward_model import CrystalDielectric
+        from cavity.sweep.resolutions import RESOLUTION_Q11
+
+        eps = float(RESOLUTION_Q11.payload["crystal_epsilon_r"])
+        crystal = CrystalDielectric(epsilon_r_real=eps)
+        assert crystal.epsilon_r_real == 3.0
+
+
+class TestCrystalConsistencyValidator:
+    """build.validate_crystal_consistency — one switch, one owner
+    (pure-Python check, no COMSOL needed)."""
+
+    def _ring(self, with_crystal: bool):
+        from cavity.forward_model import CavityGeometry, DielectricShape
+        from cavity.provenance import GEOM_WU_STO_RING as G
+
+        kwargs = dict(
+            box_radius_m=G.box_inner_radius_m,
+            box_height_m=G.box_internal_height_asoperated_m,
+            dielectric_radius_m=G.sto_outer_radius_m,
+            dielectric_shape=DielectricShape.RING,
+            dielectric_height_m=8.6e-3,
+            dielectric_inner_radius_m=G.sto_inner_radius_m,
+            ring_bottom_z_m=G.deck_clearance_m,
+        )
+        if with_crystal:
+            kwargs.update(
+                crystal_radius_m=0.5 * G.crystal_diameter_m,
+                crystal_height_m=G.crystal_height_m,
+                crystal_centre_z_m=G.deck_clearance_m + 0.5 * 8.6e-3,
+            )
+        return CavityGeometry(**kwargs)
+
+    def test_mismatch_refused_both_ways(self):
+        from cavity.forward_model import CrystalDielectric
+        from cavity.forward_model.build import validate_crystal_consistency
+
+        with pytest.raises(ValueError, match="crystal switch mismatch"):
+            validate_crystal_consistency(self._ring(True), MaterialSpec())
+        with pytest.raises(ValueError, match="crystal switch mismatch"):
+            validate_crystal_consistency(
+                self._ring(False),
+                MaterialSpec(crystal=CrystalDielectric(epsilon_r_real=3.0)),
+            )
+
+    def test_agreement_passes(self):
+        from cavity.forward_model import CrystalDielectric
+        from cavity.forward_model.build import validate_crystal_consistency
+
+        validate_crystal_consistency(self._ring(False), MaterialSpec())
+        validate_crystal_consistency(
+            self._ring(True),
+            MaterialSpec(crystal=CrystalDielectric(epsilon_r_real=3.0)),
+        )

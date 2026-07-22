@@ -39,14 +39,19 @@ from cavity.forward_model.study import EigenStudyConfig
 # the spacer tier — the canonical JSON changes for EVERY solve, so the
 # version bumps. Pinned historical hashes (e.g. the sweep-centre record
 # 823e67969516bcf2) are import-only records, never recomputed.
-SCHEMA_VERSION = 2
+# 3 (2026-07-22, SPEC §5b crystal sub-domain — W2 session prerequisite):
+# geometry dict gains the crystal fields, materials the crystal entries
+# — same reasoning, same bump discipline. v1/v2 archives stay loadable
+# below; their pinned hashes are import-only records, never recomputed.
+SCHEMA_VERSION = 3
 
-# Versions `load_solve_record` may read. Frozen v1 archives (the gate
+# Versions `load_solve_record` may read. Frozen v1/v2 archives (the gate
 # records under refs/gate_runs) MUST stay loadable; this is hash-safe —
-# cache lookups key on the fingerprint hash, and a v2 fingerprint can
-# never hash to a v1 record's hash, so accepting v1 cannot cause a
-# stale cache hit. Only explicit historical-hash reads reach v1 records.
-_LOADABLE_SCHEMA_VERSIONS = (1, 2)
+# cache lookups key on the fingerprint hash, and a v3 fingerprint can
+# never hash to an older record's hash, so accepting old versions cannot
+# cause a stale cache hit. Only explicit historical-hash reads reach
+# old-version records.
+_LOADABLE_SCHEMA_VERSIONS = (1, 2, 3)
 
 _META_FILENAME = "meta.json"
 _FIELDS_FILENAME = "fields.npz"
@@ -74,6 +79,9 @@ def solve_fingerprint(
             "piston_radius_m": geom.piston_radius_m,
             "piston_gap_depth_m": geom.piston_gap_depth_m,
             "spacer": None if geom.spacer is None else asdict(geom.spacer),
+            "crystal_radius_m": geom.crystal_radius_m,
+            "crystal_height_m": geom.crystal_height_m,
+            "crystal_centre_z_m": geom.crystal_centre_z_m,
         },
         "materials": {
             "sto_epsilon_r_real": materials.sto.epsilon_r_real,
@@ -85,6 +93,11 @@ def solve_fingerprint(
             "wall_pec": materials.wall_pec,
             "spacer": (
                 None if materials.spacer is None else asdict(materials.spacer)
+            ),
+            "crystal": (
+                None
+                if materials.crystal is None
+                else asdict(materials.crystal)
             ),
         },
         "mesh": asdict(mesh_cfg),

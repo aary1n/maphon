@@ -255,10 +255,13 @@ class TestWuRingFingerprint:
     RING/spacer/piston state (else two physically different solves could
     share a hash), and the schema version records the change."""
 
-    def test_schema_version_is_2(self):
+    def test_schema_version_is_3(self):
+        # Re-scoped 2026-07-22 (was 2): the SPEC §5b crystal sub-domain
+        # adds geometry/materials crystal fields to the canonical
+        # fingerprint — same bump discipline as the 2026-07-18 v2 bump.
         from cavity.forward_model.persistence import SCHEMA_VERSION
 
-        assert SCHEMA_VERSION == 2
+        assert SCHEMA_VERSION == 3
 
     def test_fingerprint_carries_ring_and_spacer_fields(self):
         from cavity.forward_model.geometry import SpacerSpec
@@ -290,7 +293,7 @@ class TestWuRingFingerprint:
             EigenStudyConfig(),
             GridSpec(),
         )
-        assert fp["schema_version"] == 2
+        assert fp["schema_version"] == 3  # re-scoped 2026-07-22 (was 2)
         assert fp["geometry"]["shape"] == "ring"
         assert fp["geometry"]["dielectric_inner_radius_m"] == G.sto_inner_radius_m
         assert fp["geometry"]["ring_bottom_z_m"] == G.deck_clearance_m
@@ -313,3 +316,50 @@ class TestWuRingFingerprint:
         )
         assert fp_plain["geometry"]["spacer"] is None
         assert fp_plain["materials"]["spacer"] is None
+
+
+class TestCrystalFingerprint:
+    """2026-07-22 (SPEC §5b): the canonical fingerprint must describe
+    the crystal state — else a crystal-on and a crystal-off solve could
+    share a hash — and both dicts serialise None on the plain path."""
+
+    def test_fingerprint_carries_crystal_fields(self):
+        from cavity.forward_model.materials import CrystalDielectric
+        from cavity.forward_model.persistence import (
+            solve_fingerprint,
+            solve_hash,
+        )
+        from cavity.provenance import GEOM_WU_STO_RING as G
+
+        def ring(**crystal_kwargs):
+            return CavityGeometry(
+                box_radius_m=G.box_inner_radius_m,
+                box_height_m=G.box_internal_height_asoperated_m,
+                dielectric_radius_m=G.sto_outer_radius_m,
+                dielectric_shape=DielectricShape.RING,
+                dielectric_height_m=8.6e-3,
+                dielectric_inner_radius_m=G.sto_inner_radius_m,
+                ring_bottom_z_m=G.deck_clearance_m,
+                **crystal_kwargs,
+            )
+
+        geom_on = ring(
+            crystal_radius_m=0.5 * G.crystal_diameter_m,
+            crystal_height_m=G.crystal_height_m,
+            crystal_centre_z_m=G.deck_clearance_m + 0.5 * 8.6e-3,
+        )
+        mats_on = MaterialSpec(crystal=CrystalDielectric(epsilon_r_real=3.0))
+        fp_on = solve_fingerprint(
+            geom_on, mats_on, MeshConfig(), EigenStudyConfig(), GridSpec()
+        )
+        assert fp_on["geometry"]["crystal_radius_m"] == 1.5e-3
+        assert fp_on["geometry"]["crystal_height_m"] == 8.0e-3
+        assert fp_on["materials"]["crystal"]["epsilon_r_real"] == 3.0
+        assert fp_on["materials"]["crystal"]["tan_delta"] == 0.0
+
+        fp_off = solve_fingerprint(
+            ring(), MaterialSpec(), MeshConfig(), EigenStudyConfig(), GridSpec()
+        )
+        assert fp_off["geometry"]["crystal_radius_m"] is None
+        assert fp_off["materials"]["crystal"] is None
+        assert solve_hash(fp_on) != solve_hash(fp_off)

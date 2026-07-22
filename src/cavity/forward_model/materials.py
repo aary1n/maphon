@@ -36,6 +36,35 @@ from cavity.provenance import (
 MU_0: float = 4.0e-7 * math.pi
 
 
+@dataclass(frozen=True)
+class CrystalDielectric:
+    """Pentacene:p-terphenyl crystal EM material for the SPEC §5b
+    sub-domain (built 2026-07-22, W2 session prerequisite).
+
+    `epsilon_r_real` has NO default — the value enters ONLY via the
+    Q11 resolution payload
+    (`cavity.sweep.resolutions.RESOLUTION_Q11.payload["crystal_epsilon_r"]`,
+    planning grade, band [2.4, 4.1] riding unconsumed) at the call
+    site; no plain-float crystal permittivity lives in this module or
+    in provenance.
+
+    `tan_delta = 0.0` — DELIBERATELY NOT GRADED, the spacer precedent
+    (`provenance.CrossLinkedPolystyrene`): the crystal enters the EM
+    geometry as a lossless dielectric; grading its loss is separate
+    ratification work, not smuggled in here as an ungraded literal.
+    The W2.2 window (±25 %) is insensitive to the omission at the <1 %
+    electric-filling level (Breeze 2017)."""
+
+    epsilon_r_real: float
+    tan_delta: float = 0.0
+    mu_r: float = 1.0
+    sigma: float = 0.0
+
+    def __post_init__(self) -> None:
+        if self.epsilon_r_real <= 0:
+            raise ValueError("crystal epsilon_r_real must be positive")
+
+
 def sto_complex_permittivity(sto: STOSingleCrystal = STO) -> complex:
     """eps_r_complex = eps_r' * (1 - i * tan_delta)."""
     return sto.epsilon_r_real * (1.0 - 1j * sto.tan_delta)
@@ -68,12 +97,19 @@ class MaterialSpec:
     spacer sub-domain; None otherwise. Geometry and materials must agree
     — `build.validate_spacer_consistency` refuses a spacer-bearing
     geometry without a spacer material and vice versa.
+
+    `crystal` (SPEC §5b, 2026-07-22): the pentacene:p-terphenyl crystal
+    material (`CrystalDielectric` — εr from the Q11 resolution payload
+    at the call site) for RING geometries that declare the crystal
+    sub-domain; None otherwise. Same one-switch-one-owner rule:
+    `build.validate_crystal_consistency`.
     """
 
     sto: STOSingleCrystal = STO
     copper: Copper = COPPER
     wall_pec: bool = False
     spacer: CrossLinkedPolystyrene | None = None
+    crystal: CrystalDielectric | None = None
 
     @property
     def sto_complex_eps_r(self) -> complex:
@@ -87,4 +123,14 @@ class MaterialSpec:
             raise ValueError("MaterialSpec has no spacer material")
         return self.spacer.epsilon_r_real * (
             1.0 - 1j * self.spacer.tan_delta
+        )
+
+    @property
+    def crystal_complex_eps_r(self) -> complex:
+        """eps_r_complex of the crystal (lossless this pass — see the
+        `CrystalDielectric` grade note). Raises when no crystal."""
+        if self.crystal is None:
+            raise ValueError("MaterialSpec has no crystal material")
+        return self.crystal.epsilon_r_real * (
+            1.0 - 1j * self.crystal.tan_delta
         )

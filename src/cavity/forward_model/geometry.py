@@ -14,11 +14,19 @@ Three switchable dielectric cross-sections (`DielectricShape`):
          deck clearance — NOT mid-plane-centred). RING-only extras: an
          optional `spacer` sub-domain (`SpacerSpec`, the cross-linked
          polystyrene seat under the ring — Wu's own COMSOL includes it,
-         Fig. 6) and an optional piston step (`piston_radius_m` +
+         Fig. 6), an optional piston step (`piston_radius_m` +
          `piston_gap_depth_m`: the box ceiling is the tuning piston, and
          the annular gap between piston edge and barrel is MODELLED,
          not simplified away — ratified 2026-07-18; the gap depth is
-         unprinted and rides Q2).
+         unprinted and rides Q2), and — SPEC §5b, built 2026-07-22 (W2
+         session prerequisite) — an optional on-axis CRYSTAL sub-domain
+         (`crystal_radius_m` + `crystal_height_m` + `crystal_centre_z_m`,
+         jointly present or jointly None: the pentacene:p-terphenyl
+         crystal in the ring bore, a right cylinder on the symmetry
+         axis). The crystal is the Phase 1b GAIN REGION: `crystal_mask`
+         feeds `FieldSample.gain_region_mask`, so V_mode local
+         normalises at the field the spins see. It must never enter
+         `dielectric_mask` (p_e is STO filling by definition).
 
 Booth's appendix under-specified the cross-section (gap #1, SPEC §11);
 the switch was exposed so §4 (wall-loss split) could decide empirically.
@@ -129,12 +137,19 @@ class CavityGeometry:
     RING (2026-07-18) is the annulus dielectric_inner_radius_m <= r <=
     dielectric_radius_m, ring_bottom_z_m <= z <= ring_bottom_z_m +
     dielectric_height_m — seated above the floor, NOT mid-plane-centred.
-    RING-only extras: `spacer` (seat sub-domain under/around the ring)
-    and the piston step (`piston_radius_m` + `piston_gap_depth_m`,
+    RING-only extras: `spacer` (seat sub-domain under/around the ring),
+    the piston step (`piston_radius_m` + `piston_gap_depth_m`,
     jointly present or jointly None: the ceiling at z = box_height_m is
     the tuning piston of radius piston_radius_m, and the annular gap
     piston_radius_m <= r <= box_radius_m extends piston_gap_depth_m
-    ABOVE the ceiling plane — the modelled piston-to-barrel clearance).
+    ABOVE the ceiling plane — the modelled piston-to-barrel clearance),
+    and the crystal (SPEC §5b, 2026-07-22: `crystal_radius_m` +
+    `crystal_height_m` + `crystal_centre_z_m`, jointly present or
+    jointly None — the on-axis cylinder 0 <= r <= crystal_radius_m,
+    |z - crystal_centre_z_m| <= crystal_height_m/2 in the ring bore;
+    the axial placement is the caller's to state and label — Q9 is
+    open, so W2-class callers record it as a labelled planning
+    placement).
 
     All lengths SI (m). Validates that the dielectric fits strictly
     inside the box and that exactly the shape-matched dimensions are
@@ -152,6 +167,9 @@ class CavityGeometry:
     spacer: SpacerSpec | None = None
     piston_radius_m: float | None = None
     piston_gap_depth_m: float | None = None
+    crystal_radius_m: float | None = None
+    crystal_height_m: float | None = None
+    crystal_centre_z_m: float | None = None
 
     def __post_init__(self) -> None:
         if self.box_radius_m <= 0 or self.box_height_m <= 0:
@@ -170,6 +188,9 @@ class CavityGeometry:
                 "spacer",
                 "piston_radius_m",
                 "piston_gap_depth_m",
+                "crystal_radius_m",
+                "crystal_height_m",
+                "crystal_centre_z_m",
             ):
                 if getattr(self, name) is not None:
                     raise ValueError(
@@ -290,6 +311,52 @@ class CavityGeometry:
                     )
                 if self.piston_gap_depth_m <= 0:
                     raise ValueError("piston gap depth must be positive")
+            crystal_fields = (
+                self.crystal_radius_m,
+                self.crystal_height_m,
+                self.crystal_centre_z_m,
+            )
+            if any(f is None for f in crystal_fields) != all(
+                f is None for f in crystal_fields
+            ):
+                raise ValueError(
+                    "crystal fields are jointly present or jointly None "
+                    "(`crystal_radius_m` + `crystal_height_m` + "
+                    "`crystal_centre_z_m`)"
+                )
+            if self.crystal_radius_m is not None:
+                assert (
+                    self.crystal_height_m is not None
+                    and self.crystal_centre_z_m is not None
+                )
+                if self.crystal_radius_m <= 0:
+                    raise ValueError("crystal radius must be positive")
+                assert self.dielectric_inner_radius_m is not None
+                if self.crystal_radius_m > self.dielectric_inner_radius_m:
+                    raise ValueError(
+                        "crystal must fit the ring bore (radius <= "
+                        "`dielectric_inner_radius_m`; touching allowed — "
+                        "PRL SM: 'slotted snugly ... did not entirely "
+                        "fill it')"
+                    )
+                if self.crystal_height_m <= 0:
+                    raise ValueError("crystal height must be positive")
+                z_lo = self.crystal_centre_z_m - 0.5 * self.crystal_height_m
+                z_hi = self.crystal_centre_z_m + 0.5 * self.crystal_height_m
+                if z_lo <= 0.0 or z_hi >= self.box_height_m:
+                    raise ValueError(
+                        "crystal must lie strictly inside the box in z"
+                    )
+                if (
+                    self.spacer is not None
+                    and z_lo < self.spacer.base_height_m
+                    and self.crystal_radius_m
+                    >= self.spacer.base_inner_radius_m
+                ):
+                    raise ValueError(
+                        "crystal overlaps the spacer seat — domains "
+                        "must not overlap"
+                    )
 
     @property
     def dielectric_centre_z_m(self) -> float:
@@ -361,6 +428,37 @@ class CavityGeometry:
             z = np.asarray(z_m, dtype=np.float64)
             return np.zeros(np.broadcast(r, z).shape, dtype=bool)
         return self.spacer.mask(r_m, z_m) & ~self.dielectric_mask(r_m, z_m)
+
+    def crystal_mask(
+        self,
+        r_m: NDArray[np.floating],
+        z_m: NDArray[np.floating],
+    ) -> NDArray[np.bool_]:
+        """True inside the crystal sub-domain (SPEC §5b, 2026-07-22);
+        all-False when no crystal is declared. Same analytic-mask
+        doctrine as `dielectric_mask`/`spacer_mask` — computed from the
+        definition, never from COMSOL domain numbering. At a touching
+        crystal/STO interface (bore-filling crystal) the standing
+        boundary convention wins — interface nodes count as DIELECTRIC
+        — so the dielectric mask is subtracted, exactly the spacer
+        pattern. This mask IS the Phase 1b gain region
+        (`FieldSample.gain_region_mask`); it must never enter
+        `dielectric_mask` (p_e stays STO filling by definition)."""
+        if self.crystal_radius_m is None:
+            r = np.asarray(r_m, dtype=np.float64)
+            z = np.asarray(z_m, dtype=np.float64)
+            return np.zeros(np.broadcast(r, z).shape, dtype=bool)
+        assert (
+            self.crystal_height_m is not None
+            and self.crystal_centre_z_m is not None
+        )
+        r = np.asarray(r_m, dtype=np.float64)
+        z = np.asarray(z_m, dtype=np.float64)
+        raw = (r <= self.crystal_radius_m) & (
+            np.abs(z - self.crystal_centre_z_m)
+            <= 0.5 * self.crystal_height_m
+        )
+        return raw & ~self.dielectric_mask(r_m, z_m)
 
     @classmethod
     def from_nominal(

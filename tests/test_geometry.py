@@ -309,3 +309,112 @@ class TestPistonStep:
             _wu_ring(piston_gap_depth_m=1.0e-3)
         geom = _wu_ring(piston_radius_m=13.0e-3, piston_gap_depth_m=1.0e-3)
         assert geom.piston_radius_m == 13.0e-3
+
+
+class TestCrystal:
+    """SPEC §5b crystal sub-domain (built 2026-07-22, W2 session
+    prerequisite): on-axis cylinder in the ring bore, RING-only,
+    fields jointly present, mask = the Phase 1b gain region."""
+
+    def _crystal_kwargs(self, g=GEOM_WU_STO_RING):
+        # Planning dims (Breeze import, cross-build-transfer flag
+        # riding), axially centred on the ring mid-height plane — the
+        # W2 labelled planning placement.
+        return dict(
+            crystal_radius_m=0.5 * g.crystal_diameter_m,
+            crystal_height_m=g.crystal_height_m,
+            crystal_centre_z_m=g.deck_clearance_m + 0.5 * 8.6e-3,
+        )
+
+    def test_crystal_fields_jointly_required(self):
+        for partial in (
+            {"crystal_radius_m": 1.5e-3},
+            {"crystal_height_m": 8.0e-3},
+            {"crystal_centre_z_m": 7.3e-3},
+            {"crystal_radius_m": 1.5e-3, "crystal_height_m": 8.0e-3},
+        ):
+            with pytest.raises(ValueError, match="jointly"):
+                _wu_ring(**partial)
+
+    def test_crystal_is_ring_only(self):
+        with pytest.raises(ValueError, match="does not use"):
+            CavityGeometry(
+                box_radius_m=6.14e-3,
+                box_height_m=18.42e-3,
+                dielectric_radius_m=6.14e-3 / 2,
+                dielectric_shape=DielectricShape.TORUS,
+                dielectric_minor_radius_m=2.456e-3,
+                crystal_radius_m=1.5e-3,
+                crystal_height_m=8.0e-3,
+                crystal_centre_z_m=9.21e-3,
+            )
+
+    def test_crystal_must_fit_the_bore(self):
+        kwargs = self._crystal_kwargs()
+        kwargs["crystal_radius_m"] = 2.5e-3  # > I.D./2 = 2.025 mm
+        with pytest.raises(ValueError, match="fit the ring bore"):
+            _wu_ring(**kwargs)
+        # touching (bore-filling, 'slotted snugly') is allowed
+        kwargs["crystal_radius_m"] = GEOM_WU_STO_RING.sto_inner_radius_m
+        geom = _wu_ring(**kwargs)
+        assert geom.crystal_radius_m == GEOM_WU_STO_RING.sto_inner_radius_m
+
+    def test_crystal_must_stay_inside_box_axially(self):
+        kwargs = self._crystal_kwargs()
+        kwargs["crystal_centre_z_m"] = 1.0e-3  # bottom would poke the floor
+        with pytest.raises(ValueError, match="strictly inside the box in z"):
+            _wu_ring(**kwargs)
+        kwargs["crystal_centre_z_m"] = 14.0e-3  # top would poke the ceiling
+        with pytest.raises(ValueError, match="strictly inside the box in z"):
+            _wu_ring(**kwargs)
+
+    def test_crystal_must_not_overlap_spacer(self):
+        # A wide crystal reaching below the seat top at seat radii must
+        # refuse; the planning crystal (r = 1.5 mm < base inner 2.5 mm)
+        # never triggers this even when it dips below the deck.
+        import dataclasses
+
+        wide_seat = dataclasses.replace(
+            _wu_spacer(), base_inner_radius_m=1.0e-3
+        )
+        kwargs = self._crystal_kwargs()
+        # dip the crystal bottom below the seat top (3.3 -> 2.9 mm)
+        kwargs["crystal_centre_z_m"] = 6.9e-3
+        with pytest.raises(ValueError, match="overlaps the spacer"):
+            _wu_ring(spacer=wide_seat, **kwargs)
+        # the planning crystal (r = 1.5 mm < base inner 2.5 mm) is fine
+        # even dipped below the seat top...
+        geom = _wu_ring(spacer=_wu_spacer(), **kwargs)
+        assert geom.crystal_radius_m is not None
+        # ...and at the labelled planning placement.
+        geom = _wu_ring(spacer=_wu_spacer(), **self._crystal_kwargs())
+        assert geom.crystal_radius_m is not None
+
+    def test_crystal_mask_matches_definition_and_excludes_sto(self):
+        import numpy as np
+
+        geom = _wu_ring(**self._crystal_kwargs())
+        r = np.array([0.0, 1.0e-3, 1.5e-3, 1.6e-3, 4.0e-3, 0.5e-3])
+        z = np.array([7.3e-3, 3.4e-3, 7.3e-3, 7.3e-3, 7.3e-3, 12.0e-3])
+        mask = geom.crystal_mask(r, z)
+        # inside: on-axis centre, near-bottom, boundary radius (inclusive)
+        assert mask[0] and mask[1] and mask[2]
+        # outside: beyond the radius, in the STO, above the crystal top
+        assert not mask[3] and not mask[4] and not mask[5]
+        # STO nodes never enter the crystal mask even for a bore-filling
+        # crystal touching the interface (interface counts as dielectric)
+        kwargs = self._crystal_kwargs()
+        kwargs["crystal_radius_m"] = GEOM_WU_STO_RING.sto_inner_radius_m
+        filled = _wu_ring(**kwargs)
+        r_if = np.array([GEOM_WU_STO_RING.sto_inner_radius_m])
+        z_if = np.array([7.3e-3])
+        assert filled.dielectric_mask(r_if, z_if)[0]
+        assert not filled.crystal_mask(r_if, z_if)[0]
+
+    def test_crystal_mask_empty_when_absent(self):
+        import numpy as np
+
+        geom = _wu_ring()
+        r = np.array([0.0, 1.0e-3])
+        z = np.array([7.3e-3, 7.3e-3])
+        assert not geom.crystal_mask(r, z).any()

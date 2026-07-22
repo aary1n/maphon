@@ -17,12 +17,18 @@ Two implementations of one protocol:
     cache, .mph archiving included). Its CONSTRUCTOR enforces the
     Q2/Q9/Q11/Q13 licence gate — while any sentinel the mode requires
     is unresolved (or mock-resolved), it refuses to exist; and Phase 1b
-    solve specs additionally refuse with NotImplementedError because
-    the geometry engine has no crystal sub-domain (building it is SPEC
-    §5b work, not licensed by the Layer A design doc). NOTE 2026-07-18:
-    p_tune is no longer a Phase 1b key — it IS the RING build's box
-    internal height, which the engine represents directly; Q2 still
-    gates every real solve through the licence gate.
+    solve specs additionally refuse with NotImplementedError. NOTE
+    2026-07-22 (dated wording correction, behaviour identical): the
+    geometry engine now HAS the crystal sub-domain (SPEC §5b, built in
+    the W2 session as its ratified precondition), but THIS backend's
+    θ → crystal wiring (crystal_axial_offset_m and the crystal
+    on-switch in `draw_solve_spec`) does not exist — that wiring is
+    its own dated changeset (H3/H4 discipline: the sweep gate is never
+    cross-wired from a validation pass), so the refusal stands.
+    NOTE 2026-07-18: p_tune is no longer a Phase 1b key — it IS the
+    RING build's box internal height, which the engine represents
+    directly; Q2 still gates every real solve through the licence
+    gate.
 
 Sweep solve configuration (design doc §1/§6, committed): eigenfrequency
 search at 1.45 GHz with n_modes = 12, impedance walls, CANONICAL
@@ -419,11 +425,14 @@ class ComsolBackend:
     def solve(self, spec: DrawSolveSpec) -> ForwardModelResult:
         if spec.needs_phase1b_geometry:
             raise NotImplementedError(
-                "Phase 1b solve spec refused: the axisymmetric geometry "
-                "engine has no crystal sub-domain "
-                f"(spec carries {sorted(spec.phase1b)}). Building it "
-                "is SPEC §5b work — a separate licensed pass, not "
-                "licensed by the Layer A design doc."
+                "Phase 1b solve spec refused: this backend has no "
+                "θ → crystal wiring "
+                f"(spec carries {sorted(spec.phase1b)}). The geometry "
+                "engine's crystal sub-domain exists (SPEC §5b, built "
+                "2026-07-22 in the W2 session), but wiring it into "
+                "draw_solve_spec/ComsolBackend is its own dated "
+                "changeset — not licensed by the Layer A design doc "
+                "and never cross-wired from a validation pass."
             )
         return run_forward_model(
             spec.geom,

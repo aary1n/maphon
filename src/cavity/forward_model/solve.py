@@ -387,6 +387,15 @@ def solve_eigenfrequency(
         eps_r = np.where(
             spacer_mask, materials.spacer_complex_eps_r, eps_r
         ).astype(np.complex128)
+    gain_region_mask = None
+    if geom.crystal_radius_m is not None:
+        # SPEC §5b (2026-07-22): crystal nodes carry the crystal
+        # permittivity, and the crystal IS the Phase 1b gain region —
+        # V_mode local normalises at the field the spins see.
+        gain_region_mask = geom.crystal_mask(grid.r_m, grid.z_m)
+        eps_r = np.where(
+            gain_region_mask, materials.crystal_complex_eps_r, eps_r
+        ).astype(np.complex128)
 
     q_cross = (
         float(spectrum.q_emw[picked]) if spectrum.q_emw is not None else None
@@ -402,6 +411,7 @@ def solve_eigenfrequency(
         complex_eigenfrequency_hz=spectrum.complex_at(picked),
         q_emw_cross_check=q_cross,
         spacer_mask=spacer_mask,
+        gain_region_mask=gain_region_mask,
     )
     eigen = EigenResult(
         complex_eigenfrequency_hz=spectrum.complex_at(picked),

@@ -102,6 +102,25 @@ def validate_spacer_consistency(
         )
 
 
+def validate_crystal_consistency(
+    geom: CavityGeometry, materials: MaterialSpec
+) -> None:
+    """Geometry and materials must agree about the crystal sub-domain
+    (SPEC §5b, 2026-07-22): a crystal-bearing geometry without a
+    crystal material would silently solve the bore as air; a crystal
+    material without the sub-domain would silently drop it. Same
+    one-switch-one-owner rule as the spacer — checked before any
+    COMSOL contact."""
+    if (geom.crystal_radius_m is None) != (materials.crystal is None):
+        raise ValueError(
+            "crystal switch mismatch: geometry declares "
+            f"crystal={'yes' if geom.crystal_radius_m is not None else 'no'}"
+            " but MaterialSpec declares "
+            f"crystal={'yes' if materials.crystal is not None else 'no'}. "
+            "Populate both (Phase 1b build) or neither."
+        )
+
+
 @dataclass(frozen=True)
 class BuiltModel:
     """Handles into one assembled §2 model.
@@ -126,6 +145,7 @@ class BuiltModel:
     comsol_version: str
     spacer_selection_tag: str | None = None
     size_spacer: Any | None = None
+    crystal_selection_tag: str | None = None
 
 
 def _walls_selection(model: Any, geom: CavityGeometry) -> Any:
@@ -336,12 +356,13 @@ def build_model(
     rebuilding.
 
     Raises:
-        ValueError: wall-BC or spacer switch mismatch (checked before
-            any COMSOL contact).
+        ValueError: wall-BC, spacer or crystal switch mismatch (checked
+            before any COMSOL contact).
         ComsolUnavailable: MPh is not installed.
     """
     validate_wall_bc_consistency(materials, study)
     validate_spacer_consistency(geom, materials)
+    validate_crystal_consistency(geom, materials)
     mph = _require_mph()
 
     if client is None:
@@ -406,6 +427,26 @@ def build_model(
         dielectric.property("pos", [geom.dielectric_radius_m, z0])
     dielectric.property("selresult", True)
 
+    crystal = None
+    if geom.crystal_radius_m is not None:
+        # SPEC §5b crystal sub-domain (2026-07-22): on-axis cylinder in
+        # the ring bore. No dedicated mesh tier — the low-eps crystal
+        # inherits the global/air size (decision recorded in the W2
+        # pre-registration addendum), mirroring the spacer default.
+        assert (
+            geom.crystal_height_m is not None
+            and geom.crystal_centre_z_m is not None
+        )
+        crystal = geometry.create("Rectangle", name="crystal")
+        crystal.property(
+            "size", [geom.crystal_radius_m, geom.crystal_height_m]
+        )
+        crystal.property(
+            "pos",
+            [0.0, geom.crystal_centre_z_m - 0.5 * geom.crystal_height_m],
+        )
+        crystal.property("selresult", True)
+
     if geom.spacer is not None:
         sp = geom.spacer
         spacer_base = geometry.create("Rectangle", name="spacer base")
@@ -451,6 +492,22 @@ def build_model(
         ("electricconductivity", f"{materials.sto.sigma!r}"),
     ):
         sto.java.propertyGroup("def").set(name, value)
+
+    crystal_sel_tag: str | None = None
+    if crystal is not None:
+        assert materials.crystal is not None  # validate_crystal_consistency
+        crystal_sel_tag = f"{geometry.tag()}_{crystal.tag()}_dom"
+        cry = materials_group.create(
+            "Common", name="crystal (pentacene:p-terphenyl)"
+        )
+        cry.java.selection().named(crystal_sel_tag)
+        c = materials.crystal
+        for name, value in (
+            ("relpermittivity", f"{c.epsilon_r_real!r}*(1-{c.tan_delta!r}*i)"),
+            ("relpermeability", f"{c.mu_r!r}"),
+            ("electricconductivity", f"{c.sigma!r}"),
+        ):
+            cry.java.propertyGroup("def").set(name, value)
 
     spacer_sel = None
     spacer_sel_tag: str | None = None
@@ -535,4 +592,5 @@ def build_model(
         comsol_version=str(client.version),
         spacer_selection_tag=spacer_sel_tag,
         size_spacer=size_spacer,
+        crystal_selection_tag=crystal_sel_tag,
     )

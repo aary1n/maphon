@@ -29,6 +29,7 @@ from cavity.forward_model.gridding import (
 )
 from cavity.forward_model.materials import (
     MU_0,
+    CrystalDielectric,
     MaterialSpec,
     copper_surface_resistance,
     sto_complex_permittivity,
@@ -61,6 +62,7 @@ __all__ = [
     "MIN_CONVERGENCE_LEVELS",
     "MU_0",
     "CavityGeometry",
+    "CrystalDielectric",
     "SpacerSpec",
     "ConvergenceAssessment",
     "ConvergenceCriterion",
