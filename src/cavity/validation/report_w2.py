@@ -297,6 +297,7 @@ def build_w2_manifest(
     run_dir_name: str,
     comsol_version: str | None,
     repo_root: Path,
+    deviations: list[str] | None = None,
 ) -> dict:
     """Assemble the W2 checkpoint manifest (see module docstring).
 
@@ -360,6 +361,7 @@ def build_w2_manifest(
         "kind": "wu_anchor_w2",
         "pass_date": pass_date,
         "run_dir": run_dir_name,
+        "deviations": list(deviations) if deviations else [],
         "protocol": {
             "windows_doc": "docs/w2_wu_anchor_windows.md",
             "windows_ratified": "2026-07-19",
@@ -532,6 +534,13 @@ def render_w2_markdown(manifest: dict) -> str:
         "`render_w2_markdown(checkpoint_manifest.json)` (byte-pinned in "
         "tests/test_report_w2.py).",
         "",
+    ]
+    if manifest.get("deviations"):
+        lines += ["## Declared deviations", ""]
+        for d in manifest["deviations"]:
+            lines.append(f"- {d}")
+        lines.append("")
+    lines += [
         "## The two runs",
         "",
         f"- **Run A (GATED)** — ring O.D. {_fmt_mm(a['sto_outer_diameter_m'])} "

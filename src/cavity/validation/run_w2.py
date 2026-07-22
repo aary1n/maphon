@@ -167,6 +167,18 @@ def main(argv: list[str] | None = None) -> int:
             "solves/. Needs no COMSOL licence."
         ),
     )
+    parser.add_argument(
+        "--ladder-shift",
+        type=int,
+        default=0,
+        help=(
+            "refine the pre-registered ladder base by sqrt(2)**N (the "
+            "committed ConvergenceError's own 'refine further' remedy: "
+            "drop the coarsest level(s), add finer ones). Any nonzero "
+            "value is recorded in the manifest as a DECLARED DEVIATION "
+            "from the pre-registered base — never a silent change."
+        ),
+    )
     args = parser.parse_args(argv)
     if args.rebuild_only and args.run_dir is None:
         parser.error("--rebuild-only requires --run-dir")
@@ -216,8 +228,25 @@ def main(argv: list[str] | None = None) -> int:
     )
     # Pre-registered ladder (2026-07-22 addendum): the §5a-precedent
     # base, 5 sqrt(2) levels, ending at the validated finest level
-    # (dielectric 1.25e-4 / air 5e-4).
+    # (dielectric 1.25e-4 / air 5e-4). --ladder-shift N refines the
+    # base by sqrt(2)**N (declared deviation, recorded below).
     base_mesh = MeshConfig(dielectric_max_h_m=5.0e-4, air_max_h_m=2.0e-3)
+    deviations: list[str] = []
+    if args.ladder_shift:
+        for _ in range(args.ladder_shift):
+            base_mesh = base_mesh.refined(2.0**0.5)
+        deviations.append(
+            "DECLARED DEVIATION from the pre-registered mesh ladder: "
+            f"base refined by sqrt(2)**{args.ladder_shift} to "
+            f"(dielectric {base_mesh.dielectric_max_h_m:.6e} m, air "
+            f"{base_mesh.air_max_h_m:.6e} m) — the committed "
+            "ConvergenceError's own 'refine further' remedy after the "
+            "pre-registered base ladder was refused as non-asymptotic "
+            "(coarse-end f'' delta wiggle; the refused attempt's "
+            "failure record and solves are archived in their own "
+            "dated run directory). No convergence criterion was "
+            "weakened and no window changed."
+        )
     n_levels = 5
     materials = wu_w2_materials(crystal_epsilon_r)
 
@@ -342,6 +371,7 @@ def main(argv: list[str] | None = None) -> int:
         run_dir_name=run_dir.name,
         comsol_version=comsol_version,
         repo_root=_REPO_ROOT,
+        deviations=deviations,
     )
     write_w2_manifest(manifest, run_dir)
     write_w2_gate_report(manifest, run_dir)
