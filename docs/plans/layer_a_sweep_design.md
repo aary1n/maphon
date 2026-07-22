@@ -672,3 +672,24 @@ Dated record; nothing above is edited.
   RESOLVED at these numbers (user-ratified 2026-07-19), subject only to
   the standing failure path (active learning within budget, then §6
   overrun discipline).
+
+---
+
+## Addendum — 2026-07-22: the W2-validated Wu anchor record EXISTS
+
+Dated record; nothing above is edited. The 2026-07-19 addendum's
+"where the W2 anchor record does not yet exist" parenthetical is
+SATISFIED as of this date: the first W2-passing solve ran 2026-07-22
+under the pre-registered dual-geometry protocol
+(`docs/w2_wu_anchor_windows.md` addendum 2026-07-22; the O.D. hold of
+commit 2e19187 lifted by user decision of 2026-07-22 — Run A print
+O.D. gated, Run B measured O.D. diagnostic, no branch selected).
+Archive `refs/gate_runs/20260722T144737Z_wu_anchor_w2/`; pinned
+import-only as `cavity.sweep.wu_anchor.WU_ANCHOR` (Run A walls-on
+finest record `b8895aa479464763`: f = 1431.1918 MHz, Q₀ = 7152.08,
+p_e = 0.99769, v_mode_local/global = 1.058353). The sweep-centre
+definition above now has its concrete referent. UNCHANGED and still
+queued as their own dated changesets: the centre_check off-arm
+re-pointing (H4 — the Booth pins remain Booth-true), the Phase 1b
+5-solve verification block, W1 ratification, and the Layer-A design
+freeze; every solve-ready sweep exit still refuses on Q9.
