@@ -186,8 +186,9 @@ def build_report() -> str:
         "",
         f"- {Q_MARGIN_RUNG}.",
         "- FIXED-G vs C0-IMPORT: this map varies Q_L at fixed G and "
-        "kappa_s (C0 = c*Q_L); the planning-point report imports C0 = "
-        "190 directly. The joint C0/kappa_c/kappa_s dependence on the "
+        f"kappa_s (C0 = c*Q_L); the planning-point report imports C0 = "
+        f"{PLANNING_C0:g} directly. The joint C0/kappa_c/kappa_s "
+        "dependence on the "
         "geometry DOFs is Layer A (SPEC section 11 item 9) - not derived "
         "here.",
         "- SIGN-INVERSION FINDING (derived 2026-07-13, UNRATIFIED - needs "

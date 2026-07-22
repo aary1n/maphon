@@ -26,6 +26,17 @@ pre-registered own-model rebase is licensed):
   `provenance/constants.py`: no measured C0 exists (the provenance
   table's ingredients are N assumed, g_s derived, kappa_s fitted); the
   §5a checkpoint delivers only the kappa_c/Q arm of "Booth's own C0".
+  (REVERSED 2026-07-21: C0 is now GRADUATED — `C0_PLANNING` = 200.0,
+  ELICITED / supervisor-verbal 2026-07-21, notes archived at
+  calibration/data/raw/oxborrow_meeting_notes_2026-07-21/, written
+  confirmation pending. Still not measured — the "no measured C0"
+  clause above stays true; the not-graduated rationale is what the
+  elicitation superseded. The 190 era is preserved as a dated prior
+  value in the constant's docstring. Guard, verbatim: Oxborrow's
+  C0 = 200 grades the planning cooperativity only; it is NOT
+  ratification of the two-linewidth threshold law, the turnover
+  result, or the margin framing, which remain UNRATIFIED pending the
+  findings note.)
 
 Usage:  python -m cavity.thermal.report_margin [--out thermal/reports]
 """
@@ -37,6 +48,7 @@ import json
 from pathlib import Path
 
 from cavity.provenance.constants import (
+    C0_PLANNING,
     DELOAD_K,
     DF_CAVITY_DT,
     DF_SPIN_DT,
@@ -56,11 +68,13 @@ from cavity.thermal.detuning import (
 
 PASS_DATE = "2026-07-13"
 
-# SPEC revision-note planning values ("Breeze's build runs C ~ 190");
-# 50 / 500 bracket the sqrt(C0 - 1) insensitivity. Never measured — see
-# module docstring for why no provenance constant exists.
-PLANNING_C0_ROWS = (50.0, 190.0, 500.0)
-PLANNING_C0 = 190.0
+# The graduated planning cooperativity (`C0_PLANNING`, ELICITED /
+# supervisor-verbal 2026-07-21 — 190-era record in its docstring);
+# 50 / 500 bracket the sqrt(C0 - 1) insensitivity. Still never
+# measured. The module-level name is kept: report_turnover.py and the
+# test layer import PLANNING_C0 from here.
+PLANNING_C0 = C0_PLANNING.c0
+PLANNING_C0_ROWS = (50.0, PLANNING_C0, 500.0)
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 # The re-based §5a record (GREEN, 5/0/1 — SPEC §5a finding 2026-07-11);
@@ -208,9 +222,10 @@ def build_report() -> str:
         "reality — the kappa_s(ΔT) feedback via "
         "`cavity.thermal.broadening` is the flagged follow-on, NOT "
         "implemented.",
-        "- C0-IMPORT CONVENTION: C0 = 190 is imported as the resonant "
-        "cooperativity and NOT recomputed from kappa_s (no G^2 exists — "
-        "Phase 1b). Direction of bias (ratified amendment C): sweeping "
+        f"- C0-IMPORT CONVENTION: C0 = {PLANNING_C0:g} is imported as "
+        "the resonant cooperativity and NOT recomputed from kappa_s (no "
+        "G^2 exists — Phase 1b). Direction of bias (ratified amendment "
+        "C): sweeping "
         "kappa_s at fixed imported C0 holds G^2/kappa_c fixed; at fixed "
         "G the growth is ~sqrt(kappa_s), so the kappa_s-hi edge of the "
         "Δf_max band below is OVERSTATED under the import convention — "
@@ -258,9 +273,17 @@ def build_report() -> str:
         "|---|---|",
         *rows,
         "",
-        f"C0 = {PLANNING_C0:g} is the SPEC revision-note planning value "
-        "(\"Breeze's build runs C ~ 190\") — never a measured constant "
-        "(provenance table: N assumed, g_s derived, kappa_s fitted). "
+        f"C0 = {PLANNING_C0:g} is the ELICITED planning value "
+        "(`C0_PLANNING`: Oxborrow-verbal 2026-07-21, quoted with his "
+        "stated best-case condition, notes archived at "
+        "calibration/data/raw/oxborrow_meeting_notes_2026-07-21/, "
+        "written confirmation pending; supersedes the 2026-07-13-era "
+        "SPEC revision-note reading \"Breeze's build runs C ~ 190\", "
+        "preserved as the dated prior value) — still never a measured "
+        "constant (provenance table: N assumed, g_s derived, kappa_s "
+        "fitted). NOT ratification of the two-linewidth law, the "
+        "turnover result, or the margin framing (UNRATIFIED, findings "
+        "note pending). "
         "The sqrt(C0 − 1) insensitivity is the point of the bracket "
         "rows: x10 in C0 moves Δf_max by ~x3.2.",
         f"- kappa_s band on Δf_max at C0 = {PLANNING_C0:g}: "

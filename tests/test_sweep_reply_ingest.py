@@ -85,19 +85,32 @@ class TestCompleteFixture:
 
     def test_fixture_resolves_nothing_real(self):
         """THE guarantee: after a full fixture ingest, the ratified
-        register is untouched and still Q11-only."""
+        register is untouched — Q2/Q11/Q13 as of 2026-07-21 (Q2 + Q13
+        at the verbal rung), with Q9 the sole remaining gate."""
         ingest_reply(_complete_fixture(), fixture=True)
-        assert [r.question_id for r in RATIFIED_RESOLUTIONS] == ["Q11"]
+        assert [r.question_id for r in RATIFIED_RESOLUTIONS] == [
+            "Q2",
+            "Q11",
+            "Q13",
+        ]
         with pytest.raises(UnresolvedTodoTraceError) as exc:
             ratified_resolutions().assert_solveable(
                 DesignMode.BASELINE_D8, "training solves"
             )
-        assert set(exc.value.question_ids) == {"Q2", "Q9", "Q13"}
+        assert set(exc.value.question_ids) == {"Q9"}
 
     def test_fixture_mocks_are_refused_by_solve_ready_exits(self):
         report = ingest_reply(_complete_fixture(), fixture=True)
+        # Mirror of the source's supersede-dedupe (2026-07-21 register
+        # change): a re-answered question's stand-in replaces the
+        # ratified entry — composing both would be a duplicate.
+        minted_qids = {m.question_id for m in report.mint_instructions}
         hypothetical = ResolutionContext(
-            resolutions=tuple(ratified_resolutions().resolutions)
+            resolutions=tuple(
+                r
+                for r in ratified_resolutions().resolutions
+                if r.question_id not in minted_qids
+            )
             + tuple(m.as_mock_resolution() for m in report.mint_instructions)
         )
         # presence-wise complete in both modes...
@@ -111,7 +124,11 @@ class TestCompleteFixture:
         report = ingest_reply(_complete_fixture(), fixture=True)
         for mi in report.mint_instructions:
             mi.validate_contract()  # would raise on a bad payload
-        assert [r.question_id for r in RATIFIED_RESOLUTIONS] == ["Q11"]
+        assert [r.question_id for r in RATIFIED_RESOLUTIONS] == [
+            "Q2",
+            "Q11",
+            "Q13",
+        ]
 
     def test_report_markdown_sections_and_fixture_label(self):
         report = ingest_reply(_complete_fixture(), fixture=True)
@@ -151,11 +168,16 @@ class TestPartialFixture:
         )
         by_q = {o.question_id: o for o in report.outcomes}
         assert by_q["Q13"].classification is ReplyClass.NON_RESPONSIVE
-        assert by_q["Q2"].classification is ReplyClass.DEFERRED_FULL
+        # 2026-07-21 register change: RESOLUTION_Q13 supplies the height
+        # (data-driven, reply_ingest.py's ratified-Q13 fallback), so the
+        # gap form is now CONVERTIBLE and the gap-ends-without-nominal
+        # rule fires — PARTIAL (never midpoint), no longer
+        # DEFERRED_FULL-on-missing-height.
+        assert by_q["Q2"].classification is ReplyClass.PARTIAL
         assert by_q["Q9"].classification is ReplyClass.PARTIAL
         assert report.mint_instructions == ()
         unresolved = report.unresolved_after_mint["baseline-d8"]
-        assert set(unresolved) == {"Q2", "Q9", "Q13"}
+        assert set(unresolved) == {"Q9"}
 
     def test_absent_items_are_absent(self):
         report = ingest_reply({"archive": ARCHIVE, "items": {}}, fixture=True)
@@ -505,7 +527,11 @@ class TestD2EscapeHatch:
         for token in ("D2 ESCAPE HATCH", "TEST-ONLY", "2026-07-25", "No reply"):
             assert token in mi.provenance
         # still nothing registered
-        assert [r.question_id for r in RATIFIED_RESOLUTIONS] == ["Q11"]
+        assert [r.question_id for r in RATIFIED_RESOLUTIONS] == [
+            "Q2",
+            "Q11",
+            "Q13",
+        ]
 
     @pytest.mark.parametrize(
         "over,match",

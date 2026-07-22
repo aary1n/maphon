@@ -9,6 +9,12 @@ calibration/data/raw/oxborrow_meeting_notes_2026-07-16/). Deterministic
 output; pinned content-exact in tests/test_thermal_s_ladder.py (the
 report_margin precedent).
 
+2026-07-21: the S2/S3 label ask (Email B) is CLOSED AS UNRECOVERABLE —
+joint recall failure, neither Oxborrow nor the notetaker remembers
+(in-person meeting 2026-07-21, notes archived at
+calibration/data/raw/oxborrow_meeting_notes_2026-07-21/). S3's reserved
+label is permanently content-lost; no renumbering; S0/S1/S4 untouched.
+
 Every number's source and rung, single-sourced from
 `provenance/constants.py`:
 - geometry: `CRYSTAL` planning dims (Breeze 2017; the Wu
@@ -450,12 +456,18 @@ def build_report() -> str:
         "",
         "## S2 / S3 / S5",
         "",
-        "- S2: no such rung appears anywhere in the notes (the numbering"
-        " gap is part of the S3/S4 numbering ask).",
+        "- S2: no such rung appears anywhere in the notes. (2026-07-21:"
+        " the numbering ask is CLOSED AS UNRECOVERABLE — joint recall"
+        " failure, neither Oxborrow nor the notetaker remembers;"
+        " in-person meeting, notes archived at"
+        " calibration/data/raw/oxborrow_meeting_notes_2026-07-21/. The"
+        " numbering caveat is PERMANENT.)",
         "- S3: label RESERVED — bare heading in the archived notes, content"
         " not captured; numbering (typed S4-for-side-fire vs sketch S3)"
-        " rides the Oxborrow Email B ask. Nothing planned, nothing"
-        " computed.",
+        " rode the Oxborrow Email B ask, CLOSED AS UNRECOVERABLE"
+        " 2026-07-21 (joint recall failure, archive above): content-lost,"
+        " unrecoverable by recall; the label stays permanently reserved,"
+        " no renumbering. Nothing planned, nothing computed.",
         "- S5: logged-DEFERRED (SPEC outcome 5) — the \"steam engine\""
         " coolant-channel brainstorm; out of scope (§9 cooling-channel"
         " exclusion). Nothing computed.",

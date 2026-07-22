@@ -5,6 +5,13 @@ Table 8's V_mode compute" ask (SPEC §11 items 1/8). Prepared 2026-07-11 from th
 forensic pass (SPEC §5a finding 2026-07-11; re-based gate record
 `refs/gate_runs/20260711T132705Z_rejudge/`).
 
+*2026-07-21 (Oxborrow-verbal, in-person meeting; notes archived at
+`calibration/data/raw/oxborrow_meeting_notes_2026-07-21/`): on being told of the
+225/360 finding, Oxborrow's reaction was that it could plausibly be a mistake on
+Booth's side — SPECULATION at the verbal rung, explicitly NOT confirmation; the
+finding's rung is unchanged (identified, Booth-side written confirmation PENDING).
+Recorded only because the reaction supports sending this note to Booth.*
+
 ---
 
 Dear Mark,

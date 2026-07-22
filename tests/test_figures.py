@@ -157,27 +157,29 @@ def test_f5_data_pins():
         KAPPA_S.kappa_s_band_lo_hz,
         KAPPA_S.kappa_s_band_hi_hz,
     )
-    assert data["df_max_hz"] == pytest.approx(11391517.7418, abs=1e-3)
+    # C0 = 200 era (2026-07-21, `C0_PLANNING`): pins independently
+    # recomputed through the committed pure functions.
+    assert data["df_max_hz"] == pytest.approx(11688996.4573, abs=1e-3)
     df_band_lo, df_band_hi = data["df_max_band_hz"]
-    assert df_band_lo == pytest.approx(5548733.7307, abs=1e-2)
-    assert df_band_hi == pytest.approx(13797369.9816, abs=1e-2)
-    assert data["dt_max_k"] == pytest.approx(3.896861, abs=1e-4)
+    assert df_band_lo == pytest.approx(5693633.6659, abs=1e-2)
+    assert df_band_hi == pytest.approx(14157675.2537, abs=1e-2)
+    assert data["dt_max_k"] == pytest.approx(3.999004, abs=1e-4)
     band_lo, band_hi = data["dt_max_band_k"]
-    assert band_lo == pytest.approx(3.77203, abs=5e-4)
-    assert band_hi == pytest.approx(4.81875, abs=5e-4)
+    assert band_lo == pytest.approx(3.87053, abs=5e-4)
+    assert band_hi == pytest.approx(4.94458, abs=5e-4)
     envelope_lo, envelope_hi = data["dt_max_envelope_k"]
-    assert envelope_lo == pytest.approx(1.83733, abs=5e-4)
-    assert envelope_hi == pytest.approx(5.83645, abs=5e-4)
+    assert envelope_lo == pytest.approx(1.88531, abs=5e-4)
+    assert envelope_hi == pytest.approx(5.98886, abs=5e-4)
     assert data["p_e"] == 0.9974999896719232
     assert data["p_e_record_hash"] == "823e67969516bcf2"
 
     report = MARGIN_REPORT.read_text(encoding="utf-8")
-    assert "**ΔT_max = 3.8969 K**" in report
-    assert "[3.772, 4.819] K" in report
+    assert "**ΔT_max = 3.9990 K**" in report
+    assert "[3.871, 4.945] K" in report
     assert "kappa_c = f/Q_L = 257.222 kHz" in report
-    assert "| 190 | 11.3915 |" in report
-    assert "[5.5487, 13.7974] MHz" in report
-    assert "[1.837, 5.836] K" in report
+    assert "| 200 | 11.6890 |" in report
+    assert "[5.6936, 14.1577] MHz" in report
+    assert "[1.885, 5.989] K" in report
     assert f"p_e = {data['p_e']!r}" in report
 
 

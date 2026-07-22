@@ -308,8 +308,11 @@ def test_a6_kappa_c_cyclic_hz_and_planning_point():
     # 2*pi*f/Q_L (provenance table trap 1; anchor A6).
     assert kappa_c == pytest.approx(257.222e3, rel=1e-4)
 
+    # C0 = 200 era (2026-07-21, `C0_PLANNING`): every pin below is an
+    # independent recomputation through the committed pure functions,
+    # never copied from the regenerated report.
     df_max = delta_f_max_hz(PLANNING_C0, kappa_c, kappa_s)
-    assert df_max == pytest.approx(11.3915e6, rel=1e-3)
+    assert df_max == pytest.approx(11.6890e6, rel=1e-3)
     # Angular-kappa_s trap sibling: W20's angular value inflates the
     # planning margin by ~5.46x and must never enter this cyclic-Hz API.
     assert delta_f_max_hz(
@@ -317,7 +320,7 @@ def test_a6_kappa_c_cyclic_hz_and_planning_point():
     ) > 4.0 * df_max
 
     dt_max = delta_t_max_k(df_max, T_BASE, p_e=p_e)
-    assert dt_max == pytest.approx(3.8969, rel=1e-3)
+    assert dt_max == pytest.approx(3.9990, rel=1e-3)
     # Band endpoints via the §6T coefficient bands (linear arithmetic).
     lo = df_max / (
         DF_CAVITY_DT.df_dt_band_hi_hz_per_k
@@ -327,18 +330,18 @@ def test_a6_kappa_c_cyclic_hz_and_planning_point():
         DF_CAVITY_DT.df_dt_band_lo_hz_per_k
         + abs(DF_SPIN_DT.df_dt_band_hi_hz_per_k)
     )
-    assert lo == pytest.approx(3.772, rel=2e-3)
-    assert hi == pytest.approx(4.819, rel=2e-3)
+    assert lo == pytest.approx(3.871, rel=2e-3)
+    assert hi == pytest.approx(4.945, rel=2e-3)
 
     assert delta_f_max_hz(
         PLANNING_C0, kappa_c, KAPPA_S.kappa_s_band_lo_hz
-    ) == pytest.approx(5.5487e6, rel=1e-3)
+    ) == pytest.approx(5.6936e6, rel=1e-3)
     assert delta_f_max_hz(
         PLANNING_C0, kappa_c, KAPPA_S.kappa_s_band_hi_hz
-    ) == pytest.approx(13.7974e6, rel=1e-3)
+    ) == pytest.approx(14.1577e6, rel=1e-3)
     assert q_margin_exponent(
         PLANNING_C0, kappa_c, kappa_s
-    ) == pytest.approx(0.34743, abs=5e-4)
+    ) == pytest.approx(0.34730, abs=5e-4)
 
 
 def test_a6_delta_f_max_domain():
@@ -348,6 +351,25 @@ def test_a6_delta_f_max_domain():
         delta_f_max_hz(190.0, 0.0, 0.0)
     with pytest.raises(ValueError, match="non-negative"):
         delta_f_max_hz(190.0, 1.0e5, -1.0)
+
+
+def test_a6b_c0_planning_graduated_constant():
+    """2026-07-21 graduation pin: the planning C0 is now the graded
+    provenance constant `C0_PLANNING` (dimensionless resonant
+    on-resonance cooperativity), report_margin's module-level name is
+    its alias, and the docstring carries the elicitation grade, the
+    archive cite, the import convention, and the
+    not-law-ratification guard."""
+    from cavity.provenance.constants import C0_PLANNING
+
+    assert PLANNING_C0 == 200.0 == C0_PLANNING.c0
+    doc = type(C0_PLANNING).__doc__
+    assert "ELICITED" in doc
+    assert "oxborrow_meeting_notes_2026-07-21" in doc
+    assert "imported, never recomputed" in doc
+    assert "NOT" in doc and "ratification" in doc
+    # ERA 1 preserved as the dated prior value.
+    assert "190" in doc
 
 
 # --- A12 / A13: exact law-family regression anchors -------------------------

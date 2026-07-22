@@ -138,7 +138,9 @@ def test_c0_equals_planning_value_at_the_anchor_exactly():
     assert c0_anchored(
         row["f_real_hz"], row["magnetic_filling_factor"], kc, anchor
     ) == pytest.approx(PLANNING_C0, rel=1e-14)
-    assert PLANNING_C0 == 190.0
+    # 200.0 from 2026-07-21 (`C0_PLANNING`, elicited planning value —
+    # dimensionless resonant on-resonance cooperativity).
+    assert PLANNING_C0 == 200.0
 
 
 def test_c0_ratios_between_draws_are_anchor_invariant():

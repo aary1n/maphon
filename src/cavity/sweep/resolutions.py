@@ -6,11 +6,60 @@ and entering the machinery through `SentinelResolution` — the only
 path. Q2/Q9 land here when they resolve. The context this module
 builds is PARTIAL by construction (Q11 only, as of 2026-07-17):
 Q2/Q9 remain unresolved, so every solve-ready exit still refuses.
+
+2026-07-21 continuation: Q13 and Q2 landed at the verbal rung
+(in-person meeting 2026-07-21; contemporaneous notes archived at
+calibration/data/raw/oxborrow_meeting_notes_2026-07-21/; written
+confirmation pending — rides the confirmation email). The register
+now holds Q2 + Q11 + Q13 in question order; the context remains
+PARTIAL by construction — Q9 is unresolved, so every solve-ready
+exit still refuses, now naming Q9 alone.
 """
 
 from __future__ import annotations
 
 from cavity.sweep.dofs import ResolutionContext, Rung, SentinelResolution
+
+RESOLUTION_Q2 = SentinelResolution(
+    question_id="Q2",
+    payload={
+        "p_tune_nominal": 15e-3,
+        "p_tune_min": 15e-3,
+        "p_tune_max": 25e-3,
+        "mechanism": (
+            "box internal height / piston position on the brass screw "
+            "(Wu 2020 screw-suspended ceiling; PRL SM 26-mm piston); "
+            "travel band [15, 25] mm Oxborrow-VERBAL, in-person "
+            "meeting 2026-07-21, notes archived at "
+            "calibration/data/raw/oxborrow_meeting_notes_2026-07-21/; "
+            "nominal = the recorded as-operated 15 mm = "
+            "GEOM_WU_STO_RING.box_internal_height_asoperated_m, "
+            "sitting AT the band's lower edge (accepted: no validator "
+            "requires strict interiority — checked 2026-07-22). "
+            "RIDER STILL OPEN: the piston-step annular-gap DEPTH "
+            "(optional piston_gap_depth_m payload key) was NOT "
+            "obtained 2026-07-21 — still an ask, does not block this "
+            "resolution."
+        ),
+    },
+    rung=Rung.SUPERVISOR_CONFIRMED,
+    mock=False,
+    provenance=(
+        "Travel band from Oxborrow, VERBAL, in-person meeting "
+        "2026-07-21 (contemporaneous notes archived at "
+        "calibration/data/raw/oxborrow_meeting_notes_2026-07-21/; "
+        "written confirmation pending — rides the confirmation "
+        "email); answers the 2026-07-18 travel-band email in person. "
+        "Consistency (informational): as-operated 15 mm = lower "
+        "edge; the 2026-07-17 emailed cavity height 18 mm "
+        "(calibration/data/raw/oxborrow_sto_2026-07-17/"
+        "stogeometry.md) sits interior; ring 8.6 mm + 3 mm deck = "
+        "11.6 mm occupied, so the band implies ceiling-to-STO "
+        "clearance 3.4-13.4 mm, bracketing the stated 5-10 mm "
+        "typical plate-to-STO operating separation (same archive, "
+        "and oxborrow_tuning_2026-07-16/stotuningmech.md)."
+    ),
+)
 
 RESOLUTION_Q11 = SentinelResolution(
     question_id="Q11",
@@ -49,12 +98,55 @@ RESOLUTION_Q11 = SentinelResolution(
     ),
 )
 
+RESOLUTION_Q13 = SentinelResolution(
+    question_id="Q13",
+    payload={
+        "sto_height_m": 8.6e-3,
+        "selection_evidence": (
+            "CALIPER, VERBAL REPORT: Oxborrow reported a physical "
+            "caliper measurement of the ring height, 8.6 mm — verbal, "
+            "in-person meeting 2026-07-21; contemporaneous notes "
+            "archived at "
+            "calibration/data/raw/oxborrow_meeting_notes_2026-07-21/. "
+            "This is the fork's named caliper route. 8.6 was already "
+            "the evidence-favoured branch (two prints vs one); the "
+            "measurement decides it. NO measured band was obtained: "
+            "no sto_height_band_m key rides this payload, so the "
+            "+/-25 um TOL.machining_tol_m placeholder materialises in "
+            "design.materialise_dims — stated here, not implicit."
+        ),
+    },
+    rung=Rung.SUPERVISOR_CONFIRMED,
+    mock=False,
+    provenance=(
+        "Verbal report of a physical caliper measurement, NOT a "
+        "written record and NOT shorthand-'measured' (VERBAL, "
+        "in-person meeting 2026-07-21; contemporaneous notes archived "
+        "at calibration/data/raw/oxborrow_meeting_notes_2026-07-21/; "
+        "written confirmation pending — rides the confirmation "
+        "email). Collapses the {8.5, 8.6} mm print fork "
+        "(provenance.STO_HEIGHT_FORK / SENTINEL_Q13) to 8.6 mm via "
+        "the fork's caliper resolution route; the SM 8.5 print is "
+        "superseded by the verbally-reported caliper measurement "
+        "(written pending), preserved as printed on the fork record. "
+        "The fork object is NOT deleted — it remains the record; "
+        "this resolution is the machinery's only entry path for the "
+        "number."
+    ),
+)
+
 #: Every ratified resolution on record, in question order.
-RATIFIED_RESOLUTIONS: tuple[SentinelResolution, ...] = (RESOLUTION_Q11,)
+RATIFIED_RESOLUTIONS: tuple[SentinelResolution, ...] = (
+    RESOLUTION_Q2,
+    RESOLUTION_Q11,
+    RESOLUTION_Q13,
+)
 
 
 def ratified_resolutions() -> ResolutionContext:
     """Every ratified (non-mock) resolution on record — Q11 only as
-    of 2026-07-17. PARTIAL by construction: Q2/Q9 remain unresolved,
-    so every solve-ready exit still refuses."""
+    of 2026-07-17; Q2 + Q13 joined 2026-07-21 at the verbal rung
+    (written confirmation pending). PARTIAL by construction: Q9
+    remains unresolved, so every solve-ready exit still refuses,
+    naming Q9 alone."""
     return ResolutionContext(resolutions=RATIFIED_RESOLUTIONS)

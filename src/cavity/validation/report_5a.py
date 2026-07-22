@@ -373,7 +373,15 @@ def render_checkpoint_markdown(manifest: dict) -> str:
         delta_t_max_k,
         q_loaded,
     )
-    from cavity.thermal.report_margin import PLANNING_C0
+
+    # Same record-time discipline as the kappa_s -> 0 branch below
+    # (2026-07-21, C0 graduation pass): the archived records print the
+    # record-time planning C0 = 190; the live constant graduated to 200
+    # (`C0_PLANNING`, elicited 2026-07-21) — this renderer pins the
+    # record-time value EXPLICITLY so the byte-immutable archives keep
+    # regenerating byte-identical. The graduated value applies from the
+    # NEXT minted §5a record onward.
+    record_time_planning_c0 = 190.0
 
     g = manifest["geometry"]
     gate = manifest["gate"]
@@ -410,7 +418,7 @@ def render_checkpoint_markdown(manifest: dict) -> str:
     # steady-crossing-linewidths pass). The general two-linewidth law
     # (SPEC §7.T4, re-derived 2026-07-13) applies from the NEXT minted
     # §5a record onward, with its own record-format note.
-    df_max = delta_f_max_hz(PLANNING_C0, kappa_c, kappa_s_hz=0.0)
+    df_max = delta_f_max_hz(record_time_planning_c0, kappa_c, kappa_s_hz=0.0)
     dt_max = delta_t_max_k(
         df_max, 293.0, f_hz=f_hz, p_e=can_imp["p_e"]
     )
@@ -756,7 +764,7 @@ def render_checkpoint_markdown(manifest: dict) -> str:
         f"- kappa_c = f/Q_L = {kappa_c / 1e3:.4f} kHz (cyclic-Hz FWHM; "
         "never angular).",
         f"- Δf_max = (kappa_c/2)·sqrt(C0 − 1) at the planning C0 = "
-        f"{PLANNING_C0:g}: {df_max / 1e6:.4f} MHz (C0 stays the SPEC "
+        f"{record_time_planning_c0:g}: {df_max / 1e6:.4f} MHz (C0 stays the SPEC "
         "revision-note PLANNING value — a COMSOL solve cannot touch the "
         "spin side; §5a's \"Booth's own C0\" is delivered only in its "
         "kappa_c/Q arm).",

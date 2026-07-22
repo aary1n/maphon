@@ -21,7 +21,11 @@ numbers yet:
   - row 4 (sto_height_m): the ring height is a PRINT FORK {8.5, 8.6} mm
     (SM text vs Wu-2020 text + PRL Fig. 1(c) label), open question Q13
     — a `ForkTrace` whose evidence-favoured branch (8.6) is
-    machine-readable but never silently selected;
+    machine-readable but never silently selected. (2026-07-21: Q13
+    RESOLVED at 8.6 mm — verbally reported caliper measurement,
+    RESOLUTION_Q13, verbal rung, written confirmation pending; the
+    fork object remains the record, the number enters only via the
+    resolution);
   - row 5 (crystal axial offset) and row 6 (crystal centring
     eccentricity): crystal placement, open question Q9 (coordinate
     fixed with the 2026-07-16 reframe; the former "bore radius" row was
@@ -32,10 +36,17 @@ numbers yet:
     brass screw); the as-operated nominal 15 mm is recorded at
     `GEOM_WU_STO_RING.box_internal_height_asoperated_m`. The travel
     [p_min, p_max] is STILL OPEN (Oxborrow asked by email 2026-07-18) —
-    Q2 stays unresolved;
+    Q2 stays unresolved. (2026-07-21: Q2 RESOLVED — travel band
+    [15, 25] mm, RESOLUTION_Q2, verbal rung, written confirmation
+    pending; nominal = the as-operated 15 mm at the band's lower
+    edge; the gap-depth rider remains open);
   - additionally the Phase 1b crystal permittivity (not a DOF row, but
     rider R1 makes it a solve precondition): resolved at planning grade
     via RESOLUTION_Q11 (2026-07-17); the question remains gate-tracked.
+
+(2026-07-21 status: with RESOLUTION_Q2 + RESOLUTION_Q13 ratified at
+the verbal rung alongside RESOLUTION_Q11, every solve-ready exit now
+refuses on Q9 alone — still refusing, by construction.)
 
 The Q2/Q9/Q11/Q13 gate is ENFORCED IN CODE, not convention: anything
 solve-ready (design rows, the COMSOL backend, the centre-verification
@@ -138,9 +149,21 @@ SENTINEL_Q2 = TodoTrace(
         "at GEOM_WU_STO_RING.box_internal_height_asoperated_m. STILL "
         "OPEN, so the sentinel stays: the travel [p_min, p_max] (and "
         "the piston-gap depth rider) — Oxborrow asked by email "
-        "2026-07-18; §7.3's per-draw root-solve depends on the travel"
+        "2026-07-18; §7.3's per-draw root-solve depends on the travel "
+        "[2026-07-21 UPDATE: travel band RESOLVED [15, 25] mm — "
+        "RESOLUTION_Q2 (verbal, in-person meeting 2026-07-21; "
+        "contemporaneous notes archived at "
+        "calibration/data/raw/oxborrow_meeting_notes_2026-07-21/; "
+        "written confirmation pending — rides the confirmation email). "
+        "The 'STILL OPEN' clause above is the pre-resolution record; "
+        "the piston-step annular-gap DEPTH rider REMAINS open — it "
+        "does not block the resolution.]"
     ),
-    routes_to="Oxborrow (travel-band email sent 2026-07-18, reply pending)",
+    routes_to=(
+        "Oxborrow (travel-band email sent 2026-07-18, reply pending; "
+        "answered in person 2026-07-21 — verbal, written confirmation "
+        "pending)"
+    ),
 )
 SENTINEL_Q9 = TodoTrace(
     question_id="Q9",
@@ -161,7 +184,25 @@ SENTINEL_Q9 = TodoTrace(
         "eccentricity nominal = CENTRED, per Oxborrow — "
         "supervisor-confirmed (VERBAL, in-person meeting 2026-07-16); "
         "the tolerance band is still open, so the sentinel remains "
-        "unresolved."
+        "unresolved. [2026-07-21 UPDATE (verbal, in-person meeting; "
+        "contemporaneous notes archived at "
+        "calibration/data/raw/oxborrow_meeting_notes_2026-07-21/): "
+        "test-rig placement facts recorded — the crystal is simply "
+        "placed inside the ring; its length looks visually comparable "
+        "to the ring height; NOT deliberately centred in this test "
+        "rig; no tolerances obtained; photos exist and are archived "
+        "under the same path (images/). Reconciliation, explicit: "
+        "2026-07-16's eccentricity nominal = CENTRED "
+        "(supervisor-confirmed) is the DESIGN nominal; 2026-07-21's "
+        "'not really centred' describes the TEST-RIG realisation — "
+        "compatible, and the realisation looseness is information "
+        "about the centring-tolerance band (the open half of Q9), "
+        "with the photos the candidate evidence for bounding it. "
+        "Transfer caveat: in the actual device the crystal would be "
+        "grown on a waveguide — test-rig placement bounds do not "
+        "transfer; flagged, not resolved. The sentinel REMAINS "
+        "unresolved; the nominal (0.0, supervisor-confirmed) is "
+        "untouched.]"
     ),
     routes_to="Oxborrow",
 )
@@ -192,11 +233,21 @@ SENTINEL_Q13 = ForkTrace(
         "plain-float ring height exists in the repo until this "
         "resolves. Post-resolution the machining band (±25 µm "
         "placeholder, or a caliper-measured band riding the payload) "
-        "materialises in design.materialise_dims."
+        "materialises in design.materialise_dims. [2026-07-21 UPDATE: "
+        "RESOLVED — the fork is decided at 8.6 mm by a verbally "
+        "reported caliper measurement (RESOLUTION_Q13; verbal, "
+        "in-person meeting 2026-07-21; contemporaneous notes archived "
+        "at calibration/data/raw/oxborrow_meeting_notes_2026-07-21/; "
+        "written confirmation pending — rides the confirmation "
+        "email). The text above is the pre-resolution record; NO "
+        "measured band was obtained, so the ±25 µm placeholder route "
+        "applies.]"
     ),
     routes_to=(
         "Oxborrow written reply or a caliper measurement of the ring "
-        "(spacer dims ride the same caliper list — 2026-07-18 rider)"
+        "(spacer dims ride the same caliper list — 2026-07-18 rider) "
+        "[2026-07-21: the caliper route fired — verbally reported, "
+        "written confirmation pending]"
     ),
     candidates=STO_HEIGHT_FORK.candidates,
     evidence_favoured=STO_HEIGHT_FORK.evidence_favoured,
@@ -335,7 +386,14 @@ LAYER_A_DOFS: tuple[DofSpec, ...] = (
         provenance=(
             "nominal: provenance.GEOM_WU_STO_RING.sto_outer_radius_m "
             "(Wu 2020: 'O.D. = 12.0 mm', Gaskell Quartz ring); band: "
-            "TOL.machining_tol_m placeholder (§7.4)"
+            "TOL.machining_tol_m placeholder (§7.4). [2026-07-21, "
+            "Oxborrow-VERBAL, notes archived at "
+            "calibration/data/raw/oxborrow_meeting_notes_2026-07-21/: "
+            "O.D. verbally reported as physically measured 12.2 mm vs "
+            "the carried print 12.0 mm — 0.2 mm, 8x the machining "
+            "band; unresolved two-sided discrepancy, NOT absorbed, no "
+            "branch selected; queued for the confirmation email (see "
+            "the GEOM_WU_STO_RING docstring)]"
         ),
     ),
     DofSpec(
@@ -743,6 +801,9 @@ def mock_resolutions() -> ResolutionContext:
                     # The ONE sanctioned pre-resolution read of the
                     # fork's machine-readable branch: mock tier only,
                     # explicit and labelled — never a silent selection.
+                    # (2026-07-21: the real RESOLUTION_Q13 has since
+                    # landed — same branch, verbal rung; this mock
+                    # stays a mock.)
                     "sto_height_m": SENTINEL_Q13.evidence_favoured,
                     "selection_evidence": (
                         "MOCK — evidence-favoured branch, machine-read "

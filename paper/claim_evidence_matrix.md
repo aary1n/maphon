@@ -425,7 +425,7 @@ claims:
     producing_code: [cavity.thermal.report_s_ladder]
     guarding_tests: [tests/test_thermal_s_ladder.py]
     evidence_chain: complete
-    blocker: "composite bodies above ballpark tier (deferred); S3 label reserved (Email B)"
+    blocker: "composite bodies above ballpark tier (deferred); S3 label permanently content-lost (Email B ask CLOSED AS UNRECOVERABLE 2026-07-21 — joint recall failure; no renumbering)"
     unlocked_by: "n/a at this tier"
   - id: C7
     title: Inhomogeneous thermal line observable

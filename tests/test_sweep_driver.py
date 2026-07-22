@@ -115,7 +115,7 @@ def test_derived_keys_are_refused_by_name(mock_run):
     with pytest.raises(RawRowContractError, match="law-agnosticism"):
         validate_raw_row(row)
     row = _valid_row(mock_run)
-    row["c0"] = 190.0
+    row["c0"] = 200.0
     with pytest.raises(RawRowContractError, match="RAW"):
         validate_raw_row(row)
 

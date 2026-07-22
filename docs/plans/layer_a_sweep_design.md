@@ -500,7 +500,19 @@ a byproduct rather than a separate campaign.
    (first-order estimate → bounded 3-D → drop). **Partial resolution
    (Oxborrow-verbal, in-person 2026-07-16): eccentricity nominal = CENTRED —
    supervisor-confirmed, numeric nominal unchanged; tolerance band still
-   open; Q9 remains unresolved.**
+   open; Q9 remains unresolved.** *(2026-07-21 update, Oxborrow-verbal,
+   notes archived at `calibration/data/raw/oxborrow_meeting_notes_2026-07-21/`:
+   test-rig placement facts recorded — the crystal is simply placed inside
+   the ring; length visually comparable to the ring height; NOT deliberately
+   centred in this test rig; no tolerances obtained; photos exist, archived
+   under the same path (`images/`). Reconciliation, explicit: the 2026-07-16
+   CENTRED nominal is the DESIGN nominal; the 2026-07-21 "not really
+   centred" describes the TEST-RIG realisation — compatible, and the
+   realisation looseness is information about the centring-tolerance band
+   (the open half of Q9), with the photos the candidate evidence for
+   bounding it. Transfer caveat: in the actual device the crystal would be
+   grown on a waveguide — test-rig placement bounds do not transfer;
+   flagged, not resolved. Q9 remains unresolved; no numeric change.)*
 10. **Machining tolerances:** the ±25 µm placeholder (`TOL.machining_tol_m`)
     still awaits the workshop/Oxborrow numbers (§7-expanded ACTION 7.10.1) —
     the DOF table re-issues on receipt; no other row changes.

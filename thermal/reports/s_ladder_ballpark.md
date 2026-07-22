@@ -96,6 +96,6 @@ m > 0 azimuthal harmonics: DEFERRED (logged; same discipline as the eccentricity
 
 ## S2 / S3 / S5
 
-- S2: no such rung appears anywhere in the notes (the numbering gap is part of the S3/S4 numbering ask).
-- S3: label RESERVED — bare heading in the archived notes, content not captured; numbering (typed S4-for-side-fire vs sketch S3) rides the Oxborrow Email B ask. Nothing planned, nothing computed.
+- S2: no such rung appears anywhere in the notes. (2026-07-21: the numbering ask is CLOSED AS UNRECOVERABLE — joint recall failure, neither Oxborrow nor the notetaker remembers; in-person meeting, notes archived at calibration/data/raw/oxborrow_meeting_notes_2026-07-21/. The numbering caveat is PERMANENT.)
+- S3: label RESERVED — bare heading in the archived notes, content not captured; numbering (typed S4-for-side-fire vs sketch S3) rode the Oxborrow Email B ask, CLOSED AS UNRECOVERABLE 2026-07-21 (joint recall failure, archive above): content-lost, unrecoverable by recall; the label stays permanently reserved, no renumbering. Nothing planned, nothing computed.
 - S5: logged-DEFERRED (SPEC outcome 5) — the "steam engine" coolant-channel brainstorm; out of scope (§9 cooling-channel exclusion). Nothing computed.

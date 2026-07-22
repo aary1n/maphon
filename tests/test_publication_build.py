@@ -72,19 +72,16 @@ class TestLiveStages:
         assert check.ok, check.problems
 
     def test_sentinel_status_names_open_questions(self):
+        # 2026-07-21 register change: Q13 + Q2 ratified at the verbal
+        # rung — Q9 is the sole open gate and the fork line renders the
+        # register-derived "resolved" branch.
         status = sentinel_status()
-        assert set(status.unresolved_by_mode["baseline-d8"]) == {
-            "Q2",
-            "Q9",
-            "Q13",
-        }
-        assert set(status.unresolved_by_mode["degraded-d7"]) == {"Q9", "Q13"}
-        assert status.ratified == ("Q11",)
-        assert "OPEN" in status.fork_state
-        assert "8.5/8.6 mm" in status.fork_state
+        assert set(status.unresolved_by_mode["baseline-d8"]) == {"Q9"}
+        assert set(status.unresolved_by_mode["degraded-d7"]) == {"Q9"}
+        assert status.ratified == ("Q2", "Q11", "Q13")
+        assert status.fork_state == "Q13 resolved"
         # F3 ruling (2026-07-20): the favoured branch is never named in a
-        # publication-facing artifact — the build report renders candidates
-        # + pending discriminator only.
+        # publication-facing artifact — still negative-pinned.
         assert "favoured" not in status.fork_state.lower()
 
     def test_claim_status_live(self):

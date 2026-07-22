@@ -5,13 +5,20 @@ planning grade): payload discipline (point inside band, below the
 published bound), rung/mock discipline, provenance chain markers, and
 the acceptance check that a ratified-Q11-only context still refuses
 every solve-ready exit naming Q2/Q9 per mode.
+
+2026-07-21 continuation: Q13 + Q2 joined the register at the verbal
+rung (in-person meeting 2026-07-21, notes archived; written
+confirmation pending) — payload/provenance discipline for both, the
+nominal-at-band-edge convention (Q2), and the acceptance check that
+the ratified context now refuses every solve-ready exit naming Q9
+alone.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from cavity.provenance import CRYSTAL
+from cavity.provenance import CRYSTAL, GEOM_WU_STO_RING
 from cavity.sweep.backend import ComsolBackend
 from cavity.sweep.design import materialise_dims
 from cavity.sweep.dofs import (
@@ -19,7 +26,15 @@ from cavity.sweep.dofs import (
     Rung,
     UnresolvedTodoTraceError,
 )
-from cavity.sweep.resolutions import RESOLUTION_Q11, ratified_resolutions
+from cavity.sweep.resolutions import (
+    RATIFIED_RESOLUTIONS,
+    RESOLUTION_Q2,
+    RESOLUTION_Q11,
+    RESOLUTION_Q13,
+    ratified_resolutions,
+)
+
+ARCHIVE = "calibration/data/raw/oxborrow_meeting_notes_2026-07-21/"
 
 
 def test_ratified_q11_is_non_mock_planning_assumption():
@@ -48,22 +63,68 @@ def test_ratified_q11_provenance_carries_chain_and_negative_space():
     assert "KCDCRN4C" in p
 
 
-def test_ratified_context_resolves_q11_while_q2_q9_q13_remain():
+def test_resolution_q13_payload_and_provenance():
+    """Q13: ring height 8.6e-3 m (METRES), verbal-rung caliper report,
+    archive-cited, no band key (the ±25 µm placeholder route)."""
+    assert RESOLUTION_Q13.question_id == "Q13"
+    assert RESOLUTION_Q13.mock is False
+    assert RESOLUTION_Q13.rung is Rung.SUPERVISOR_CONFIRMED
+    assert RESOLUTION_Q13.payload["sto_height_m"] == 8.6e-3
+    # No measured band was obtained — the placeholder-band route in
+    # design.materialise_dims must fire, so the key must be ABSENT.
+    assert "sto_height_band_m" not in RESOLUTION_Q13.payload
+    assert ARCHIVE in RESOLUTION_Q13.payload["selection_evidence"]
+    assert ARCHIVE in RESOLUTION_Q13.provenance
+    assert "written confirmation pending" in RESOLUTION_Q13.provenance
+    # Verbal-report-of-measurement discipline: never bare "measured".
+    assert "caliper" in RESOLUTION_Q13.payload["selection_evidence"]
+
+
+def test_resolution_q2_payload_nominal_at_band_edge():
+    """Q2: travel band [15, 25] mm (METRES); the nominal is the
+    as-operated 15 mm sitting AT the lower edge — the accepted
+    convention (no validator requires strict interiority)."""
+    assert RESOLUTION_Q2.question_id == "Q2"
+    assert RESOLUTION_Q2.mock is False
+    assert RESOLUTION_Q2.rung is Rung.SUPERVISOR_CONFIRMED
+    assert RESOLUTION_Q2.payload["p_tune_min"] == 15e-3
+    assert RESOLUTION_Q2.payload["p_tune_max"] == 25e-3
+    assert (
+        RESOLUTION_Q2.payload["p_tune_nominal"]
+        == RESOLUTION_Q2.payload["p_tune_min"]
+        == GEOM_WU_STO_RING.box_internal_height_asoperated_m
+    )
+    # The gap-depth rider stays open: the optional key must be ABSENT.
+    assert "piston_gap_depth_m" not in RESOLUTION_Q2.payload
+    assert ARCHIVE in RESOLUTION_Q2.payload["mechanism"]
+    assert ARCHIVE in RESOLUTION_Q2.provenance
+    assert "written confirmation pending" in RESOLUTION_Q2.provenance
+
+
+def test_ratified_context_resolves_q2_q11_q13_while_q9_remains():
+    # The register itself: three entries, question order.
+    assert tuple(r.question_id for r in RATIFIED_RESOLUTIONS) == (
+        "Q2",
+        "Q11",
+        "Q13",
+    )
     ctx = ratified_resolutions()
     assert not ctx.any_mock
+    assert ctx.get("Q2") is RESOLUTION_Q2
     assert ctx.get("Q11") is RESOLUTION_Q11
-    assert ctx.unresolved(DesignMode.BASELINE_D8) == ("Q2", "Q9", "Q13")
-    assert ctx.unresolved(DesignMode.DEGRADED_D7) == ("Q9", "Q13")
+    assert ctx.get("Q13") is RESOLUTION_Q13
+    assert ctx.unresolved(DesignMode.BASELINE_D8) == ("Q9",)
+    assert ctx.unresolved(DesignMode.DEGRADED_D7) == ("Q9",)
 
 
-def test_solve_ready_exits_still_refuse_naming_q2_q9_q13():
+def test_solve_ready_exits_still_refuse_naming_q9():
     ctx = ratified_resolutions()
     with pytest.raises(UnresolvedTodoTraceError) as exc:
         ctx.assert_solveable(DesignMode.BASELINE_D8, what="test")
-    assert exc.value.question_ids == ("Q2", "Q9", "Q13")
+    assert exc.value.question_ids == ("Q9",)
     with pytest.raises(UnresolvedTodoTraceError) as exc:
         materialise_dims(DesignMode.BASELINE_D8, ctx)
-    assert exc.value.question_ids == ("Q2", "Q9", "Q13")
+    assert exc.value.question_ids == ("Q9",)
     with pytest.raises(UnresolvedTodoTraceError) as exc:
         ComsolBackend(ctx, DesignMode.DEGRADED_D7)
-    assert exc.value.question_ids == ("Q9", "Q13")
+    assert exc.value.question_ids == ("Q9",)

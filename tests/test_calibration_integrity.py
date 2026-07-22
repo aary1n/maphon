@@ -91,6 +91,19 @@ class TestRealArchive:
         # 3 pinned files: stotuningmech.eml + stotuningmech.md + images/image.png
         assert len(report.matched) == 3
 
+    def test_oxborrow_meeting_notes_2026_07_21_archive_intact(self):
+        """Same read-only guard for the 2026-07-21 contemporaneous meeting
+        notes (Oxborrow-VERBAL rung, archived 2026-07-22 — the evidence
+        source for RESOLUTION_Q13/RESOLUTION_Q2, the C0 = 200 elicitation,
+        the O.D. 12.2-vs-12.0 discrepancy flag, and the Q9 placement
+        photos)."""
+        archive = DEFAULT_ARCHIVE_DIR.parent / "oxborrow_meeting_notes_2026-07-21"
+        report = verify_manifest(archive)
+        assert report.ok, report.to_markdown()
+        # 6 pinned files: the docx verbatim + its paragraph-faithful
+        # transcript + four crystal-placement photos under images/
+        assert len(report.matched) == 6
+
     def test_verify_all_covers_every_archive_dir(self):
         """The generic walk and the on-disk archive set must agree, so a
         newly-committed archive cannot silently escape verification."""

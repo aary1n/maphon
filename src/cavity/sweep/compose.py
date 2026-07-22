@@ -12,9 +12,10 @@ p_e, guard + audit) and composes the downstream quantities:
     projection-independent by construction);
   - the anchored-ratio C₀ per the Q3 ruling:
     C₀(θ,p) = PLANNING_C0 × [f·η_H/κc] / [f·η_H/κc]_anchor —
-    the per-draw extension of the committed import convention ("C₀ =
-    190 stays the IMPORTED planning cooperativity, never recomputed
-    from κs"); N cancels exactly in the ratio; absolute G² is a
+    the per-draw extension of the committed import convention ("C₀
+    stays the IMPORTED planning cooperativity, never recomputed from
+    κs" — 190 at the Q3 ruling's date, 200 from 2026-07-21 via
+    `C0_PLANNING`); N cancels exactly in the ratio; absolute G² is a
     DIAGNOSTIC ONLY.
 
 DERIVED QUANTITIES ARE NEVER RAW ROWS: everything composed here lives

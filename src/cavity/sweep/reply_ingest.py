@@ -753,8 +753,17 @@ def ingest_reply(
 
     # Hypothetical post-mint state, computed with MOCK stand-ins so the
     # exercise itself can never satisfy a solve-ready exit.
+    # (2026-07-21 register change: Q13/Q2 are now ratified at the verbal
+    # rung, so a reply re-answering them is a RUNG UPGRADE — the mint
+    # stand-in supersedes the same-question ratified entry here; without
+    # the dedupe ResolutionContext refuses the duplicate.)
+    minted_qids = {m.question_id for m in mints}
     hypothetical = ResolutionContext(
-        resolutions=tuple(ratified_resolutions().resolutions)
+        resolutions=tuple(
+            r
+            for r in ratified_resolutions().resolutions
+            if r.question_id not in minted_qids
+        )
         + tuple(m.as_mock_resolution() for m in mints)
     )
     unresolved_after = {

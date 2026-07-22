@@ -294,6 +294,19 @@ Weight of evidence favours 8.6e-3 (two independent statements — the Wu
 resolution is Oxborrow's reply or a caliper, NEVER a silent selection.
 No plain-float ring height exists anywhere in the repo until Q13
 resolves.
+
+RESOLVED 2026-07-21 (the caliper route, verbally reported): Oxborrow
+reported a physical caliper measurement of the ring height, 8.6 mm —
+verbal, in-person meeting 2026-07-21; contemporaneous notes archived
+at calibration/data/raw/oxborrow_meeting_notes_2026-07-21/; written
+confirmation pending — rides the confirmation email. The SM 8.5 print
+is superseded by the verbally-reported caliper measurement (written
+pending), preserved as printed above. This fork object is NOT deleted
+and NOT collapsed to a float — it remains the record; the number
+enters the machinery ONLY via
+cavity.sweep.resolutions.RESOLUTION_Q13 (the designed path), and the
+"no plain-float ring height" sentence above remains true of the
+provenance layer.
 """
 
 
@@ -312,11 +325,29 @@ class WuSTORingGeometry:
     (calibration/data/raw/wu_build_papers_2026-07-18/) on 2026-07-18.
 
     - `sto_outer_radius_m` = 6.0e-3 — Wu 2020 SEC. III.C "O.D. = 12.0 mm".
+      (2026-07-21, Oxborrow-VERBAL — notes archived at
+      calibration/data/raw/oxborrow_meeting_notes_2026-07-21/: the
+      O.D. was verbally reported as a physical measurement,
+      **12.2 mm**, against the carried print 12.0 mm — a 0.2 mm
+      discrepancy, 8x the +/-25 um machining band. This is a
+      print-vs-caliper conflict of the Q13 class, NOT a confirmation
+      and NOT absorbed: the print stays the carried value at its
+      rung; the measured value is recorded here at the verbal rung;
+      the question is queued for the confirmation email — which
+      should the model carry, and is a caliper band available?
+      Candidate explanations, SPECULATION ONLY, asserted nowhere:
+      fitting/wrap on the ring, print rounding, caliper placement, a
+      different ring. Unresolved two-sided discrepancy — no branch
+      selected.)
     - `sto_inner_radius_m` = 2.025e-3 — Wu 2020 "I.D. = 4.05 mm". The
       PRL SM's "4-mm bore" / "inner diameter ... 4 mm" is a ROUND of
       this print, not an independent value.
     - `sto_height_m` — FORKED {8.5, 8.6} mm (`STO_HEIGHT_FORK`, Q13);
-      refuses arithmetic until resolved.
+      refuses arithmetic until resolved. (2026-07-21: Q13 RESOLVED at
+      8.6 mm — verbally reported caliper measurement, verbal rung,
+      written confirmation pending; `RESOLUTION_Q13` is the number's
+      only entry path, the fork object stays as the record — see the
+      `STO_HEIGHT_FORK` docstring.)
     - `box_inner_radius_m` = 14.0e-3 — Wu 2020 Fig. 6 caption: region
       width 14 mm "corresponds to the radius of the copper enclosure".
       CAVEAT carried on the grade: the barrel is "a standard copper pipe
@@ -328,7 +359,12 @@ class WuSTORingGeometry:
       Q2 — piston position). 15 mm is the as-operated/as-simulated
       nominal (Wu 2020 Fig. 6 caption; PRL SM "internal height
       (~15 mm)"). Travel band OPEN — Oxborrow asked by email 2026-07-18;
-      Q2 stays unresolved.
+      Q2 stays unresolved. (2026-07-21: travel band RESOLVED
+      [15, 25] mm — Oxborrow-VERBAL, notes archived at
+      calibration/data/raw/oxborrow_meeting_notes_2026-07-21/,
+      written confirmation pending; `RESOLUTION_Q2`. The as-operated
+      15 mm is the resolution's nominal, sitting AT the band's lower
+      edge; the piston-step gap-DEPTH rider remains open.)
     - `deck_clearance_m` = 3.0e-3 — Wu 2020 "raises the STO ring 3 mm
       above a copper conducting plane"; PRL SM "~3 mm above the PCB".
     - `piston_radius_m` = 13.0e-3 — PRL SM "26-mm dia. copper disk"
@@ -907,7 +943,8 @@ class SpinResonanceLinewidth:
       the Pc:PTP-host rows across concentration and deuteration.
 
     DIRECTION OF CONSERVATISM: at fixed imported C0 (the planning
-    convention — C0 = 190 is imported, never recomputed from G^2),
+    convention — C0 is imported, never recomputed from G^2; 190 at
+    this grading's date, 200 from 2026-07-21 — see `C0_PLANNING`),
     smaller kappa_s ⇒ smaller Delta_f_max, so the 0.55 MHz edge is the
     conservative side, and the committed kappa_s -> 0 law was the
     maximally conservative member of the family. Band-direction bias
@@ -1440,6 +1477,49 @@ class RigSampleGeometry:
     w_box_hi_m: float = 500e-6
 
 
+@dataclass(frozen=True)
+class PlanningCooperativity:
+    """The planning-tier resonant on-resonance cooperativity C0
+    (dimensionless) — the imported headline input of the §7.T4 margin
+    machinery (`cavity.thermal.report_margin` / `report_turnover`).
+
+    GRADE: ELICITED / SUPERVISOR-VERBAL (2026-07-21; contemporaneous
+    notes archived at
+    calibration/data/raw/oxborrow_meeting_notes_2026-07-21/; written
+    confirmation pending — rides the confirmation email). Elicited, NOT
+    measured — no measured C0 of any build in this lineage exists.
+    Oxborrow, quoted with his stated condition (the conditional
+    phrasing is part of the record — this is a BEST-CASE planning
+    value): "If everything's going well, and nothing's misbehaving,
+    and everything's coupled properly, C = 200 seems good. Use
+    C0 = 200."
+
+    TWO-ERA DATED RECORD (the TOL.tan_delta_max / DELOAD_K pattern):
+
+    - ERA 1 (2026-07-13 until 2026-07-21), kept verbatim as the dated
+      superseded record: C0 = 190.0 — the SPEC revision-note planning
+      reading ("Breeze's build runs C ~ 190"), deliberately NOT
+      graduated into this module because "no measured C0 exists (the
+      provenance table's ingredients are N assumed, g_s derived,
+      kappa_s fitted)". That rationale is superseded IN PART
+      2026-07-21: still not measured, but now ELICITED — the value
+      graduates at the elicited grade, no higher.
+    - ERA 2 (2026-07-21): 200.0, elicited as above.
+
+    CONVENTION, restated verbatim from the 2026-07-13 pass: C0 is
+    imported, never recomputed from kappa_s — no G^2 exists until
+    Phase 1b.
+
+    GUARD: Oxborrow's C0 = 200 grades the planning cooperativity only;
+    it is NOT ratification of the two-linewidth threshold law, the
+    turnover result, or the margin framing, which remain UNRATIFIED
+    pending the findings note
+    (docs/q_margin_two_linewidth_findings_note.md).
+    """
+
+    c0: float = 200.0
+
+
 STO = STOSingleCrystal()
 COPPER = Copper()
 CRYSTAL = Crystal()
@@ -1455,6 +1535,7 @@ F_M_BENCHMARK = FMBenchmarkRange()
 WALL_LOSS_THRESHOLDS = WallLossThresholds()
 DF_SPIN_DT = SpinFreqTempCoefficient()
 KAPPA_S = SpinResonanceLinewidth()
+C0_PLANNING = PlanningCooperativity()
 DF_CAVITY_DT = CavityFreqTempCoefficient()
 K_PTP = PTerphenylThermalConductivity()
 WAX = ParaffinWaxThermal()
@@ -1550,6 +1631,11 @@ Grade / rung (the derived anchors below inherit it):
   docs/booth_vmode_findings_note.md; the discrimination ask against the
   numerically degenerate r <= x/2 truncation alias is the 225-degree
   recollection question).
+- 2026-07-21, Oxborrow-verbal (notes archived at
+  calibration/data/raw/oxborrow_meeting_notes_2026-07-21/): reaction to
+  the finding — plausibly a mistake on Booth's side. SPECULATION at the
+  verbal rung, NOT confirmation, no tone upgrade; the rung above is
+  unchanged. Noted only as supporting sending the note to Booth.
 
 Table 8 is internally consistent per row (printed Q / printed V
 reproduces the printed Q/V column, all eight rows), so her Q/V values

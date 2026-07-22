@@ -184,9 +184,12 @@ class TestResultRegisterStaleness:
         text = (REPO / "thermal/reports/q_margin_turnover.md").read_text(
             encoding="utf-8"
         )
-        assert "11.3915" in text
-        assert "+0.3474" in text
-        assert "Q_- = 63.19, Q_+ = 972.5" in text
+        # C0 = 200 era (2026-07-21): quotes track the regenerated
+        # turnover report; the register PROSE is stale-flagged for the
+        # margin re-presentation follow-on.
+        assert "11.6890" in text
+        assert "+0.3473" in text
+        assert "Q_- = 59.83, Q_+ = 975.9" in text
 
     def test_s_ladder_quotes(self):
         text = (REPO / "thermal/reports/s_ladder_ballpark.md").read_text(
@@ -218,15 +221,22 @@ class TestResultRegisterStaleness:
         assert "1.4 MHz" in register_text
 
     def test_planning_c0_flagged_as_ungraded(self):
-        """The claim-trace finding (2026-07-20): PLANNING_C0 = 190 is a
-        report-local literal, not a graded constant. The spine must keep
-        flagging it until it is promoted or deliberately retained; if it
-        moves into provenance, re-scope this test in the same changeset."""
+        """The claim-trace finding (2026-07-20): PLANNING_C0 = 190 was a
+        report-local literal, not a graded constant. RE-SCOPED 2026-07-22
+        per this test's own instruction — the constant GRADUATED into
+        provenance 2026-07-21 as `C0_PLANNING` = 200.0 (ELICITED /
+        supervisor-verbal, notes archived, written confirmation pending):
+        the module-level PLANNING_C0 is now an alias of the graded
+        constant, and the spine's flag is the graduation record itself.
+        The matrix prose still names PLANNING_C0 (stale-flagged for the
+        margin re-presentation follow-on)."""
+        from cavity.provenance.constants import C0_PLANNING
         from cavity.thermal import report_margin
 
-        assert getattr(report_margin, "PLANNING_C0") == 190
+        assert getattr(report_margin, "PLANNING_C0") == 200
+        assert report_margin.PLANNING_C0 == C0_PLANNING.c0
         prov = (REPO / "src/cavity/provenance/constants.py").read_text(
             encoding="utf-8"
         )
-        assert "PLANNING_C0" not in prov
+        assert "class PlanningCooperativity" in prov
         assert "PLANNING_C0" in MATRIX.read_text(encoding="utf-8")
