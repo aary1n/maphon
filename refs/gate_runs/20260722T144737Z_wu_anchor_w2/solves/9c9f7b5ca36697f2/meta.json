@@ -1,0 +1,137 @@
+{
+  "comsol_version": "6.0",
+  "created_at_utc": "2026-07-22T14:51:17+00:00",
+  "diagnostics": [
+    {
+      "axis_hz_antinode_ratio": 0.9351379660259138,
+      "axis_hz_sign_changes": 15,
+      "azimuthal_e_energy_fraction": 2.6904457362374317e-22,
+      "f_imag_hz": 15469.435625731494,
+      "f_real_hz": 2.691576206769127
+    },
+    {
+      "axis_hz_antinode_ratio": 0.9350122123272111,
+      "axis_hz_sign_changes": 15,
+      "azimuthal_e_energy_fraction": 2.1941721271825446e-23,
+      "f_imag_hz": 21476.653126516234,
+      "f_real_hz": 5.437933225872322
+    },
+    {
+      "axis_hz_antinode_ratio": 0.9350991059335413,
+      "axis_hz_sign_changes": 15,
+      "azimuthal_e_energy_fraction": 2.6502887742120173e-22,
+      "f_imag_hz": 10971.766782451046,
+      "f_real_hz": 26.56275296411553
+    },
+    {
+      "axis_hz_antinode_ratio": 0.9350676762158904,
+      "axis_hz_sign_changes": 15,
+      "azimuthal_e_energy_fraction": 1.906373816832275e-22,
+      "f_imag_hz": 18389.133566892175,
+      "f_real_hz": 34.93221464248634
+    },
+    {
+      "axis_hz_antinode_ratio": 0.9351047611193922,
+      "axis_hz_sign_changes": 15,
+      "azimuthal_e_energy_fraction": 2.102064240172641e-22,
+      "f_imag_hz": 56.324378552244625,
+      "f_real_hz": 7428.458014260081
+    },
+    {
+      "axis_hz_antinode_ratio": 0.9349394996383784,
+      "axis_hz_sign_changes": 15,
+      "azimuthal_e_energy_fraction": 1.9858597491497393e-23,
+      "f_imag_hz": 2.9583328366912696,
+      "f_real_hz": 19763.758401241343
+    },
+    {
+      "axis_hz_antinode_ratio": 0.939277769116536,
+      "axis_hz_sign_changes": 0,
+      "azimuthal_e_energy_fraction": 1.0,
+      "f_imag_hz": 77570.06994449919,
+      "f_real_hz": 1413553449.9612508
+    },
+    {
+      "axis_hz_antinode_ratio": 0.7635300985435712,
+      "axis_hz_sign_changes": 1,
+      "azimuthal_e_energy_fraction": 1.0,
+      "f_imag_hz": 110299.99278918997,
+      "f_real_hz": 2009661061.0846877
+    },
+    {
+      "axis_hz_antinode_ratio": 0.1289405280270381,
+      "axis_hz_sign_changes": 11,
+      "azimuthal_e_energy_fraction": 9.319635123312483e-31,
+      "f_imag_hz": 124903.97395740461,
+      "f_real_hz": 2338539447.082548
+    }
+  ],
+  "fingerprint": {
+    "geometry": {
+      "box_height_m": 0.015,
+      "box_radius_m": 0.014,
+      "crystal_centre_z_m": 0.0073,
+      "crystal_height_m": 0.008,
+      "crystal_radius_m": 0.0015,
+      "dielectric_height_m": 0.0086,
+      "dielectric_inner_radius_m": 0.002025,
+      "dielectric_minor_radius_m": null,
+      "dielectric_radius_m": 0.0061,
+      "piston_gap_depth_m": null,
+      "piston_radius_m": null,
+      "ring_bottom_z_m": 0.003,
+      "shape": "ring",
+      "spacer": {
+        "base_height_m": 0.003,
+        "base_inner_radius_m": 0.0025,
+        "base_outer_radius_m": 0.0081,
+        "lip_height_m": 0.0015,
+        "lip_inner_radius_m": 0.0061,
+        "lip_outer_radius_m": 0.0081
+      }
+    },
+    "grid": {
+      "n_r": 201,
+      "n_z": 301
+    },
+    "materials": {
+      "copper_mu_r": 1.0,
+      "copper_sigma": 60000000.0,
+      "crystal": {
+        "epsilon_r_real": 3.0,
+        "mu_r": 1.0,
+        "sigma": 0.0,
+        "tan_delta": 0.0
+      },
+      "spacer": {
+        "epsilon_r_real": 2.53,
+        "mu_r": 1.0,
+        "sigma": 0.0,
+        "tan_delta": 0.0
+      },
+      "sto_epsilon_r_real": 316.3,
+      "sto_mu_r": 1.0,
+      "sto_sigma": 0.0,
+      "sto_tan_delta": 0.00011,
+      "wall_pec": true
+    },
+    "mesh": {
+      "air_max_h_m": 0.001,
+      "curved_dielectric_boundary": true,
+      "dielectric_max_h_m": 0.00025,
+      "spacer_max_h_m": null
+    },
+    "schema_version": 3,
+    "study": {
+      "azimuthal_index_m": 0,
+      "n_modes": 12,
+      "search_hz": 1450000000.0,
+      "wall_bc": "pec"
+    }
+  },
+  "interface_tag": "emw",
+  "mesh_element_count": 2750,
+  "picked_index": 9,
+  "q_emw_cross_check": 9111.461746603025,
+  "record_hash": "9c9f7b5ca36697f2"
+}

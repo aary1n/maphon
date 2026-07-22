@@ -1,0 +1,73 @@
+{
+  "kind": "wu_anchor_w2_gate_report",
+  "pass_date": "2026-07-22",
+  "provenance": {
+    "comsol_version": "6.0",
+    "crystal_epsilon_r": 3.0,
+    "f_design_hz": 1450000000.0,
+    "git_commit": "550e83727f6a1b0664f60f8eea6e4eec50990e8a",
+    "git_dirty": true,
+    "sto_height_m": 0.0086
+  },
+  "run_dir": "20260722T144737Z_wu_anchor_w2",
+  "schema_version": 1,
+  "verdict": {
+    "checks": [
+      {
+        "hi": 1.1,
+        "kind": "gate",
+        "lo": 0.9,
+        "measured": 1.0583526403553598,
+        "name": "W2.4/v_mode_local_over_global",
+        "status": "pass"
+      },
+      {
+        "hi": 1471242499.9999998,
+        "kind": "gate",
+        "lo": 1427757500.0,
+        "measured": 1431191793.1351268,
+        "name": "W2.1/f",
+        "status": "pass"
+      },
+      {
+        "hi": 9000.0,
+        "kind": "gate",
+        "lo": 5400.0,
+        "measured": 7152.082241591756,
+        "name": "W2.2/q0",
+        "status": "pass"
+      },
+      {
+        "hi": null,
+        "kind": "diagnostic",
+        "lo": null,
+        "measured": 3.4927002837468873e-07,
+        "name": "W2.3/v_mode_local",
+        "status": "report_only"
+      }
+    ],
+    "n_fail": 0,
+    "n_not_judged": 0,
+    "order": "W2.4 first (pre-registered, 2026-07-22 addendum)",
+    "passed": true,
+    "w2_4_ok": true
+  },
+  "windows": {
+    "W2.1": {
+      "rel_tol": 0.015,
+      "target_hz": 1449500000.0
+    },
+    "W2.2": {
+      "rel_tol": 0.25,
+      "target": 7200.0
+    },
+    "W2.3": {
+      "gate": false,
+      "report_value_m3": 3.2e-07
+    },
+    "W2.4": {
+      "rel_tol": 0.1,
+      "target": 1.0
+    }
+  }
+}
