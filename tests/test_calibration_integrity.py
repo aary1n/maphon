@@ -93,10 +93,12 @@ class TestRealArchive:
 
     def test_oxborrow_meeting_notes_2026_07_21_archive_intact(self):
         """Same read-only guard for the 2026-07-21 contemporaneous meeting
-        notes (Oxborrow-VERBAL rung, archived 2026-07-22 — the evidence
-        source for RESOLUTION_Q13/RESOLUTION_Q2, the C0 = 200 elicitation,
-        the O.D. 12.2-vs-12.0 discrepancy flag, and the Q9 placement
-        photos)."""
+        notes (archived 2026-07-22 — the evidence source for
+        RESOLUTION_Q13/RESOLUTION_Q2 and the O.D. 12.2-vs-12.0
+        discrepancy flag (first-hand in-person caliper measurements —
+        provenance corrected 2026-07-22, docs/commit_errata_2026-07-22.md;
+        the MANIFEST comment keeps its mint-time wording, byte-immutable),
+        the C0 = 200 verbal elicitation, and the Q9 placement photos)."""
         archive = DEFAULT_ARCHIVE_DIR.parent / "oxborrow_meeting_notes_2026-07-21"
         report = verify_manifest(archive)
         assert report.ok, report.to_markdown()

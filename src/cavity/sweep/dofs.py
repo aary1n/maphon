@@ -22,8 +22,10 @@ numbers yet:
     (SM text vs Wu-2020 text + PRL Fig. 1(c) label), open question Q13
     — a `ForkTrace` whose evidence-favoured branch (8.6) is
     machine-readable but never silently selected. (2026-07-21: Q13
-    RESOLVED at 8.6 mm — verbally reported caliper measurement,
-    RESOLUTION_Q13, verbal rung, written confirmation pending; the
+    RESOLVED at 8.6 mm — in-person caliper measurement made live
+    during the meeting, witnessed first-hand (provenance corrected
+    2026-07-22; the ring-identity claim stays Oxborrow-verbal),
+    RESOLUTION_Q13, written confirmation pending; the
     fork object remains the record, the number enters only via the
     resolution);
   - row 5 (crystal axial offset) and row 6 (crystal centring
@@ -37,15 +39,18 @@ numbers yet:
     `GEOM_WU_STO_RING.box_internal_height_asoperated_m`. The travel
     [p_min, p_max] is STILL OPEN (Oxborrow asked by email 2026-07-18) —
     Q2 stays unresolved. (2026-07-21: Q2 RESOLVED — travel band
-    [15, 25] mm, RESOLUTION_Q2, verbal rung, written confirmation
+    [15, 25] mm, RESOLUTION_Q2, measured in person during the
+    meeting, witnessed first-hand (provenance corrected 2026-07-22),
+    written confirmation
     pending; nominal = the as-operated 15 mm at the band's lower
     edge; the gap-depth rider remains open);
   - additionally the Phase 1b crystal permittivity (not a DOF row, but
     rider R1 makes it a solve precondition): resolved at planning grade
     via RESOLUTION_Q11 (2026-07-17); the question remains gate-tracked.
 
-(2026-07-21 status: with RESOLUTION_Q2 + RESOLUTION_Q13 ratified at
-the verbal rung alongside RESOLUTION_Q11, every solve-ready exit now
+(2026-07-21 status: with RESOLUTION_Q2 + RESOLUTION_Q13 ratified
+(written confirmation pending) alongside RESOLUTION_Q11, every
+solve-ready exit now
 refuses on Q9 alone — still refusing, by construction.)
 
 The Q2/Q9/Q11/Q13 gate is ENFORCED IN CODE, not convention: anything
@@ -151,7 +156,9 @@ SENTINEL_Q2 = TodoTrace(
         "the piston-gap depth rider) — Oxborrow asked by email "
         "2026-07-18; §7.3's per-draw root-solve depends on the travel "
         "[2026-07-21 UPDATE: travel band RESOLVED [15, 25] mm — "
-        "RESOLUTION_Q2 (verbal, in-person meeting 2026-07-21; "
+        "RESOLUTION_Q2 (measured in person, live during the "
+        "2026-07-21 meeting, witnessed first-hand — provenance "
+        "corrected 2026-07-22; "
         "contemporaneous notes archived at "
         "calibration/data/raw/oxborrow_meeting_notes_2026-07-21/; "
         "written confirmation pending — rides the confirmation email). "
@@ -161,7 +168,8 @@ SENTINEL_Q2 = TodoTrace(
     ),
     routes_to=(
         "Oxborrow (travel-band email sent 2026-07-18, reply pending; "
-        "answered in person 2026-07-21 — verbal, written confirmation "
+        "answered in person 2026-07-21 — measured in-meeting, "
+        "first-hand (corrected 2026-07-22), written confirmation "
         "pending)"
     ),
 )
@@ -234,19 +242,23 @@ SENTINEL_Q13 = ForkTrace(
         "resolves. Post-resolution the machining band (±25 µm "
         "placeholder, or a caliper-measured band riding the payload) "
         "materialises in design.materialise_dims. [2026-07-21 UPDATE: "
-        "RESOLVED — the fork is decided at 8.6 mm by a verbally "
-        "reported caliper measurement (RESOLUTION_Q13; verbal, "
-        "in-person meeting 2026-07-21; contemporaneous notes archived "
+        "RESOLVED — the fork is decided at 8.6 mm by an in-person "
+        "caliper measurement made live during the 2026-07-21 "
+        "meeting, witnessed first-hand (RESOLUTION_Q13; provenance "
+        "corrected 2026-07-22 — the ring-identity claim stays "
+        "Oxborrow-verbal; contemporaneous notes + photos archived "
         "at calibration/data/raw/oxborrow_meeting_notes_2026-07-21/; "
         "written confirmation pending — rides the confirmation "
         "email). The text above is the pre-resolution record; NO "
-        "measured band was obtained, so the ±25 µm placeholder route "
+        "measured band was obtained (single reading), so the ±25 µm "
+        "placeholder route "
         "applies.]"
     ),
     routes_to=(
         "Oxborrow written reply or a caliper measurement of the ring "
         "(spacer dims ride the same caliper list — 2026-07-18 rider) "
-        "[2026-07-21: the caliper route fired — verbally reported, "
+        "[2026-07-21: the caliper route fired — in-person, "
+        "first-hand (corrected 2026-07-22), "
         "written confirmation pending]"
     ),
     candidates=STO_HEIGHT_FORK.candidates,
@@ -387,11 +399,14 @@ LAYER_A_DOFS: tuple[DofSpec, ...] = (
             "nominal: provenance.GEOM_WU_STO_RING.sto_outer_radius_m "
             "(Wu 2020: 'O.D. = 12.0 mm', Gaskell Quartz ring); band: "
             "TOL.machining_tol_m placeholder (§7.4). [2026-07-21, "
-            "Oxborrow-VERBAL, notes archived at "
+            "in-person caliper measurement witnessed first-hand "
+            "(provenance corrected 2026-07-22; ring-identity claim "
+            "Oxborrow-verbal), notes archived at "
             "calibration/data/raw/oxborrow_meeting_notes_2026-07-21/: "
-            "O.D. verbally reported as physically measured 12.2 mm vs "
+            "O.D. measured 12.2 mm vs "
             "the carried print 12.0 mm — 0.2 mm, 8x the machining "
-            "band; unresolved two-sided discrepancy, NOT absorbed, no "
+            "band; single reading, no measurement band; unresolved "
+            "two-sided discrepancy, NOT absorbed, no "
             "branch selected; queued for the confirmation email (see "
             "the GEOM_WU_STO_RING docstring)]"
         ),
@@ -802,8 +817,8 @@ def mock_resolutions() -> ResolutionContext:
                     # fork's machine-readable branch: mock tier only,
                     # explicit and labelled — never a silent selection.
                     # (2026-07-21: the real RESOLUTION_Q13 has since
-                    # landed — same branch, verbal rung; this mock
-                    # stays a mock.)
+                    # landed — same branch, in-person caliper
+                    # (corrected 2026-07-22); this mock stays a mock.)
                     "sto_height_m": SENTINEL_Q13.evidence_favoured,
                     "selection_evidence": (
                         "MOCK — evidence-favoured branch, machine-read "

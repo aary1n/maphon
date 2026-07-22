@@ -86,7 +86,9 @@ class TestCompleteFixture:
     def test_fixture_resolves_nothing_real(self):
         """THE guarantee: after a full fixture ingest, the ratified
         register is untouched — Q2/Q11/Q13 as of 2026-07-21 (Q2 + Q13
-        at the verbal rung), with Q9 the sole remaining gate."""
+        in-person measurements, written confirmation pending —
+        provenance corrected 2026-07-22), with Q9 the sole remaining
+        gate."""
         ingest_reply(_complete_fixture(), fixture=True)
         assert [r.question_id for r in RATIFIED_RESOLUTIONS] == [
             "Q2",

@@ -6,9 +6,12 @@ published bound), rung/mock discipline, provenance chain markers, and
 the acceptance check that a ratified-Q11-only context still refuses
 every solve-ready exit naming Q2/Q9 per mode.
 
-2026-07-21 continuation: Q13 + Q2 joined the register at the verbal
-rung (in-person meeting 2026-07-21, notes archived; written
-confirmation pending) — payload/provenance discipline for both, the
+2026-07-21 continuation: Q13 + Q2 joined the register — first-hand
+in-person caliper measurements made live during the 2026-07-21
+meeting (provenance corrected 2026-07-22, initially under-graded as
+verbally-reported; notes + photos archived; written confirmation
+pending; the ring-identity claim stays Oxborrow-verbal) —
+payload/provenance discipline for both, the
 nominal-at-band-edge convention (Q2), and the acceptance check that
 the ratified context now refuses every solve-ready exit naming Q9
 alone.
@@ -64,7 +67,8 @@ def test_ratified_q11_provenance_carries_chain_and_negative_space():
 
 
 def test_resolution_q13_payload_and_provenance():
-    """Q13: ring height 8.6e-3 m (METRES), verbal-rung caliper report,
+    """Q13: ring height 8.6e-3 m (METRES), first-hand in-person
+    caliper measurement (provenance corrected 2026-07-22),
     archive-cited, no band key (the ±25 µm placeholder route)."""
     assert RESOLUTION_Q13.question_id == "Q13"
     assert RESOLUTION_Q13.mock is False
@@ -76,8 +80,12 @@ def test_resolution_q13_payload_and_provenance():
     assert ARCHIVE in RESOLUTION_Q13.payload["selection_evidence"]
     assert ARCHIVE in RESOLUTION_Q13.provenance
     assert "written confirmation pending" in RESOLUTION_Q13.provenance
-    # Verbal-report-of-measurement discipline: never bare "measured".
     assert "caliper" in RESOLUTION_Q13.payload["selection_evidence"]
+    # 2026-07-22 provenance correction pinned: the measurement is a
+    # first-hand in-person caliper reading, and the verbal grade
+    # attaches to the ring-identity claim only.
+    assert "first-hand" in RESOLUTION_Q13.provenance
+    assert "not independently verified" in RESOLUTION_Q13.provenance
 
 
 def test_resolution_q2_payload_nominal_at_band_edge():
@@ -99,6 +107,9 @@ def test_resolution_q2_payload_nominal_at_band_edge():
     assert ARCHIVE in RESOLUTION_Q2.payload["mechanism"]
     assert ARCHIVE in RESOLUTION_Q2.provenance
     assert "written confirmation pending" in RESOLUTION_Q2.provenance
+    # 2026-07-22 provenance correction pinned: first-hand in-person
+    # measurement, not a verbal report.
+    assert "first-hand" in RESOLUTION_Q2.provenance
 
 
 def test_ratified_context_resolves_q2_q11_q13_while_q9_remains():

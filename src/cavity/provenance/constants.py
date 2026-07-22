@@ -295,13 +295,22 @@ resolution is Oxborrow's reply or a caliper, NEVER a silent selection.
 No plain-float ring height exists anywhere in the repo until Q13
 resolves.
 
-RESOLVED 2026-07-21 (the caliper route, verbally reported): Oxborrow
-reported a physical caliper measurement of the ring height, 8.6 mm —
-verbal, in-person meeting 2026-07-21; contemporaneous notes archived
-at calibration/data/raw/oxborrow_meeting_notes_2026-07-21/; written
-confirmation pending — rides the confirmation email. The SM 8.5 print
-is superseded by the verbally-reported caliper measurement (written
-pending), preserved as printed above. This fork object is NOT deleted
+RESOLVED 2026-07-21 (the caliper route; provenance corrected
+2026-07-22 — docs/commit_errata_2026-07-22.md): the ring height was
+caliper-measured IN PERSON, live and in situ during the 2026-07-21
+meeting, 8.6 mm — a first-hand measurement performed/witnessed by the
+repo author, NOT a verbal report of a measurement made elsewhere (the
+initial mint under-graded this); contemporaneous notes + photos
+archived at calibration/data/raw/oxborrow_meeting_notes_2026-07-21/;
+written confirmation from Oxborrow pending — rides the confirmation
+email. NO measurement band exists (single reading, no repeats, no
+stated caliper placement) — the caliper-band ask stays open. The
+verbal grade stays where it belongs: that the measured ring IS the
+Wu 2020 build's ring is Oxborrow's VERBAL assertion, not
+independently verified — the identity claim, not the measurement,
+carries the verbal grade. The SM 8.5 print is superseded by the
+in-person caliper measurement (written confirmation pending),
+preserved as printed above. This fork object is NOT deleted
 and NOT collapsed to a float — it remains the record; the number
 enters the machinery ONLY via
 cavity.sweep.resolutions.RESOLUTION_Q13 (the designed path), and the
@@ -325,14 +334,22 @@ class WuSTORingGeometry:
     (calibration/data/raw/wu_build_papers_2026-07-18/) on 2026-07-18.
 
     - `sto_outer_radius_m` = 6.0e-3 — Wu 2020 SEC. III.C "O.D. = 12.0 mm".
-      (2026-07-21, Oxborrow-VERBAL — notes archived at
+      (2026-07-21, provenance corrected 2026-07-22
+      (docs/commit_errata_2026-07-22.md) — notes + photos archived at
       calibration/data/raw/oxborrow_meeting_notes_2026-07-21/: the
-      O.D. was verbally reported as a physical measurement,
+      O.D. was caliper-measured IN PERSON, live in situ during the
+      meeting, first-hand (performed/witnessed by the repo author),
       **12.2 mm**, against the carried print 12.0 mm — a 0.2 mm
-      discrepancy, 8x the +/-25 um machining band. This is a
+      discrepancy, 8x the +/-25 um machining band. Single reading,
+      NO measurement band (no repeats, no stated caliper placement)
+      — the caliper-band ask stays open. That the measured ring IS
+      the Wu 2020 build's ring is Oxborrow's VERBAL assertion, not
+      independently verified — the identity claim keeps the verbal
+      grade, separate from the measurement provenance. This is a
       print-vs-caliper conflict of the Q13 class, NOT a confirmation
       and NOT absorbed: the print stays the carried value at its
-      rung; the measured value is recorded here at the verbal rung;
+      rung; the measured value is recorded here, written
+      confirmation pending;
       the question is queued for the confirmation email — which
       should the model carry, and is a caliper band available?
       Candidate explanations, SPECULATION ONLY, asserted nowhere:
@@ -344,8 +361,10 @@ class WuSTORingGeometry:
       this print, not an independent value.
     - `sto_height_m` — FORKED {8.5, 8.6} mm (`STO_HEIGHT_FORK`, Q13);
       refuses arithmetic until resolved. (2026-07-21: Q13 RESOLVED at
-      8.6 mm — verbally reported caliper measurement, verbal rung,
-      written confirmation pending; `RESOLUTION_Q13` is the number's
+      8.6 mm — in-person caliper measurement made live during the
+      meeting, witnessed first-hand (provenance corrected 2026-07-22;
+      the ring-identity claim stays Oxborrow-verbal), written
+      confirmation pending; `RESOLUTION_Q13` is the number's
       only entry path, the fork object stays as the record — see the
       `STO_HEIGHT_FORK` docstring.)
     - `box_inner_radius_m` = 14.0e-3 — Wu 2020 Fig. 6 caption: region
@@ -360,7 +379,10 @@ class WuSTORingGeometry:
       nominal (Wu 2020 Fig. 6 caption; PRL SM "internal height
       (~15 mm)"). Travel band OPEN — Oxborrow asked by email 2026-07-18;
       Q2 stays unresolved. (2026-07-21: travel band RESOLVED
-      [15, 25] mm — Oxborrow-VERBAL, notes archived at
+      [15, 25] mm — measured in person, live in situ during the
+      meeting, witnessed first-hand (provenance corrected 2026-07-22;
+      single readings, no measurement band on the endpoints), notes
+      archived at
       calibration/data/raw/oxborrow_meeting_notes_2026-07-21/,
       written confirmation pending; `RESOLUTION_Q2`. The as-operated
       15 mm is the resolution's nominal, sitting AT the band's lower

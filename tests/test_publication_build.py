@@ -72,9 +72,10 @@ class TestLiveStages:
         assert check.ok, check.problems
 
     def test_sentinel_status_names_open_questions(self):
-        # 2026-07-21 register change: Q13 + Q2 ratified at the verbal
-        # rung — Q9 is the sole open gate and the fork line renders the
-        # register-derived "resolved" branch.
+        # 2026-07-21 register change: Q13 + Q2 ratified (in-person
+        # measurements, written confirmation pending — provenance
+        # corrected 2026-07-22) — Q9 is the sole open gate and the fork
+        # line renders the register-derived "resolved" branch.
         status = sentinel_status()
         assert set(status.unresolved_by_mode["baseline-d8"]) == {"Q9"}
         assert set(status.unresolved_by_mode["degraded-d7"]) == {"Q9"}
