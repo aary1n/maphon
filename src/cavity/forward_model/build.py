@@ -210,19 +210,32 @@ def _walls_selection(model: Any, geom: CavityGeometry) -> Any:
 def _spacer_selection(model: Any, geom: CavityGeometry) -> Any:
     """Domain-select the two spacer rectangles (base + lip) via snug Box
     selections with `condition = inside` — the `_walls_selection`
-    pattern at entitydim 2. Returns the Union selection node."""
+    pattern at entitydim 2. Returns the Union selection node.
+
+    NAME-COLLISION GUARD (first live contact, 2026-07-22 W2 session):
+    the geometry rectangles carry `selresult=True`, which auto-creates
+    selections NAMED AFTER the geometry features ("spacer base",
+    "spacer lip"). MPh resolves nodes by NAME, so a Box selection
+    created under the same name resolves back to the auto-created
+    FromSequence node — whose property set has no `entitydim` — and
+    the build dies with COMSOL's "Unknown property". The Box-selection
+    names here must therefore never equal a geometry-feature name
+    (" box" suffix). The §5a walls path never collided ("wall z=0"
+    etc.); the 2026-07-18 zero-licence changeset shipped the collision
+    untested against a licence.
+    """
     assert geom.spacer is not None
     sp = geom.spacer
     selections = model / "selections"
     pad = 1e-6 * min(geom.box_radius_m, geom.box_height_m)
     spans = {
-        "spacer base": (
+        "spacer base box": (
             sp.base_inner_radius_m - pad,
             sp.base_outer_radius_m + pad,
             -pad,
             sp.base_height_m + pad,
         ),
-        "spacer lip": (
+        "spacer lip box": (
             sp.lip_inner_radius_m - pad,
             sp.lip_outer_radius_m + pad,
             sp.base_height_m - pad,
