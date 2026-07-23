@@ -106,6 +106,19 @@ class TestRealArchive:
         # transcript + four crystal-placement photos under images/
         assert len(report.matched) == 6
 
+    def test_oxborrow_std_resonator_archive_intact(self):
+        """Same read-only guard for the 2026-07-23 standard-resonator
+        email archive (Oxborrow-WRITTEN — the scope-restricted
+        written-corroboration source for the Q13/Q2/O.D. annotations,
+        the GEOM_STD_RING record, and the A4/A5/W3 follow-on inputs)."""
+        archive = DEFAULT_ARCHIVE_DIR.parent / "oxborrow_std_resonator_2026-07-23"
+        report = verify_manifest(archive)
+        assert report.ok, report.to_markdown()
+        # 9 pinned files: two .eml (email + follow-up reply), the .mph,
+        # the report .docx, both H-grid .txt exports, two inline pngs
+        # under images/, and the archive README
+        assert len(report.matched) == 9
+
     def test_verify_all_covers_every_archive_dir(self):
         """The generic walk and the on-disk archive set must agree, so a
         newly-committed archive cannot silently escape verification."""

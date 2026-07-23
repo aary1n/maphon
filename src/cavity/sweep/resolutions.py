@@ -17,6 +17,12 @@ confirmation pending — rides the confirmation email. The register
 now holds Q2 + Q11 + Q13 in question order; the context remains
 PARTIAL by construction — Q9 is unresolved, so every solve-ready
 exit still refuses, now naming Q9 alone.
+
+2026-07-23: the standard-resonator email (Oxborrow-WRITTEN,
+calibration/data/raw/oxborrow_std_resonator_2026-07-23/)
+written-corroborates the Q13/Q2 values at STANDARD-RESONATOR scope
+only; ring identity stays verbal; all written-pending caveats
+stand — per-resolution provenance carries the record.
 """
 
 from __future__ import annotations
@@ -68,7 +74,19 @@ RESOLUTION_Q2 = SentinelResolution(
         "11.6 mm occupied, so the band implies ceiling-to-STO "
         "clearance 3.4-13.4 mm, bracketing the stated 5-10 mm "
         "typical plate-to-STO operating separation (same archive, "
-        "and oxborrow_tuning_2026-07-16/stotuningmech.md)."
+        "and oxborrow_tuning_2026-07-16/stotuningmech.md). "
+        "[2026-07-23, Oxborrow-WRITTEN (calibration/data/raw/"
+        "oxborrow_std_resonator_2026-07-23/): the standard-resonator "
+        "email states 'Copper cavity: 28 mm inner diameter, 15 mm "
+        "high.' and, in writing, the tuning MECHANISM AND DIRECTION "
+        "— 'Would have to lower the ceiling to squeeze the frequency "
+        "upwards.' The 15 mm nominal and the mechanism/direction are "
+        "written-corroborated IN THE STANDARD-RESONATOR CONTEXT; the "
+        "[15, 25] mm band ENDPOINTS are NOT restated by the email "
+        "and stay caliper-only. The gap-depth rider stays open; the "
+        "ring-identity claim stays Oxborrow-VERBAL; the "
+        "written-pending caveat STANDS; the ask narrows but does not "
+        "close.]"
     ),
 )
 
@@ -158,7 +176,20 @@ RESOLUTION_Q13 = SentinelResolution(
         "confirmation pending), preserved as printed on the fork "
         "record. The fork object is NOT deleted — it remains the "
         "record; this resolution is the machinery's only entry path "
-        "for the number."
+        "for the number. "
+        "[2026-07-23, Oxborrow-WRITTEN (calibration/data/raw/"
+        "oxborrow_std_resonator_2026-07-23/): the standard-resonator "
+        "email states the STO ring is '8.6 mm high' — corroborates "
+        "the 2026-07-21 caliper value IN THE STANDARD-RESONATOR "
+        "CONTEXT (the email's definition session is identified as "
+        "the 2026-07-21 meeting on the repo author's first-hand "
+        "account; the email's 'yesterday' is recorded as a dating "
+        "inaccuracy in the archive README). The ring-identity claim "
+        "— that this ring is the Wu 2020 build's ring — remains "
+        "Oxborrow-VERBAL and is NOT addressed by the email; the "
+        "written-pending caveat above STANDS; the confirmation-email "
+        "ask NARROWS (ring identity + caliper band) but does not "
+        "close.]"
     ),
 )
 
@@ -174,7 +205,9 @@ def ratified_resolutions() -> ResolutionContext:
     """Every ratified (non-mock) resolution on record — Q11 only as
     of 2026-07-17; Q2 + Q13 joined 2026-07-21 (first-hand in-person
     caliper measurements — provenance corrected 2026-07-22; written
-    confirmation pending). PARTIAL by construction: Q9
-    remains unresolved, so every solve-ready exit still refuses,
-    naming Q9 alone."""
+    confirmation pending). 2026-07-23: the Q13/Q2 values are
+    written-corroborated at standard-resonator scope only (the
+    standard-resonator email archive); the caveats stand. PARTIAL
+    by construction: Q9 remains unresolved, so every solve-ready
+    exit still refuses, naming Q9 alone."""
     return ResolutionContext(resolutions=RATIFIED_RESOLUTIONS)

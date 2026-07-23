@@ -145,6 +145,14 @@ class CrossLinkedPolystyrene:
     Rexolite-class ~5e-4) loss into the budget is licence-session work
     queued with the with/without-spacer delta solve, not smuggled in
     here as an ungraded literal.
+
+    (2026-07-23, Oxborrow-WRITTEN,
+    calibration/data/raw/oxborrow_std_resonator_2026-07-23/: the
+    standard-resonator email states the support only as "(plastic)" —
+    corroborates the support CLASS at the generic-plastic level,
+    standard-resonator context only. NO material upgrade: the Polypenco
+    Q200.5 / Rexolite-equivalent identity and the DATASHEET-CLASS-ANALOG
+    grade are untouched.)
     """
 
     epsilon_r_real: float = 2.53
@@ -315,7 +323,30 @@ and NOT collapsed to a float — it remains the record; the number
 enters the machinery ONLY via
 cavity.sweep.resolutions.RESOLUTION_Q13 (the designed path), and the
 "no plain-float ring height" sentence above remains true of the
-provenance layer.
+provenance layer. (2026-07-23 scoping of that sentence, ratified:
+the standard-build record `GEOM_STD_RING` — `StandardResonatorGeometry`,
+this module — carries its own plain-float 8.6e-3 at STANDARD-BUILD
+scope, citing the written email print for THAT build
+(calibration/data/raw/oxborrow_std_resonator_2026-07-23/). The
+invariant's purpose and scope are the Wu-build/modelled geometry —
+preventing silent branch selection into the model; Q13 is resolved,
+the standard-build field cites a written print for a different
+build, and the named follow-ons (A4/A5/W3 — the archive README's
+registry) are that record's consumers. RESOLUTION_Q13 remains the
+Wu ring number's only entry path.)
+
+[2026-07-23, Oxborrow-WRITTEN
+(calibration/data/raw/oxborrow_std_resonator_2026-07-23/): the
+standard-resonator email states the STO ring is "8.6 mm high" —
+corroborates the 2026-07-21 caliper value IN THE STANDARD-RESONATOR
+CONTEXT (the email's definition session is identified as the
+2026-07-21 meeting on the repo author's first-hand account; the
+email's "yesterday" is recorded as a dating inaccuracy in the
+archive README). The ring-identity claim — that this ring is the
+Wu 2020 build's ring — remains Oxborrow-VERBAL and is NOT addressed
+by the email; the written-pending caveat above STANDS; the
+confirmation-email ask NARROWS (ring identity + caliper band) but
+does not close.]
 """
 
 
@@ -356,9 +387,32 @@ class WuSTORingGeometry:
       fitting/wrap on the ring, print rounding, caliper placement, a
       different ring. Unresolved two-sided discrepancy — no branch
       selected.)
+      [2026-07-23, Oxborrow-WRITTEN
+      (calibration/data/raw/oxborrow_std_resonator_2026-07-23/): the
+      standard-resonator email states "12.2 mm outer diameter" — the
+      first WRITTEN print of the 12.2 value, corroborating the
+      2026-07-21 caliper reading IN THE STANDARD-RESONATOR CONTEXT.
+      It asserts nothing about the Wu 2020 build: the ring-identity
+      claim stays Oxborrow-VERBAL, the 12.0-vs-12.2 discrepancy stays
+      two-sided and unresolved, NO branch is selected, the print
+      12.0 mm stays the carried value. Ask narrows (identity +
+      caliper band); does not close.]
     - `sto_inner_radius_m` = 2.025e-3 — Wu 2020 "I.D. = 4.05 mm". The
       PRL SM's "4-mm bore" / "inner diameter ... 4 mm" is a ROUND of
       this print, not an independent value.
+      (2026-07-23, Oxborrow-WRITTEN,
+      calibration/data/raw/oxborrow_std_resonator_2026-07-23/: the
+      standard-resonator email prints "4 mm inner diameter" against
+      this carried 4.05 mm print — a fresh written print at variance
+      with the carried value. Most plausibly the same ROUND of 4.05
+      this line already records for the PRL SM's "4-mm bore" —
+      SPECULATION, tagged as such; the alternative — a genuinely
+      4.00 mm standard-build design I.D. — is recorded beside it. No
+      fork, no sentinel, no value change (the Layer-A-deferred
+      low-cost logic of the 2026-07-21 O.D. treatment-(i) applies a
+      fortiori); the one-line disambiguation ask rides the
+      confirmation email; the dual-geometry protocol's fixed 4.05 is
+      untouched.)
     - `sto_height_m` — FORKED {8.5, 8.6} mm (`STO_HEIGHT_FORK`, Q13);
       refuses arithmetic until resolved. (2026-07-21: Q13 RESOLVED at
       8.6 mm — in-person caliper measurement made live during the
@@ -366,7 +420,9 @@ class WuSTORingGeometry:
       the ring-identity claim stays Oxborrow-verbal), written
       confirmation pending; `RESOLUTION_Q13` is the number's
       only entry path, the fork object stays as the record — see the
-      `STO_HEIGHT_FORK` docstring.)
+      `STO_HEIGHT_FORK` docstring.) (2026-07-23: written 8.6 mm
+      corroboration at standard-resonator scope — see
+      `STO_HEIGHT_FORK`.)
     - `box_inner_radius_m` = 14.0e-3 — Wu 2020 Fig. 6 caption: region
       width 14 mm "corresponds to the radius of the copper enclosure".
       CAVEAT carried on the grade: the barrel is "a standard copper pipe
@@ -387,8 +443,17 @@ class WuSTORingGeometry:
       written confirmation pending; `RESOLUTION_Q2`. The as-operated
       15 mm is the resolution's nominal, sitting AT the band's lower
       edge; the piston-step gap-DEPTH rider remains open.)
+      (2026-07-23: 15 mm nominal + tuning mechanism/direction
+      written-corroborated at standard-resonator scope; band
+      endpoints still caliper-only — see `RESOLUTION_Q2`.)
     - `deck_clearance_m` = 3.0e-3 — Wu 2020 "raises the STO ring 3 mm
       above a copper conducting plane"; PRL SM "~3 mm above the PCB".
+      (2026-07-23, Oxborrow-WRITTEN,
+      calibration/data/raw/oxborrow_std_resonator_2026-07-23/: "STO
+      ring resting on a (plastic) support 3 mm above the copper
+      cavity's floor." — corroborates the 3 mm clearance IN THE
+      STANDARD-RESONATOR CONTEXT, at the generic-"plastic" level for
+      the support; ring-identity caveat as on the O.D. line.)
     - `piston_radius_m` = 13.0e-3 — PRL SM "26-mm dia. copper disk"
       suspended by a brass screw. The 1 mm annular gap between piston
       edge and barrel is MODELLED, not simplified away (ratified
@@ -440,6 +505,94 @@ class WuSTORingGeometry:
     spacer_lip_height_m: float = 1.5e-3
     crystal_diameter_m: float = 3.0e-3
     crystal_height_m: float = 8.0e-3
+
+
+@dataclass(frozen=True)
+class StandardResonatorGeometry:
+    """The lab's going-forward "standard" resonator — the build whose
+    dimensions were defined at the 2026-07-21 meeting and stated by
+    Oxborrow IN WRITING in the 2026-07-23 standard-resonator email.
+
+    GRADE: Oxborrow-WRITTEN (2026-07-23), archived —
+    calibration/data/raw/oxborrow_std_resonator_2026-07-23/ (every
+    value below cites that archive; the email's "defined yesterday"
+    dating discrepancy and its first-hand resolution are recorded in
+    the archive README, not here).
+
+    NOT A MODELLED GEOMETRY (record-only; the `NominalGeometry`
+    "must not consume" precedent): no DOF row references this class,
+    no solve consumes it, no TARGETS entry exists for it, and the
+    modelled build stays `GEOM_WU_STO_RING`. The CRYSTAL IS ABSENT
+    from this record — the email states none; absence is part of the
+    record, not an omission. Named consumers-to-be: the A4 .mph/report
+    readout, the A5 grid-ingestion follow-ons, and the W3
+    reproduction windows (all registered in the archive README).
+
+    - `sto_outer_radius_m` = 6.1e-3 — "STO ring: 12.2 mm outer
+      diameter". This is the STANDARD build's written print; the Wu
+      build's carried print stays 12.0 mm and the 12.0-vs-12.2
+      discrepancy record on `GEOM_WU_STO_RING` is unaffected.
+    - `sto_inner_radius_m` = 2.0e-3 — "4 mm inner diameter" AS
+      PRINTED. Whether this is the usual round of 4.05 or a genuinely
+      4.00 mm standard-build I.D. is UNRESOLVED (A1b annotation on
+      `WuSTORingGeometry.sto_inner_radius_m`; disambiguation ask
+      rides the confirmation email). NOT the dual-geometry protocol's
+      fixed 4.05.
+    - `sto_height_m` = 8.6e-3 — "8.6 mm high". STANDARD-BUILD scope:
+      a plain float HERE ONLY because it cites the written email
+      print for THIS build; the Wu ring's height still enters the
+      modelled geometry ONLY via `RESOLUTION_Q13` (`STO_HEIGHT_FORK`
+      stands — see its 2026-07-23 scoping note).
+    - `enclosure_inner_radius_m` = 14.0e-3 — "Copper cavity: 28 mm
+      inner diameter".
+    - `internal_height_m` = 15.0e-3 — "15 mm high"; the email also
+      states the tuning direction in writing ("Would have to lower
+      the ceiling to squeeze the frequency upwards.").
+    - `support_clearance_m` = 3.0e-3 — "STO ring resting on a
+      (plastic) support 3 mm above the copper cavity's floor."
+      Support material generic-"plastic"; form unstated (no seat/plug
+      geometry printed).
+
+    Oxborrow's own COMSOL solve of this geometry: f = 1.4128 GHz
+    (email prose: "The frequency is actually 1.41 GHz for this
+    geometry."; field-plot header: "lambda(1)=1.4128E9" — the
+    archived model report's own NOTES state the solver's "lambda"
+    output "is frequency not wavelength ... and is in Hz"; model file
+    archived: 1p41GHz_4mm_bore_mo1.mph). GRADE: SUPERVISOR-WRITTEN
+    MODEL OUTPUT — not a published print, not a measurement; recorded
+    here, consumed by nothing. W3 (named 2026-07-23, NOT drafted —
+    ledger-checked free): acceptance windows for a maphon
+    reproduction of the standard-build solve, to be drafted BEFORE
+    any solve, W2-style; until W3 ratifies there is no window, no
+    gate row, and no solve for this build. [SPECULATION,
+    informational only — SELECTS NOTHING; the W2 dual-geometry
+    protocol is untouched: at the SAME 15 mm internal height, this
+    12.2-O.D. standard-build model sits ~2.5% below Wu's printed
+    1.4495 GHz ((1.4495 - 1.4128)/1.4495 = 2.53%) — outside the W2.1
+    ±1.5% window class — and the email states the tuning direction in
+    writing. Consistent in SIGN with the archived Run-B O.D.
+    diagnostic (refs/gate_runs/20260722T144737Z_wu_anchor_w2/:
+    d f/d O.D. = -88.3 MHz/mm), but NOT commensurable with Run B —
+    the standard build differs in crystal (ABSENT here), support form
+    (generic plastic vs the Wu stepped seat), and I.D. (4 mm print vs
+    4.05).] [INFORMATIONAL, cross-model consistency — binds no gate,
+    selects no branch: the archived Run B diagnostic
+    (refs/gate_runs/20260722T144737Z_wu_anchor_w2/, f' = 1413.529 MHz
+    at O.D. 12.2 mm) and this independent Oxborrow model
+    (1412.8 MHz) agree to ~0.05% at the 12.2 mm geometry, despite
+    differing in crystal presence (Run B present, standard build
+    absent), I.D. print (4.05 vs 4 mm), and support form —
+    near-inertness of those differences on f is consistent with
+    Run A's measured p_e ≈ 0.9977.] The email contains NO Q value:
+    κc branches, `TARGETS.wu_ring`, and MQ2 are unaffected.
+    """
+
+    sto_outer_radius_m: float = 6.1e-3
+    sto_inner_radius_m: float = 2.0e-3
+    sto_height_m: float = 8.6e-3
+    enclosure_inner_radius_m: float = 14.0e-3
+    internal_height_m: float = 15.0e-3
+    support_clearance_m: float = 3.0e-3
 
 
 @dataclass(frozen=True)
@@ -1549,6 +1702,9 @@ CLPS = CrossLinkedPolystyrene()
 GEOM = NominalGeometry()
 GEOM_BOOTH_TE01D = BoothTE01DeltaGeometry()
 GEOM_WU_STO_RING = WuSTORingGeometry()
+#: Record-only standard-build geometry (2026-07-23 email archive);
+#: NOT a modelled geometry — see the class docstring's guard.
+GEOM_STD_RING = StandardResonatorGeometry()
 WU_PUMP_BEAM = WuPumpBeamGeometry()
 TARGET = TargetMode()
 TOL = TolRanges()

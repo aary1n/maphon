@@ -27,7 +27,9 @@ numbers yet:
     2026-07-22; the ring-identity claim stays Oxborrow-verbal),
     RESOLUTION_Q13, written confirmation pending; the
     fork object remains the record, the number enters only via the
-    resolution);
+    resolution) (2026-07-23: the standard-resonator email
+    written-corroborates 8.6 mm at STANDARD-RESONATOR scope only,
+    ring identity still verbal — see RESOLUTION_Q13's provenance);
   - row 5 (crystal axial offset) and row 6 (crystal centring
     eccentricity): crystal placement, open question Q9 (coordinate
     fixed with the 2026-07-16 reframe; the former "bore radius" row was
@@ -43,7 +45,10 @@ numbers yet:
     meeting, witnessed first-hand (provenance corrected 2026-07-22),
     written confirmation
     pending; nominal = the as-operated 15 mm at the band's lower
-    edge; the gap-depth rider remains open);
+    edge; the gap-depth rider remains open) (2026-07-23: 15 mm
+    nominal + tuning mechanism/direction written-corroborated at
+    STANDARD-RESONATOR scope only, band endpoints still
+    caliper-only — see RESOLUTION_Q2's provenance);
   - additionally the Phase 1b crystal permittivity (not a DOF row, but
     rider R1 makes it a solve precondition): resolved at planning grade
     via RESOLUTION_Q11 (2026-07-17); the question remains gate-tracked.
@@ -408,7 +413,18 @@ LAYER_A_DOFS: tuple[DofSpec, ...] = (
             "band; single reading, no measurement band; unresolved "
             "two-sided discrepancy, NOT absorbed, no "
             "branch selected; queued for the confirmation email (see "
-            "the GEOM_WU_STO_RING docstring)]"
+            "the GEOM_WU_STO_RING docstring)] "
+            "[2026-07-23, Oxborrow-WRITTEN (calibration/data/raw/"
+            "oxborrow_std_resonator_2026-07-23/): the "
+            "standard-resonator email states '12.2 mm outer diameter' "
+            "— the first WRITTEN print of the 12.2 value, "
+            "corroborating the 2026-07-21 caliper reading IN THE "
+            "STANDARD-RESONATOR CONTEXT. It asserts nothing about the "
+            "Wu 2020 build: the ring-identity claim stays "
+            "Oxborrow-VERBAL, the 12.0-vs-12.2 discrepancy stays "
+            "two-sided and unresolved, NO branch is selected, the "
+            "print 12.0 mm stays the carried value. Ask narrows "
+            "(identity + caliper band); does not close.]"
         ),
     ),
     DofSpec(
@@ -423,7 +439,10 @@ LAYER_A_DOFS: tuple[DofSpec, ...] = (
             "nominal: provenance.GEOM_WU_STO_RING.sto_inner_radius_m "
             "(Wu 2020: 'I.D. = 4.05 mm'; the PRL SM's '4-mm bore' is a "
             "round of this print); band: TOL.machining_tol_m "
-            "placeholder (§7.4)"
+            "placeholder (§7.4). [2026-07-23: a written '4 mm' print "
+            "at STANDARD-BUILD scope is recorded on the constant — "
+            "see sto_inner_radius_m in the GEOM_WU_STO_RING "
+            "docstring]"
         ),
     ),
     DofSpec(

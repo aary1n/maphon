@@ -14,6 +14,7 @@ import pytest
 from cavity.provenance import (
     CLPS,
     CRYSTAL,
+    GEOM_STD_RING,
     GEOM_WU_STO_RING,
     STO_HEIGHT_FORK,
     TOL,
@@ -108,6 +109,34 @@ def test_crystal_planning_fields_equal_breeze_import():
     # Wu-side ~4 mm bore-filling indicators in the class docstring).
     assert GEOM_WU_STO_RING.crystal_diameter_m == CRYSTAL.diameter_m == 3.0e-3
     assert GEOM_WU_STO_RING.crystal_height_m == CRYSTAL.height_m == 8.0e-3
+
+
+# ---------------------------------------------------------------------------
+# Standard-resonator record (2026-07-23 email archive) — record-only pins
+# ---------------------------------------------------------------------------
+
+
+def test_standard_resonator_record_pins():
+    """GEOM_STD_RING pins the Oxborrow-WRITTEN standard-build prints
+    (calibration/data/raw/oxborrow_std_resonator_2026-07-23/): a
+    record-only class — NOT a modelled geometry, no crystal fields
+    (the email states none; absence is part of the record) — and the
+    Wu-build carried values are untouched by its existence."""
+    g = GEOM_STD_RING
+    assert g.sto_outer_radius_m == 6.1e-3  # "12.2 mm outer diameter"
+    assert g.sto_inner_radius_m == 2.0e-3  # "4 mm inner diameter" as printed
+    assert g.sto_height_m == 8.6e-3  # "8.6 mm high" (standard-build scope)
+    assert g.enclosure_inner_radius_m == 14.0e-3  # "28 mm inner diameter"
+    assert g.internal_height_m == 15.0e-3  # "15 mm high"
+    assert g.support_clearance_m == 3.0e-3  # "(plastic) support 3 mm above"
+    # Crystal ABSENT from the record, by construction.
+    assert not hasattr(g, "crystal_diameter_m")
+    assert not hasattr(g, "crystal_height_m")
+    # Record-only guard is stated on the class itself.
+    assert "NOT A MODELLED GEOMETRY" in type(g).__doc__
+    # The Wu build's carried print and fork are unaffected.
+    assert GEOM_WU_STO_RING.sto_outer_radius_m == 6.0e-3
+    assert GEOM_WU_STO_RING.sto_height_m is STO_HEIGHT_FORK
 
 
 # ---------------------------------------------------------------------------
